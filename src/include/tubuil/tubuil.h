@@ -29,7 +29,8 @@ enum {
 	ERR_SOCKET       = -4,
 	ERR_ADDRESS      = -5,
 	ERR_SOCK_OPT     = -6,
-	ERR_BIND         = -7
+	ERR_BIND         = -7,
+	ERR_CONNECT      = -8
 };
 
 typedef enum {
@@ -64,11 +65,19 @@ typedef struct tubserv_t {
 
 typedef struct tubcli_t {
 	int sock;
-	struct sockaddr server;
+	struct addrinfo meta;
 } tubcli_t;
+
+const char *tub_errstr(int err);
 
 int tub_serv_make (tubserv_t *s, uint16_t port, tubnet_t mode, tubip_t ip);
 
 int tub_serv_close (tubserv_t *s);
+
+int tub_cli_make (tubcli_t *c, tubnet_t mode, tubip_t ip);
+
+int tub_cli_connect (tubcli_t *c, uint16_t port, const char *addr);
+
+int tub_cli_close (tubcli_t *c);
 
 #endif /* tubuil_h */
