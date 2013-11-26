@@ -13,25 +13,52 @@ const char *tub_errstr(int err)
 	const char *str;
 
 	switch (err) {
-		case 0:			str = "No errors detected.";
-					break;
-		case ERR_MISSING_PTR: 	str = "A passed pointer was NULL.";
-					break;
-		case ERR_INVALID_MODE:	str = "Network mode invalid.";
-					break;
-		case ERR_INVALID_IP:	str = "IP address type invalid.";
-					break;
-		case ERR_SOCKET:	str = "Failed to create socket.";
-					break;
-		case ERR_ADDRESS:	str = "Address invalid or taken.";
-					break;
-		case ERR_SOCK_OPT:	str = "Failed to set socket options.";
-					break;
-		case ERR_BIND:		str = "Failed to bind socket.";
-					break;
-		case ERR_CONNECT:	str = "Failed to connect socket.";
-					break;
-		default:		str = "Unrecognized error code.";
+		case 0:	{
+			str = "No errors detected.";
+			break;
+		}
+
+		case ERR_MISSING_PTR: {
+			str = "A passed pointer was NULL.";
+			break;
+		}
+
+		case ERR_INVALID_MODE:{
+			str = "Network mode invalid.";
+			break;
+		}
+
+		case ERR_INVALID_IP: {
+			str = "IP address type invalid.";
+			break;
+		}
+
+		case ERR_SOCKET: {
+			str = "Failed to create socket.";
+			break;
+		}
+
+		case ERR_ADDRESS: {
+			str = "Address invalid or taken.";
+			break;
+		}
+
+		case ERR_SOCK_OPT: {
+			str = "Failed to set socket options.";
+			break;
+		}
+
+		case ERR_BIND: {
+			str = "Failed to bind socket.";
+			break;
+		}
+
+		case ERR_CONNECT: {
+			str = "Failed to connect socket.";
+			break;
+		}
+
+		default: str = "Unrecognized error code.";
 	}
 
 	return str;
