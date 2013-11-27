@@ -132,7 +132,13 @@ int mik_serv_make (mikserv_t *s, uint16_t port, miknet_t mode, mikip_t ip)
 		return ERR_SOCK_OPT;
 	}
 
-	listen(s->sock, MIK_WAIT_MAX);
+	if ((mode == MIK_TCP) || (mode == MIK_SAFE)) {
+		err = listen(s->sock, MIK_WAIT_MAX);
+		if (err < 0) {
+			if (MIK_DEBUG)
+				fprintf(stderr, "Net err: %s.\n", strerror(errno));
+		}
+	}
 
 	return 0;
 }
