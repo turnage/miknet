@@ -95,7 +95,7 @@ int mik_serv_make (mikserv_t *s, uint16_t port, miknet_t mode, mikip_t ip)
 	s->sock = socket(hint.ai_family, hint.ai_socktype, 0);
 	if (s->sock < 0) {
 		if (MIK_DEBUG)
-			fprintf(stderr, "Net err: %s.\n", strerror(errno));
+			fprintf(stderr, "SYS: %s.\n", strerror(errno));
 		return ERR_SOCKET;
 	}
 
@@ -104,7 +104,7 @@ int mik_serv_make (mikserv_t *s, uint16_t port, miknet_t mode, mikip_t ip)
 	err = getaddrinfo(NULL, portstr, &hint, &serv);
 	if (err) {
 		if (MIK_DEBUG)
-			fprintf(stderr, "Net err: %s.\n", gai_strerror(err));
+			fprintf(stderr, "SYS: %s.\n", gai_strerror(err));
 		return ERR_ADDRESS;
 	}
 
@@ -121,14 +121,14 @@ int mik_serv_make (mikserv_t *s, uint16_t port, miknet_t mode, mikip_t ip)
 
 	if (err < 0) {
 		if (MIK_DEBUG)
-			fprintf(stderr, "Net err: %s.\n", strerror(errno));
+			fprintf(stderr, "SYS: %s.\n", strerror(errno));
 		return ERR_BIND;
 	}
 
 	err = setsockopt(s->sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
 	if (err < 0) {
 		if (MIK_DEBUG)
-			fprintf(stderr, "Net err: %s.\n", strerror(errno));
+			fprintf(stderr, "SYS: %s.\n", strerror(errno));
 		return ERR_SOCK_OPT;
 	}
 
@@ -136,7 +136,7 @@ int mik_serv_make (mikserv_t *s, uint16_t port, miknet_t mode, mikip_t ip)
 		err = listen(s->sock, MIK_WAIT_MAX);
 		if (err < 0) {
 			if (MIK_DEBUG)
-				fprintf(stderr, "Net err: %s.\n", strerror(errno));
+				fprintf(stderr, "SYS: %s.\n", strerror(errno));
 		}
 	}
 
