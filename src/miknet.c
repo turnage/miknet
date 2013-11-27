@@ -8,6 +8,13 @@ static void print_addr (struct sockaddr *a, socklen_t l)
 	fprintf(stderr, "Bound to: %s:%s.\n", hostname, service);
 }
 
+/**
+ *  Convert an error code into a human-readable string.
+ *
+ *  @err: error code
+ *
+ *  @return: pointer to the string
+ */
 const char *mik_errstr(int err)
 {
 	const char *str;
@@ -64,6 +71,17 @@ const char *mik_errstr(int err)
 	return str;
 }
 
+
+/**
+ *  Construct a server object, bound to an address and ready for use.
+ *
+ *  @s: pointer to the server object
+ *  @port: port between 0 - 65535
+ *  @mode: TCP/UDP; SAFE/FAST
+ *  @ip: IPv4/IPv6
+ *
+ *  @return: 0 on success; negative error code on failure
+ */
 int mik_serv_make (mikserv_t *s, uint16_t port, miknet_t mode, mikip_t ip)
 {
 	if (!s)
@@ -143,6 +161,14 @@ int mik_serv_make (mikserv_t *s, uint16_t port, miknet_t mode, mikip_t ip)
 	return 0;
 }
 
+
+/**
+ *  Release all the resources held by a server object.
+ *
+ *  @s: pointer to server object
+ *
+ *  @return: 0 on success; negative error code on failure
+ */
 int mik_serv_close (mikserv_t *s)
 {
 	if (!s)
@@ -153,6 +179,15 @@ int mik_serv_close (mikserv_t *s)
 	return 0;
 }
 
+/**
+ *  Create a client object, which is ready to connect somewhere.
+ *
+ *  @c: pointer to client object
+ *  @mode: TCP/UDP; SAFE/FAST
+ *  @ip: IPv4/IPv6
+ *
+ *  @return: 0 on success; negative error code on failure
+ */
 int mik_cli_make (mikcli_t *c, miknet_t mode, mikip_t ip)
 {
 	if (!c)
@@ -184,6 +219,16 @@ int mik_cli_make (mikcli_t *c, miknet_t mode, mikip_t ip)
 	return 0;
 }
 
+
+/**
+ *  Connect a client to a server (not necessarily a miknet server).
+ *
+ *  @c: pointer to client object
+ *  @port: port between 0 - 65535
+ *  @addr: hostname or NULL for localhost
+ *  
+ *  @return: 0 on success; negative error code on failure
+ */
 int mik_cli_connect (mikcli_t *c, uint16_t port, const char *addr)
 {
 	if (!c)
@@ -222,6 +267,13 @@ int mik_cli_connect (mikcli_t *c, uint16_t port, const char *addr)
 	return 0;
 }
 
+/**
+ *  Release all resourced held by the client object.
+ *
+ *  @c: pointer to client object
+ *
+ *  @return: 0 on success; negative error code on failure
+ */
 int mik_cli_close (mikcli_t *c)
 {
 	if (!c)
