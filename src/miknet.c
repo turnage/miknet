@@ -73,7 +73,7 @@ const char *mik_errstr(int err)
 
 
 /**
- *  Construct a server object, bound to an address and ready for use.
+ *  Construct a server object, bound to an address and ready for config.
  *
  *  @s: pointer to the server object
  *  @port: port between 0 - 65535
@@ -111,6 +111,7 @@ int mik_serv_make (mikserv_t *s, uint16_t port, miknet_t mode, mikip_t ip)
 		return ERR_INVALID_IP;
 
 	s->sock = socket(hint.ai_family, hint.ai_socktype, 0);
+	printf("Socket fd: %d.\n", s->sock);
 	if (s->sock < 0) {
 		if (MIK_DEBUG)
 			fprintf(stderr, "SYS: %s.\n", strerror(errno));
@@ -161,6 +162,46 @@ int mik_serv_make (mikserv_t *s, uint16_t port, miknet_t mode, mikip_t ip)
 	return 0;
 }
 
+/**
+ *  Configure a server for operation.
+ *
+ *  @s: pointer to the server object
+ *  @pc: maximum peers
+ *  @u: maximum upbandwidth/s
+ *  @d: maximum downbandwidth/s
+ *
+ *  @return: 0 on success; negative error code on failure
+ */
+int mik_serv_config (mikserv_t *s, uint16_t pc, uint32_t u, uint32_t d)
+{
+	if (!s)
+		return ERR_MISSING_PTR;
+
+	if (pc > MIK_PEER_MAX)
+		return ERR_PEER_MAX;
+
+	s->peerc = pc;
+	s->upcap = u;
+	s->downcap = d;
+
+	return 0;
+}
+
+/**
+ *  Listen for connection attempts and allocate space for new peers.
+ *
+ *  @s: pointer to server object
+ *  @t: timeout, in microseconds
+ *
+ *  @return: 0 on success; negative error code on failure
+ */
+int mik_serv_accept (mikserv_t *s, uint32_t t)
+{
+	if (!s)
+		return ERR_MISSING_PTR;
+
+	return 0;
+}
 
 /**
  *  Release all the resources held by a server object.

@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <poll.h>
 #include <netdb.h>
 #include <unistd.h>
 #include <netinet/in.h>
@@ -18,7 +19,9 @@
 #define MIK_CHAN_MAX 100
 #define MIK_PACK_MAX 1200
 #define MIK_PORT_MAX 6
+#define MIK_IPST_MAX 48
 #define MIK_WAIT_MAX 64
+#define MIK_PEER_MAX 100
 
 #define MIK_DEBUG 1
 
@@ -30,7 +33,8 @@ enum {
 	ERR_ADDRESS      = -5,
 	ERR_SOCK_OPT     = -6,
 	ERR_BIND         = -7,
-	ERR_CONNECT      = -8
+	ERR_CONNECT      = -8,
+	ERR_PEER_MAX     = -9
 };
 
 typedef enum {
@@ -47,6 +51,11 @@ typedef enum {
 
 typedef struct mikpeer_t {
 	int sock;
+	struct sockaddr_storage addr;
+	socklen_t addrlen;
+	char ip[MIK_IPST_MAX];
+	uint32_t sent;
+	uint32_t recvd;
 	struct mikpeer_t *prev;
 	struct mikpeer_t *next;
 } mikpeer_t;
@@ -58,19 +67,32 @@ typedef struct mikpack_t {
 
 typedef struct mikserv_t {
 	int sock;
-	struct sockaddr address;
-	miknet_t socktype;
-	mikip_t iptype;
+	struct sockaddr_storage addr;
+	socklen_t addrlen;
+	miknet_t mode;
+	mikip_t ip;
+	struct pollfd *fds;
+	nfds_t nfds;
+	mikpeer_t *peers;
+	uint16_t peerc;
+	uint32_t upcap;
+	uint32_t downcap;
 } mikserv_t;
 
 typedef struct mikcli_t {
 	int sock;
 	struct addrinfo meta;
+	miknet_t mode;
+	miknet_t ip;
 } mikcli_t;
 
 const char *mik_errstr(int err);
 
 int mik_serv_make (mikserv_t *s, uint16_t port, miknet_t mode, mikip_t ip);
+
+int mik_serv_config (mikserv_t *s, uint16_t peer, uint32_t u, uint32_t d);
+
+int mik_serv_accept (mikserv_t *s, uint32_t t);
 
 int mik_serv_close (mikserv_t *s);
 
