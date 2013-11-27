@@ -23,7 +23,7 @@ const char *tub_errstr(int err)
 			break;
 		}
 
-		case ERR_INVALID_MODE:{
+		case ERR_INVALID_MODE: {
 			str = "Network mode invalid.";
 			break;
 		}
