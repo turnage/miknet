@@ -35,6 +35,7 @@ static int tcp_peer (mikserv_t *s)
 	memset(s->peers + s->peerc - 1, 0, sizeof(mikpeer_t));
 	if (!s->peers)
 		return ERR_MEMORY;
+
 	mikpeer_t *p;
 	for (p = s->peers; p; p = p->next);
 	p->prev = (s->peerc > 1) ? p - 1 : NULL;
@@ -184,7 +185,6 @@ int mik_serv_make (mikserv_t *s, uint16_t port, miknet_t mode, mikip_t ip)
 		return ERR_INVALID_IP;
 
 	s->sock = socket(hint.ai_family, hint.ai_socktype, 0);
-	printf("Socket fd: %d.\n", s->sock);
 	if (s->sock < 0) {
 		if (MIK_DEBUG)
 			fprintf(stderr, "SYS: %s.\n", strerror(errno));
@@ -267,7 +267,7 @@ int mik_serv_config (mikserv_t *s, uint16_t pm, uint32_t u, uint32_t d)
 }
 
 /**
- *  Queue received data for processing and dequeue packets waiting to be sent.
+ *  Queue received data for processing and dequeue data waiting to be sent.
  *
  *  @s: pointer to the server object
  *  @t: target blocking time in milliseconds
