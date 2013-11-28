@@ -8,6 +8,17 @@ static void print_addr (struct sockaddr *a, socklen_t l)
 	fprintf(stderr, "Bound to: %s:%s.\n", hostname, service);
 }
 
+static void addr_string (mikip_t ip, struct sockaddr_storage *addr, char *str)
+{
+	if (ip == MIK_IPV4) {
+		struct sockaddr_in *a4 = (struct sockaddr_in *)addr;
+		inet_ntop(AF_INET, &a4->sin_addr, str, MIK_IPST_MAX);
+	} else if (ip == MIK_IPV6) {
+		struct sockaddr_in6 *a6 = (struct sockaddr_in6 *)addr;
+		inet_ntop(AF_INET6, &a6->sin6_addr, str, MIK_IPST_MAX);
+	}
+}
+
 static int tcp_peer (mikserv_t *s)
 {
 	if (!s)
@@ -30,31 +41,30 @@ static int tcp_peer (mikserv_t *s)
 		return ERR_PEER_MAX;
 	}
 
-	s->peerc++;
+	s->peerc++;	
 	s->peers = realloc(s->peers, s->peerc * sizeof(mikpeer_t));
-	memset(s->peers + s->peerc - 1, 0, sizeof(mikpeer_t));
-	if (!s->peers)
+	s->fds = realloc(s->fds, s->nfds * sizeof(struct pollfd));
+	if (!s->peers || !s->fds)
 		return ERR_MEMORY;
 
-	mikpeer_t *p;
-	for (p = s->peers; p; p = p->next);
-	p->prev = (s->peerc > 1) ? p - 1 : NULL;
-	p->sock = err;
-	p->addr = a;
-	p->addrlen = alen;
-
-	if (s->ip == MIK_IPV4) {
-		struct sockaddr_in *a4 = (struct sockaddr_in *)&p->addr;
-		inet_ntop(p->addr.ss_family,
-			&a4->sin_addr, p->ip, MIK_IPST_MAX);
-	} else if (s->ip == MIK_IPV6) {
-		struct sockaddr_in6 *a6 = (struct sockaddr_in6 *)&p->addr;
-		inet_ntop(p->addr.ss_family,
-			&a6->sin6_addr, p->ip, MIK_IPST_MAX);
+	memset(&s->peers[s->peerc - 1], 0, sizeof(mikpeer_t));
+	s->peers[s->peerc - 1].sock = err;
+	s->peers[s->peerc - 1].addr = a;
+	s->peers[s->peerc - 1].addrlen = alen;
+	if (s->peerc > 1) {
+		s->peers[s->peerc - 2].next = &s->peers[s->peerc - 1];
+		s->peers[s->peerc - 1].prev = &s->peers[s->peerc - 2];
 	}
-	
+
+	addr_string(s->ip, &a, s->peers[s->peerc - 1].ipst);
+
+	memset(&s->fds[s->nfds - 1], 0, sizeof(struct pollfd));
+	s->fds[s->nfds - 1].fd = s->peers[s->peerc - 1].sock;
+	s->fds[s->nfds - 1].events = POLLIN;
+
 	if (MIK_DEBUG) {
-		fprintf(stderr, "Client [%d]: %s.\n", s->peerc, p->ip);
+		fprintf(stderr, "Client [%d]: %s.\n", s->peerc,
+			s->peers[s->peerc - 1].ipst);
 	}
 
 	return 0;
@@ -65,17 +75,14 @@ static int tcp_poll (mikserv_t *s, int t)
 	if (!s)
 		return ERR_MISSING_PTR;
 
-	int err;
-
-	if ((s->mode != MIK_TCP) && (s->mode != MIK_SAFE))
-		return ERR_INVALID_MODE;
-
-	err = poll(s->fds, s->nfds, t);
+	/* 1 is magic for now; only poll master socket. */
+	int err = poll(s->fds, 1, t);
 	if (err < 0) {
 		if (MIK_DEBUG)
 			fprintf(stderr, "SYS: %s.\n", strerror(errno));
 		return ERR_POLL;
 	}
+
 	if (s->fds->revents & POLLIN) {
 		return tcp_peer(s);
 	}
@@ -170,11 +177,14 @@ int mik_serv_make (mikserv_t *s, uint16_t port, miknet_t mode, mikip_t ip)
 	memset(&hint, 0, sizeof(hint));
 	sprintf(portstr, "%d", port);
 
-	if ((mode == MIK_UDP) || (mode == MIK_FAST)) {
+	s->mode = mode;
+	s->ip = ip;
+
+	if ((mode == MIK_UDP) || (mode == MIK_FAST))
 		hint.ai_socktype = SOCK_DGRAM;
-	} else if ((mode == MIK_TCP) || (mode == MIK_SAFE)) {
+	else if ((mode == MIK_TCP) || (mode == MIK_SAFE))
 		hint.ai_socktype = SOCK_STREAM;
-	} else
+	else
 		return ERR_INVALID_MODE;
 
 	if (ip == MIK_IPV4)
@@ -282,6 +292,7 @@ int mik_serv_poll (mikserv_t *s, int t)
 	if ((s->mode == MIK_TCP) || (s->mode == MIK_SAFE))
 		return tcp_poll(s, t);
 
+
 	/* TODO: UDP monitor. */
 
 	return 0;
@@ -380,8 +391,10 @@ int mik_cli_connect (mikcli_t *c, uint16_t port, const char *addr)
 
 	for (p = serv; p; p = p->ai_next) {
 		err = connect(c->sock, p->ai_addr, p->ai_addrlen);
-		if (!err)
+		if (!err) {
+			print_addr(p->ai_addr, p->ai_addrlen);
 			break;
+		}
 	}
 
 	freeaddrinfo(serv);

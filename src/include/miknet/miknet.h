@@ -57,7 +57,7 @@ typedef struct mikpeer_t {
 	int sock;
 	struct sockaddr_storage addr;
 	socklen_t addrlen;
-	char ip[MIK_IPST_MAX];
+	char ipst[MIK_IPST_MAX];
 	uint32_t sent;
 	uint32_t recvd;
 	struct mikpeer_t *prev;
@@ -87,6 +87,7 @@ typedef struct mikserv_t {
 typedef struct mikcli_t {
 	int sock;
 	struct addrinfo meta;
+	char ipst[MIK_IPST_MAX];
 	miknet_t mode;
 	miknet_t ip;
 } mikcli_t;
