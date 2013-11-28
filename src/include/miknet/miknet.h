@@ -79,6 +79,7 @@ typedef struct mikserv_t {
 	nfds_t nfds;
 	mikpeer_t *peers;
 	uint16_t peerc;
+	uint16_t peermax;
 	uint32_t upcap;
 	uint32_t downcap;
 } mikserv_t;
@@ -94,7 +95,7 @@ const char *mik_errstr(int err);
 
 int mik_serv_make (mikserv_t *s, uint16_t port, miknet_t mode, mikip_t ip);
 
-int mik_serv_config (mikserv_t *s, uint16_t peer, uint32_t u, uint32_t d);
+int mik_serv_config (mikserv_t *s, uint16_t pm, uint32_t u, uint32_t d);
 
 int mik_serv_poll (mikserv_t *s, int t);
 

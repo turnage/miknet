@@ -24,6 +24,12 @@ static int tcp_peer (mikserv_t *s)
 			fprintf(stderr, "SYS: %s.\n", strerror(errno));
 		return ERR_SOCKET;
 	}
+
+	if (s->peerc == s->peermax) {
+		close(err);
+		return ERR_PEER_MAX;
+	}
+
 	s->peerc++;
 	s->peers = realloc(s->peers, s->peerc * sizeof(mikpeer_t));
 	memset(s->peers + s->peerc - 1, 0, sizeof(mikpeer_t));
@@ -239,15 +245,15 @@ int mik_serv_make (mikserv_t *s, uint16_t port, miknet_t mode, mikip_t ip)
  *
  *  @return: 0 on success; negative error code on failure
  */
-int mik_serv_config (mikserv_t *s, uint16_t pc, uint32_t u, uint32_t d)
+int mik_serv_config (mikserv_t *s, uint16_t pm, uint32_t u, uint32_t d)
 {
 	if (!s)
 		return ERR_MISSING_PTR;
 
-	if (pc > MIK_PEER_MAX)
+	if (pm > MIK_PEER_MAX)
 		return ERR_PEER_MAX;
 
-	s->peerc = pc;
+	s->peermax = pm;
 	s->upcap = u;
 	s->downcap = d;
 
