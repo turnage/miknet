@@ -8,6 +8,74 @@ static void print_addr (struct sockaddr *a, socklen_t l)
 	fprintf(stderr, "Bound to: %s:%s.\n", hostname, service);
 }
 
+static int tcp_peer (mikserv_t *s)
+{
+	if (!s)
+		return ERR_MISSING_PTR;
+
+	int err;
+
+	struct sockaddr_storage a;
+	socklen_t alen;
+
+	err = accept(s->sock, (struct sockaddr *)&a, &alen);
+	if (err < 0) {
+		if (MIK_DEBUG)
+			fprintf(stderr, "SYS: %s.\n", strerror(errno));
+		return ERR_SOCKET;
+	}
+	s->peerc++;
+	s->peers = realloc(s->peers, s->peerc * sizeof(mikpeer_t));
+	memset(s->peers + s->peerc - 1, 0, sizeof(mikpeer_t));
+	if (!s->peers)
+		return ERR_MEMORY;
+	mikpeer_t *p;
+	for (p = s->peers; p; p = p->next);
+	p->prev = (s->peerc > 1) ? p - 1 : NULL;
+	p->sock = err;
+	p->addr = a;
+	p->addrlen = alen;
+
+	if (s->ip == MIK_IPV4) {
+		struct sockaddr_in *a4 = (struct sockaddr_in *)&p->addr;
+		inet_ntop(p->addr.ss_family,
+			&a4->sin_addr, p->ip, MIK_IPST_MAX);
+	} else if (s->ip == MIK_IPV6) {
+		struct sockaddr_in6 *a6 = (struct sockaddr_in6 *)&p->addr;
+		inet_ntop(p->addr.ss_family,
+			&a6->sin6_addr, p->ip, MIK_IPST_MAX);
+	}
+	
+	if (MIK_DEBUG) {
+		fprintf(stderr, "Client [%d]: %s.\n", s->peerc, p->ip);
+	}
+
+	return 0;
+}
+
+static int tcp_poll (mikserv_t *s, int t)
+{
+	if (!s)
+		return ERR_MISSING_PTR;
+
+	int err;
+
+	if ((s->mode != MIK_TCP) && (s->mode != MIK_SAFE))
+		return ERR_INVALID_MODE;
+
+	err = poll(s->fds, s->nfds, t);
+	if (err < 0) {
+		if (MIK_DEBUG)
+			fprintf(stderr, "SYS: %s.\n", strerror(errno));
+		return ERR_POLL;
+	}
+	if (s->fds->revents & POLLIN) {
+		return tcp_peer(s);
+	}
+
+	return 0;
+}
+
 /**
  *  Convert an error code into a human-readable string.
  *
@@ -70,7 +138,6 @@ const char *mik_errstr(int err)
 
 	return str;
 }
-
 
 /**
  *  Construct a server object, bound to an address and ready for config.
@@ -184,21 +251,32 @@ int mik_serv_config (mikserv_t *s, uint16_t pc, uint32_t u, uint32_t d)
 	s->upcap = u;
 	s->downcap = d;
 
+	/* Note: in UDP mode, this is the only pollfd. */
+	s->fds = calloc(1, sizeof(struct pollfd));
+	s->nfds = 1;
+	s->fds->fd = s->sock;
+	s->fds->events = POLLIN;
+
 	return 0;
 }
 
 /**
- *  Listen for connection attempts and allocate space for new peers.
+ *  Queue received data for processing and dequeue packets waiting to be sent.
  *
- *  @s: pointer to server object
- *  @t: timeout, in microseconds
+ *  @s: pointer to the server object
+ *  @t: target blocking time in milliseconds
  *
- *  @return: 0 on success; negative error code on failure
+ *  @return: 0 on success, negative error code on failure
  */
-int mik_serv_accept (mikserv_t *s, uint32_t t)
+int mik_serv_poll (mikserv_t *s, int t)
 {
 	if (!s)
 		return ERR_MISSING_PTR;
+
+	if ((s->mode == MIK_TCP) || (s->mode == MIK_SAFE))
+		return tcp_poll(s, t);
+
+	/* TODO: UDP monitor. */
 
 	return 0;
 }
@@ -216,6 +294,9 @@ int mik_serv_close (mikserv_t *s)
 		return ERR_MISSING_PTR;
 
 	close(s->sock);
+
+	free(s->peers);
+	free(s->fds);
 
 	return 0;
 }

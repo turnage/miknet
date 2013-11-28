@@ -5,10 +5,12 @@
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include <poll.h>
 #include <netdb.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 #include <netinet/in.h>
 
 #include <sys/socket.h>
@@ -34,7 +36,9 @@ enum {
 	ERR_SOCK_OPT     = -6,
 	ERR_BIND         = -7,
 	ERR_CONNECT      = -8,
-	ERR_PEER_MAX     = -9
+	ERR_PEER_MAX     = -9,
+	ERR_POLL         = -10,
+        ERR_MEMORY       = -11
 };
 
 typedef enum {
@@ -92,7 +96,7 @@ int mik_serv_make (mikserv_t *s, uint16_t port, miknet_t mode, mikip_t ip);
 
 int mik_serv_config (mikserv_t *s, uint16_t peer, uint32_t u, uint32_t d);
 
-int mik_serv_accept (mikserv_t *s, uint32_t t);
+int mik_serv_poll (mikserv_t *s, int t);
 
 int mik_serv_close (mikserv_t *s);
 
