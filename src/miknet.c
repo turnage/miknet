@@ -70,7 +70,7 @@ int mik_tcp_poll (mikserv_t *s, int t)
 		return ERR_POLL;
 	}
 
-	if (s->fds->revents & POLLIN) {
+	if (s->fds[0].revents & POLLIN) {
 		return mik_tcp_peer(s);
 	}
 
