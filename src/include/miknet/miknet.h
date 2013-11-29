@@ -24,6 +24,7 @@
 #define MIK_IPST_MAX 48
 #define MIK_WAIT_MAX 64
 #define MIK_PEER_MAX 100
+#define MIK_LIST_MAX 100
 
 #define MIK_DEBUG 1
 
@@ -38,7 +39,8 @@ enum {
 	ERR_CONNECT      = -8,
 	ERR_PEER_MAX     = -9,
 	ERR_POLL         = -10,
-        ERR_MEMORY       = -11
+        ERR_MEMORY       = -11,
+	ERR_WOULD_FAULT  = -12
 };
 
 typedef enum {
@@ -74,7 +76,7 @@ typedef struct mikpack_t {
 	miktype_t meta;
 	uint16_t peer;
 	uint16_t len;
-	char data[MIK_PACK_MAX];
+	char *data;
 } mikpack_t;
 
 typedef struct mikserv_t {
@@ -88,6 +90,8 @@ typedef struct mikserv_t {
 	mikpeer_t *peers;
 	uint16_t peerc;
 	uint16_t peermax;
+	mikpack_t *packs;
+	uint8_t packc;
 	uint32_t upcap;
 	uint32_t downcap;
 } mikserv_t;
@@ -104,7 +108,7 @@ void mik_print_addr(struct sockaddr *addr, socklen_t l);
 
 int mik_tcp_peer(mikserv_t *s);
 
-int mik_tcp_poll(mikserv_t *s, int t);
+int mik_tcp_poll(mikserv_t *s);
 
 const char *mik_errstr(int err);
 

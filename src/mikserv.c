@@ -145,7 +145,7 @@ int mik_serv_poll (mikserv_t *s, int t)
 	}
 
 	if ((s->mode == MIK_TCP) || (s->mode == MIK_SAFE))
-		return mik_tcp_poll(s, t);
+		return mik_tcp_poll(s);
 
 
 	/* TODO: UDP monitor. */
