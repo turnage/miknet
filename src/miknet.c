@@ -62,14 +62,6 @@ int mik_tcp_poll (mikserv_t *s, int t)
 	if (!s)
 		return ERR_MISSING_PTR;
 
-	/* 1 is magic for now; only poll master socket. */
-	int err = poll(s->fds, 1, t);
-	if (err < 0) {
-		if (MIK_DEBUG)
-			fprintf(stderr, "SYS: %s.\n", strerror(errno));
-		return ERR_POLL;
-	}
-
 	if (s->fds[0].revents & POLLIN) {
 		return mik_tcp_peer(s);
 	}

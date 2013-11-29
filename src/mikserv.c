@@ -136,6 +136,14 @@ int mik_serv_poll (mikserv_t *s, int t)
 	if (!s)
 		return ERR_MISSING_PTR;
 
+	int err = poll(s->fds, s->nfds, t);
+
+	if (err < 0) {
+		if (MIK_DEBUG)
+			fprintf(stderr, "SYS: %s.\n", strerror(errno));
+		return ERR_POLL;
+	}
+
 	if ((s->mode == MIK_TCP) || (s->mode == MIK_SAFE))
 		return mik_tcp_poll(s, t);
 
