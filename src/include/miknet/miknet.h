@@ -92,6 +92,12 @@ typedef struct mikcli_t {
 	miknet_t ip;
 } mikcli_t;
 
+void mik_print_addr(struct sockaddr *addr, socklen_t l);
+
+int mik_tcp_peer(mikserv_t *s);
+
+int mik_tcp_poll(mikserv_t *s, int t);
+
 const char *mik_errstr(int err);
 
 int mik_serv_make (mikserv_t *s, uint16_t port, miknet_t mode, mikip_t ip);
