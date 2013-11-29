@@ -53,6 +53,12 @@ typedef enum {
 	MIK_IPV6 = 2
 } mikip_t;
 
+typedef enum {
+	MIK_CONN = 0,
+	MIK_DISC = 1,
+	MIK_DATA = 2
+} miktype_t;
+
 typedef struct mikpeer_t {
 	int sock;
 	struct sockaddr_storage addr;
@@ -65,6 +71,8 @@ typedef struct mikpeer_t {
 } mikpeer_t;
 
 typedef struct mikpack_t {
+	miktype_t meta;
+	unint16_t peer;
 	uint16_t len;
 	char data[MIK_PACK_MAX];
 } mikpack_t;
