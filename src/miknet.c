@@ -57,7 +57,7 @@ int mik_tcp_peer (mikserv_t *s)
 	return 0;
 }
 
-int mik_tcp_poll (mikserv_t *s, int t)
+int mik_tcp_poll (mikserv_t *s)
 {
 	if (!s)
 		return ERR_MISSING_PTR;
