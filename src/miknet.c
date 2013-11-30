@@ -110,10 +110,6 @@ int mik_tcp_peer (mikserv_t *s)
 	s->peers[s->peerc - 1].sock = err;
 	s->peers[s->peerc - 1].addr = a;
 	s->peers[s->peerc - 1].addrlen = alen;
-	if (s->peerc > 1) {
-		s->peers[s->peerc - 2].next = &s->peers[s->peerc - 1];
-		s->peers[s->peerc - 1].prev = &s->peers[s->peerc - 2];
-	}
 
 	memset(&s->fds[s->nfds - 1], 0, sizeof(struct pollfd));
 	s->fds[s->nfds - 1].fd = s->peers[s->peerc - 1].sock;

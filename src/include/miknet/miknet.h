@@ -69,8 +69,6 @@ typedef struct mikpeer_t {
 	uint32_t timeout;
 	uint32_t sent;
 	uint32_t recvd;
-	struct mikpeer_t *prev;
-	struct mikpeer_t *next;
 } mikpeer_t;
 
 typedef struct mikpack_t {
