@@ -8,6 +8,36 @@ void mik_print_addr (struct sockaddr *a, socklen_t l)
 	fprintf(stderr, "Bound to: %s:%s.\n", hostname, service);
 }
 
+int mik_send (int sockfd, miktype_t t, char *data, int len)
+{
+	if (!data && len)
+		return ERR_MISSING_PTR;
+
+	if ((len > MIK_PACK_MAX) || (len < 0))
+		return ERR_WOULD_FAULT;
+
+	mikpack_t *p;
+	char buffer[sizeof(mikpack_t) + len];
+
+	p = (mikpack_t *)buffer;
+	memset(buffer, 0, sizeof(mikpack_t) + len);
+
+	p->meta = t;
+	p->len = len;
+
+	if (data)
+		memcpy(buffer + sizeof(mikpack_t), data, len);
+	
+	int err = send(sockfd, buffer, sizeof(mikpack_t) + len, 0);
+	if (err < 0) {
+		if (MIK_DEBUG)
+			fprintf(stderr, "SYS: %s\n", strerror(errno));
+		return ERR_SOCKET;
+	}
+
+	return 0;
+}
+
 mikpack_t mik_tcp_recv (int sockfd, uint16_t peer)
 {
 	mikpack_t p, *t;

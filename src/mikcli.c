@@ -74,6 +74,8 @@ int mik_cli_connect (mikcli_t *c, uint16_t port, const char *addr)
 	for (p = serv; p; p = p->ai_next) {
 		err = connect(c->sock, p->ai_addr, p->ai_addrlen);
 		if (!err) {
+			if ((c->mode == MIK_UDP) || (c->mode == MIK_FAST))
+				mik_send(c->sock, MIK_CONN, NULL, 0);
 			mik_print_addr(p->ai_addr, p->ai_addrlen);
 			break;
 		}

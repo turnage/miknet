@@ -106,6 +106,10 @@ typedef struct mikcli_t {
 
 void mik_print_addr(struct sockaddr *addr, socklen_t l);
 
+int mik_send (int sockfd, miktype_t t, char *data, int len);
+
+mikpack_t mik_tcp_recv (int sockfd, uint16_t peer);
+
 int mik_tcp_peer(mikserv_t *s);
 
 int mik_tcp_poll(mikserv_t *s);
