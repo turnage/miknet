@@ -66,6 +66,7 @@ typedef struct mikpeer_t {
 	struct sockaddr_storage addr;
 	socklen_t addrlen;
 	char ipst[MIK_IPST_MAX];
+	uint32_t timeout;
 	uint32_t sent;
 	uint32_t recvd;
 	struct mikpeer_t *prev;
