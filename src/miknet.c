@@ -1,5 +1,14 @@
 #include <miknet/miknet.h>
 
+int mik_debug (int err)
+{
+	if (MIK_DEBUG) {
+		fprintf(stderr, "SYS: %s\n", strerror(errno));
+	}
+
+	return err;
+}
+
 void mik_print_addr (struct sockaddr *a, socklen_t l)
 {
 	char hostname[256] = {0};
@@ -29,11 +38,8 @@ int mik_send (int sockfd, miktype_t t, char *data, int len)
 		memcpy(buffer + sizeof(mikpack_t), data, len);
 	
 	int err = send(sockfd, buffer, sizeof(mikpack_t) + len, 0);
-	if (err < 0) {
-		if (MIK_DEBUG)
-			fprintf(stderr, "SYS: %s\n", strerror(errno));
-		return ERR_SOCKET;
-	}
+	if (err < 0)
+		return mik_debug(ERR_SOCKET);
 
 	return 0;
 }
@@ -50,15 +56,12 @@ mikpack_t mik_tcp_recv (int sockfd, uint16_t peer)
 
 	int err = recv(sockfd,	buffer, len, 0);
 	if (err < 0) {
-		if (MIK_DEBUG)
-			fprintf(stderr, "SYS: %s\n", strerror(errno));
+		mik_debug(ERR_SOCKET);
 		return p;
 	}
 
 	if (t->len > MIK_PACK_MAX) {
-		err = ERR_WOULD_FAULT;
-		if (MIK_DEBUG)
-			fprintf(stderr, "SYS: %s\n", mik_errstr(err));
+		mik_debug(ERR_WOULD_FAULT);
 		return p;
 	}
 
@@ -67,9 +70,7 @@ mikpack_t mik_tcp_recv (int sockfd, uint16_t peer)
 	p.peer = peer;
 	p.data = calloc(1, t->len);
 	if (!p.data) {
-		err = ERR_MEMORY;
-		if (MIK_DEBUG)
-			fprintf(stderr, "SYS: %s\n", mik_errstr(err));
+		mik_debug(ERR_MEMORY);
 		return p;
 	}
 
@@ -89,11 +90,8 @@ int mik_peer (mikserv_t *s)
 	socklen_t alen;
 
 	err = accept(s->tcp, (struct sockaddr *)&a, &alen);
-	if (err < 0) {
-		if (MIK_DEBUG)
-			fprintf(stderr, "SYS: %s.\n", strerror(errno));
-		return ERR_SOCKET;
-	}
+	if (err < 0)
+		return mik_debug(ERR_SOCKET);
 
 	if (s->peerc == s->peermax) {
 		close(err);
@@ -188,6 +186,31 @@ const char *mik_errstr(int err)
 
 		case ERR_CONNECT: {
 			str = "Failed to connect socket.";
+			break;
+		}
+
+		case ERR_PEER_MAX: {
+			str = "Argument exceeds peer maximum.";
+			break;
+		}
+
+		case ERR_POLL: {
+			str = "The poll call failed.";
+			break;
+		}
+
+		case ERR_MEMORY: {
+			str = "Memory allocation failed.";
+			break;
+		}
+
+		case ERR_WOULD_FAULT: {
+			str = "This operation would have segfaulted.";
+			break;
+		}
+
+		case ERR_LISTEN: {
+			str = "Configuring the SOCK_STREAM backlog failed.";
 			break;
 		}
 

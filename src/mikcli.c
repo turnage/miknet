@@ -28,18 +28,9 @@ int mik_cli_make (mikcli_t *c, mikip_t ip)
 		return ERR_INVALID_IP;
 
 	c->tcp = socket(meta.ai_family, SOCK_STREAM, 0);
-	if (c->tcp < 0) {
-		if (MIK_DEBUG)
-			fprintf(stderr, "Net err: %s.\n", strerror(errno));
-		return ERR_SOCKET;
-	}
-
 	c->udp = socket(meta.ai_family, SOCK_DGRAM, 0);
-	if (c->udp < 0) {
-		if (MIK_DEBUG)
-			fprintf(stderr, "Net err: %s.\n", strerror(errno));
-		return ERR_SOCKET;
-	}
+	if (c->udp < 0)
+		return mik_debug(ERR_SOCKET);
 
 	return 0;
 }
@@ -70,11 +61,8 @@ int mik_cli_connect (mikcli_t *c, uint16_t port, const char *addr)
 	sprintf(portstr, "%d", port);
 
 	err = getaddrinfo(addr, portstr, &meta, &serv);
-	if (err) {
-		if (MIK_DEBUG)
-			fprintf(stderr, "Net err: %s.\n", gai_strerror(err));
-		return ERR_ADDRESS;
-	}
+	if (err)
+		return mik_debug(ERR_ADDRESS);
 
 	for (p = serv; p; p = p->ai_next) {
 		err = connect(c->tcp, p->ai_addr, p->ai_addrlen);
@@ -86,11 +74,8 @@ int mik_cli_connect (mikcli_t *c, uint16_t port, const char *addr)
 
 	freeaddrinfo(serv);
 
-	if (err < 0) {
-		if (MIK_DEBUG)
-			fprintf(stderr, "Net err: %s.\n", strerror(errno));
-		return ERR_CONNECT;
-	}
+	if (err < 0)
+		return mik_debug(ERR_CONNECT);
 
 	return 0;
 }

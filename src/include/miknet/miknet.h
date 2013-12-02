@@ -40,7 +40,8 @@ enum {
 	ERR_PEER_MAX     = -9,
 	ERR_POLL         = -10,
         ERR_MEMORY       = -11,
-	ERR_WOULD_FAULT  = -12
+	ERR_WOULD_FAULT  = -12,
+	ERR_LISTEN       = -13
 };
 
 typedef enum {
@@ -105,6 +106,8 @@ typedef struct mikcli_t {
 	char ipst[MIK_IPST_MAX];
 	miknet_t ip;
 } mikcli_t;
+
+int mik_debug (int err);
 
 void mik_print_addr(struct sockaddr *addr, socklen_t l);
 

@@ -33,29 +33,17 @@ int mik_serv_make (mikserv_t *s, uint16_t port, mikip_t ip)
 		return ERR_INVALID_IP;
 
 	s->tcp = socket(hint.ai_family, SOCK_STREAM, 0);
-	if (s->tcp < 0) {
-		if (MIK_DEBUG)
-			fprintf(stderr, "SYS: %s.\n", strerror(errno));
-		return ERR_SOCKET;
-	}
-
 	s->udp = socket(hint.ai_family, SOCK_DGRAM, 0);
-	if (s->udp < 0) {
-		if (MIK_DEBUG)
-			fprintf(stderr, "SYS: %s.\n", strerror(errno));
-		return ERR_SOCKET;
-	}
+	if (s->udp < 0)
+		return mik_debug(ERR_SOCKET);
 
 
 	hint.ai_flags = AI_PASSIVE;
 
 	hint.ai_socktype = SOCK_STREAM;
 	err = getaddrinfo(NULL, portstr, &hint, &serv);
-	if (err) {
-		if (MIK_DEBUG)
-			fprintf(stderr, "SYS: %s.\n", gai_strerror(err));
-		return ERR_ADDRESS;
-	}
+	if (err)
+		return mik_debug(ERR_ADDRESS);
 
 	for (p = serv; p; p = p->ai_next) {
 		err = bind(s->tcp, p->ai_addr, p->ai_addrlen);
@@ -70,11 +58,8 @@ int mik_serv_make (mikserv_t *s, uint16_t port, mikip_t ip)
 
 	hint.ai_socktype = SOCK_DGRAM;
 	err = getaddrinfo(NULL, portstr, &hint, &serv);
-	if (err) {
-		if (MIK_DEBUG)
-			fprintf(stderr, "SYS: %s.\n", gai_strerror(err));
-		return ERR_ADDRESS;
-	}
+	if (err)
+		return mik_debug(ERR_ADDRESS);
 
 	for (p = serv; p; p = p->ai_next) {
 		err = bind(s->udp, p->ai_addr, p->ai_addrlen);
@@ -87,31 +72,17 @@ int mik_serv_make (mikserv_t *s, uint16_t port, mikip_t ip)
 
 	freeaddrinfo(serv);
 
-	if (err < 0) {
-		if (MIK_DEBUG)
-			fprintf(stderr, "SYS: %s.\n", strerror(errno));
-		return ERR_BIND;
-	}
+	if (err < 0)
+		return mik_debug(ERR_BIND);
 
 	err = setsockopt(s->tcp, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
-	if (err < 0) {
-		if (MIK_DEBUG)
-			fprintf(stderr, "SYS: %s.\n", strerror(errno));
-		return ERR_SOCK_OPT;
-	}
-
 	err = setsockopt(s->udp, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
-	if (err < 0) {
-		if (MIK_DEBUG)
-			fprintf(stderr, "SYS: %s.\n", strerror(errno));
-		return ERR_SOCK_OPT;
-	}
+	if (err < 0)
+		return mik_debug(ERR_SOCK_OPT);
 
 	err = listen(s->tcp, MIK_WAIT_MAX);
-	if (err < 0) {
-		if (MIK_DEBUG)
-			fprintf(stderr, "SYS: %s.\n", strerror(errno));
-	}
+	if (err < 0)
+		return mik_debug(ERR_LISTEN);
 
 	return 0;
 }
@@ -163,11 +134,8 @@ int mik_serv_poll (mikserv_t *s, int t)
 
 	int err = poll(s->fds, s->peermax + 2, t);
 
-	if (err < 0) {
-		if (MIK_DEBUG)
-			fprintf(stderr, "SYS: %s.\n", strerror(errno));
-		return ERR_POLL;
-	}
+	if (err < 0)
+		return mik_debug(ERR_POLL);
 
 	mik_poll(s);
 
