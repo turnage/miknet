@@ -9,29 +9,33 @@
  *
  *  @return: 0 on success; negative error code on failure
  */
-int mik_cli_make (mikcli_t *c, miknet_t mode, mikip_t ip)
+int mik_cli_make (mikcli_t *c, mikip_t ip)
 {
 	if (!c)
 		return ERR_MISSING_PTR;
 
+	struct addrinfo meta;
+
+	memset(&meta, 0, sizeof(struct addrinfo));
 	memset(c, 0, sizeof(mikcli_t));
 
-	if ((mode == MIK_UDP) || (mode == MIK_FAST)) {
-		c->meta.ai_socktype = SOCK_DGRAM;
-	} else if ((mode == MIK_TCP) || (mode == MIK_SAFE)) {
-		c->meta.ai_socktype = SOCK_STREAM;
-	} else
-		return ERR_INVALID_MODE;
 
 	if (ip == MIK_IPV4)
-		c->meta.ai_family = AF_INET;
+		meta.ai_family = AF_INET;
 	else if (ip == MIK_IPV6)
-		c->meta.ai_family = AF_INET6;
+		meta.ai_family = AF_INET6;
 	else
 		return ERR_INVALID_IP;
 
-	c->sock = socket(c->meta.ai_family, c->meta.ai_socktype, 0);
-	if (c->sock < 0) {
+	c->tcp = socket(meta.ai_family, SOCK_STREAM, 0);
+	if (c->tcp < 0) {
+		if (MIK_DEBUG)
+			fprintf(stderr, "Net err: %s.\n", strerror(errno));
+		return ERR_SOCKET;
+	}
+
+	c->udp = socket(meta.ai_family, SOCK_DGRAM, 0);
+	if (c->udp < 0) {
 		if (MIK_DEBUG)
 			fprintf(stderr, "Net err: %s.\n", strerror(errno));
 		return ERR_SOCKET;
@@ -55,16 +59,17 @@ int mik_cli_connect (mikcli_t *c, uint16_t port, const char *addr)
 	if (!c)
 		return ERR_MISSING_PTR;
 
-	if (!addr)
-		c->meta.ai_flags = AI_PASSIVE;
-
 	int err;
-	struct addrinfo *serv, *p;
+	struct addrinfo meta, *serv, *p;
 	char portstr[MIK_PORT_MAX] = {0};
 
+	if (!addr)
+		meta.ai_flags = AI_PASSIVE;
+
+	memset(&meta, 0, sizeof(struct addrinfo));
 	sprintf(portstr, "%d", port);
 
-	err = getaddrinfo(addr, portstr, &c->meta, &serv);
+	err = getaddrinfo(addr, portstr, &meta, &serv);
 	if (err) {
 		if (MIK_DEBUG)
 			fprintf(stderr, "Net err: %s.\n", gai_strerror(err));
@@ -72,10 +77,8 @@ int mik_cli_connect (mikcli_t *c, uint16_t port, const char *addr)
 	}
 
 	for (p = serv; p; p = p->ai_next) {
-		err = connect(c->sock, p->ai_addr, p->ai_addrlen);
+		err = connect(c->tcp, p->ai_addr, p->ai_addrlen);
 		if (!err) {
-			if ((c->mode == MIK_UDP) || (c->mode == MIK_FAST))
-				mik_send(c->sock, MIK_CONN, NULL, 0);
 			mik_print_addr(p->ai_addr, p->ai_addrlen);
 			break;
 		}
@@ -104,7 +107,8 @@ int mik_cli_close (mikcli_t *c)
 	if (!c)
 		return ERR_MISSING_PTR;
 
-	close(c->sock);
+	close(c->tcp);
+	close(c->udp);
 
 	return 0;
 }

@@ -5,7 +5,7 @@ int main (int argc, char **argv)
 	mikserv_t server;
 	int err;
 
-	err = mik_serv_make(&server, 8016, MIK_SAFE, MIK_IPV6);
+	err = mik_serv_make(&server, 8016, MIK_IPV6);
 	printf("Make:   %s\n", mik_errstr(err));
 	err = mik_serv_config(&server, 100, 0, 0);
 	printf("Config: %s\n", mik_errstr(err));

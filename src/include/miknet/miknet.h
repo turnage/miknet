@@ -44,6 +44,13 @@ enum {
 };
 
 typedef enum {
+	MIK_DISC = 0,
+	MIK_AUTH = 1,
+	MIK_CONN = 2,
+	MIK_LEAV = 3
+} mikstate_t;
+
+typedef enum {
 	MIK_FAST = 1,
 	MIK_UDP  = 1,
 	MIK_SAFE = 2,
@@ -56,17 +63,17 @@ typedef enum {
 } mikip_t;
 
 typedef enum {
-	MIK_CONN = 0,
-	MIK_DISC = 1,
+	MIK_INIT = 0,
+	MIK_QUIT = 1,
 	MIK_DATA = 2
 } miktype_t;
 
 typedef struct mikpeer_t {
-	int sock;
+	int tcp;
+	mikstate_t state;
 	struct sockaddr_storage addr;
 	socklen_t addrlen;
 	char ipst[MIK_IPST_MAX];
-	uint32_t timeout;
 	uint32_t sent;
 	uint32_t recvd;
 } mikpeer_t;
@@ -79,27 +86,23 @@ typedef struct mikpack_t {
 } mikpack_t;
 
 typedef struct mikserv_t {
-	int sock;
-	struct sockaddr_storage addr;
-	socklen_t addrlen;
-	miknet_t mode;
+	int tcp;
+	int udp;
 	mikip_t ip;
 	struct pollfd *fds;
-	nfds_t nfds;
 	mikpeer_t *peers;
 	uint16_t peerc;
 	uint16_t peermax;
 	mikpack_t *packs;
-	uint8_t packc;
 	uint32_t upcap;
 	uint32_t downcap;
 } mikserv_t;
 
 typedef struct mikcli_t {
-	int sock;
+	int tcp;
+	int udp;
 	struct addrinfo meta;
 	char ipst[MIK_IPST_MAX];
-	miknet_t mode;
 	miknet_t ip;
 } mikcli_t;
 
@@ -109,13 +112,13 @@ int mik_send (int sockfd, miktype_t t, char *data, int len);
 
 mikpack_t mik_tcp_recv (int sockfd, uint16_t peer);
 
-int mik_tcp_peer(mikserv_t *s);
+int mik_peer(mikserv_t *s);
 
-int mik_tcp_poll(mikserv_t *s);
+int mik_poll(mikserv_t *s);
 
 const char *mik_errstr(int err);
 
-int mik_serv_make (mikserv_t *s, uint16_t port, miknet_t mode, mikip_t ip);
+int mik_serv_make (mikserv_t *s, uint16_t port, mikip_t ip);
 
 int mik_serv_config (mikserv_t *s, uint16_t pm, uint32_t u, uint32_t d);
 
@@ -123,7 +126,7 @@ int mik_serv_poll (mikserv_t *s, int t);
 
 int mik_serv_close (mikserv_t *s);
 
-int mik_cli_make (mikcli_t *c, miknet_t mode, mikip_t ip);
+int mik_cli_make (mikcli_t *c, mikip_t ip);
 
 int mik_cli_connect (mikcli_t *c, uint16_t port, const char *addr);
 

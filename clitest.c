@@ -5,7 +5,7 @@ int main (int argc, char **argv)
 	mikcli_t client;
 	int err;
 
-	err = mik_cli_make(&client, MIK_SAFE, MIK_IPV6);
+	err = mik_cli_make(&client, MIK_IPV6);
 	printf("Status: %s\n", mik_errstr(err));
 
 	err = mik_cli_connect(&client, 8016, NULL);

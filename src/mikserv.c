@@ -5,12 +5,11 @@
  *
  *  @s: pointer to the server object
  *  @port: port between 0 - 65535
- *  @mode: TCP/UDP; SAFE/FAST
  *  @ip: IPv4/IPv6
  *
  *  @return: 0 on success; negative error code on failure
  */
-int mik_serv_make (mikserv_t *s, uint16_t port, miknet_t mode, mikip_t ip)
+int mik_serv_make (mikserv_t *s, uint16_t port, mikip_t ip)
 {
 	if (!s)
 		return ERR_MISSING_PTR;
@@ -24,15 +23,7 @@ int mik_serv_make (mikserv_t *s, uint16_t port, miknet_t mode, mikip_t ip)
 	memset(&hint, 0, sizeof(hint));
 	sprintf(portstr, "%d", port);
 
-	s->mode = mode;
 	s->ip = ip;
-
-	if ((mode == MIK_UDP) || (mode == MIK_FAST))
-		hint.ai_socktype = SOCK_DGRAM;
-	else if ((mode == MIK_TCP) || (mode == MIK_SAFE))
-		hint.ai_socktype = SOCK_STREAM;
-	else
-		return ERR_INVALID_MODE;
 
 	if (ip == MIK_IPV4)
 		hint.ai_family = AF_INET;
@@ -41,15 +32,24 @@ int mik_serv_make (mikserv_t *s, uint16_t port, miknet_t mode, mikip_t ip)
 	else
 		return ERR_INVALID_IP;
 
-	s->sock = socket(hint.ai_family, hint.ai_socktype, 0);
-	if (s->sock < 0) {
+	s->tcp = socket(hint.ai_family, SOCK_STREAM, 0);
+	if (s->tcp < 0) {
 		if (MIK_DEBUG)
 			fprintf(stderr, "SYS: %s.\n", strerror(errno));
 		return ERR_SOCKET;
 	}
 
+	s->udp = socket(hint.ai_family, SOCK_DGRAM, 0);
+	if (s->udp < 0) {
+		if (MIK_DEBUG)
+			fprintf(stderr, "SYS: %s.\n", strerror(errno));
+		return ERR_SOCKET;
+	}
+
+
 	hint.ai_flags = AI_PASSIVE;
 
+	hint.ai_socktype = SOCK_STREAM;
 	err = getaddrinfo(NULL, portstr, &hint, &serv);
 	if (err) {
 		if (MIK_DEBUG)
@@ -58,7 +58,26 @@ int mik_serv_make (mikserv_t *s, uint16_t port, miknet_t mode, mikip_t ip)
 	}
 
 	for (p = serv; p; p = p->ai_next) {
-		err = bind(s->sock, p->ai_addr, p->ai_addrlen);
+		err = bind(s->tcp, p->ai_addr, p->ai_addrlen);
+		if (!err) {
+			if (MIK_DEBUG)
+				mik_print_addr(p->ai_addr, p->ai_addrlen);
+			break;
+		}
+	}
+
+	freeaddrinfo(serv);
+
+	hint.ai_socktype = SOCK_DGRAM;
+	err = getaddrinfo(NULL, portstr, &hint, &serv);
+	if (err) {
+		if (MIK_DEBUG)
+			fprintf(stderr, "SYS: %s.\n", gai_strerror(err));
+		return ERR_ADDRESS;
+	}
+
+	for (p = serv; p; p = p->ai_next) {
+		err = bind(s->udp, p->ai_addr, p->ai_addrlen);
 		if (!err) {
 			if (MIK_DEBUG)
 				mik_print_addr(p->ai_addr, p->ai_addrlen);
@@ -74,19 +93,24 @@ int mik_serv_make (mikserv_t *s, uint16_t port, miknet_t mode, mikip_t ip)
 		return ERR_BIND;
 	}
 
-	err = setsockopt(s->sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
+	err = setsockopt(s->tcp, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
 	if (err < 0) {
 		if (MIK_DEBUG)
 			fprintf(stderr, "SYS: %s.\n", strerror(errno));
 		return ERR_SOCK_OPT;
 	}
 
-	if ((mode == MIK_TCP) || (mode == MIK_SAFE)) {
-		err = listen(s->sock, MIK_WAIT_MAX);
-		if (err < 0) {
-			if (MIK_DEBUG)
-				fprintf(stderr, "SYS: %s.\n", strerror(errno));
-		}
+	err = setsockopt(s->udp, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
+	if (err < 0) {
+		if (MIK_DEBUG)
+			fprintf(stderr, "SYS: %s.\n", strerror(errno));
+		return ERR_SOCK_OPT;
+	}
+
+	err = listen(s->tcp, MIK_WAIT_MAX);
+	if (err < 0) {
+		if (MIK_DEBUG)
+			fprintf(stderr, "SYS: %s.\n", strerror(errno));
 	}
 
 	return 0;
@@ -115,9 +139,10 @@ int mik_serv_config (mikserv_t *s, uint16_t pm, uint32_t u, uint32_t d)
 	s->downcap = d;
 
 	/* Note: in UDP mode, this is the only pollfd. */
-	s->fds = calloc(1, sizeof(struct pollfd));
-	s->nfds = 1;
-	s->fds->fd = s->sock;
+	s->fds = calloc(2 + s->peermax, sizeof(struct pollfd));
+	s->peers = calloc(s->peermax, sizeof(mikpeer_t));
+	s->fds[0].fd = s->tcp;
+	s->fds[1].fd = s->udp;
 	s->fds->events = POLLIN;
 
 	return 0;
@@ -136,7 +161,7 @@ int mik_serv_poll (mikserv_t *s, int t)
 	if (!s)
 		return ERR_MISSING_PTR;
 
-	int err = poll(s->fds, s->nfds, t);
+	int err = poll(s->fds, s->peermax + 2, t);
 
 	if (err < 0) {
 		if (MIK_DEBUG)
@@ -144,11 +169,7 @@ int mik_serv_poll (mikserv_t *s, int t)
 		return ERR_POLL;
 	}
 
-	if ((s->mode == MIK_TCP) || (s->mode == MIK_SAFE))
-		return mik_tcp_poll(s);
-
-
-	/* TODO: UDP monitor. */
+	mik_poll(s);
 
 	return 0;
 }
@@ -165,7 +186,8 @@ int mik_serv_close (mikserv_t *s)
 	if (!s)
 		return ERR_MISSING_PTR;
 
-	close(s->sock);
+	close(s->tcp);
+	close(s->udp);
 
 	free(s->peers);
 	free(s->fds);

@@ -78,17 +78,17 @@ mikpack_t mik_tcp_recv (int sockfd, uint16_t peer)
 	return p;
 }
 
-int mik_tcp_peer (mikserv_t *s)
+int mik_peer (mikserv_t *s)
 {
 	if (!s)
 		return ERR_MISSING_PTR;
 
-	int err;
+	int err, i;
 
 	struct sockaddr_storage a;
 	socklen_t alen;
 
-	err = accept(s->sock, (struct sockaddr *)&a, &alen);
+	err = accept(s->tcp, (struct sockaddr *)&a, &alen);
 	if (err < 0) {
 		if (MIK_DEBUG)
 			fprintf(stderr, "SYS: %s.\n", strerror(errno));
@@ -100,36 +100,35 @@ int mik_tcp_peer (mikserv_t *s)
 		return ERR_PEER_MAX;
 	}
 
-	s->peerc++;	
-	s->peers = realloc(s->peers, s->peerc * sizeof(mikpeer_t));
-	s->fds = realloc(s->fds, s->nfds * sizeof(struct pollfd));
-	if (!s->peers || !s->fds)
-		return ERR_MEMORY;
+	for (i = 0; i < s->peermax; ++i)
+		if (s->peers[i].state == MIK_DISC)
+			break;
 
-	memset(&s->peers[s->peerc - 1], 0, sizeof(mikpeer_t));
-	s->peers[s->peerc - 1].sock = err;
-	s->peers[s->peerc - 1].addr = a;
-	s->peers[s->peerc - 1].addrlen = alen;
+	memset(&s->peers[i], 0, sizeof(mikpeer_t));
+	s->peers[i].tcp = err;
+	s->peers[i].addr = a;
+	s->peers[i].addrlen = alen;
+	s->peerc++;
 
-	memset(&s->fds[s->nfds - 1], 0, sizeof(struct pollfd));
-	s->fds[s->nfds - 1].fd = s->peers[s->peerc - 1].sock;
-	s->fds[s->nfds - 1].events = POLLIN;
+	memset(&s->fds[i + 2], 0, sizeof(struct pollfd));
+	s->fds[i + 2].fd = s->peers[i].tcp;
+	s->fds[i + 2].events = POLLIN;
 
 	if (MIK_DEBUG) {
-		fprintf(stderr, "Client [%d]: %s.\n", s->peerc,
-			s->peers[s->peerc - 1].ipst);
+		fprintf(stderr, "Client [%d]: %s.\n", i,
+			s->peers[i].ipst);
 	}
 
 	return 0;
 }
 
-int mik_tcp_poll (mikserv_t *s)
+int mik_poll (mikserv_t *s)
 {
 	if (!s)
 		return ERR_MISSING_PTR;
 
 	if (s->fds[0].revents & POLLIN) {
-		return mik_tcp_peer(s);
+		return mik_peer(s);
 	}
 
 	return 0;
