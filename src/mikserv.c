@@ -114,7 +114,12 @@ int mik_serv_config (mikserv_t *s, uint16_t pm, uint32_t u, uint32_t d)
 	s->peers = calloc(s->peermax, sizeof(mikpeer_t));
 	s->fds[0].fd = s->tcp;
 	s->fds[1].fd = s->udp;
-	s->fds->events = POLLIN;
+	s->fds[0].events = POLLIN;
+	s->fds[1].events = POLLIN;
+
+	int i;
+	for (i = 0; i < s->peermax; ++i)
+		s->fds[i + 2].fd = -1;
 
 	return 0;
 }
