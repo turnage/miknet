@@ -72,7 +72,7 @@ typedef struct mikpeer_t {
 
 typedef struct mikpack_t {
 	miktype_t meta;
-	unint16_t peer;
+	uint16_t peer;
 	uint16_t len;
 	char data[MIK_PACK_MAX];
 } mikpack_t;
