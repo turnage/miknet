@@ -106,6 +106,7 @@ int mik_peer (mikserv_t *s)
 	s->peers[i].tcp = err;
 	s->peers[i].addr = a;
 	s->peers[i].addrlen = alen;
+	s->peers[i].state = MIK_AUTH;
 	s->peerc++;
 
 	memset(&s->fds[i + 2], 0, sizeof(struct pollfd));
@@ -125,9 +126,13 @@ int mik_poll (mikserv_t *s)
 	if (!s)
 		return ERR_MISSING_PTR;
 
+	/* Scan for new connections. */
 	if (s->fds[0].revents & POLLIN) {
-		return mik_peer(s);
+		err = mik_peer(s);
+		mik_debug(err);
 	}
+
+	if (s->fds[1].revents & POLLIN)
 
 	return 0;
 }

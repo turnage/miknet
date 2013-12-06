@@ -66,7 +66,10 @@ typedef enum {
 typedef enum {
 	MIK_INIT = 0,
 	MIK_QUIT = 1,
-	MIK_DATA = 2
+	MIK_DATA = 2,
+	MIK_CIPH = 3,
+	MIK_VERI = 4,
+	MIK_PKEY = 5
 } miktype_t;
 
 typedef struct mikpeer_t {
