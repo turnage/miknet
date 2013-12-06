@@ -76,7 +76,6 @@ int mik_serv_make (mikserv_t *s, uint16_t port, mikip_t ip)
 		return mik_debug(ERR_BIND);
 
 	err = setsockopt(s->tcp, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
-	err = setsockopt(s->udp, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
 	if (err < 0)
 		return mik_debug(ERR_SOCK_OPT);
 
