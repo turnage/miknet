@@ -1,5 +1,9 @@
 #include <miknet/miknet.h>
 
+/**
+ *  Call this when something goes wrong and you need to know why without making
+ *  things ugly.
+ */
 int mik_debug (int err)
 {
 	if (MIK_DEBUG) {
@@ -9,6 +13,13 @@ int mik_debug (int err)
 	return err;
 }
 
+/**
+ *  This is a function for debugging (both while writing the library and with
+ *  the library). It will represent an address in presentation form.
+ *
+ *  @a: the address, likely a casted struct sockaddr_storage pointer
+ *  @s: length of the memory a points to
+ */
 void mik_print_addr (struct sockaddr *a, socklen_t s)
 {
 	char hostname[256] = {0};
