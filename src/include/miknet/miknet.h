@@ -94,9 +94,11 @@ typedef struct miknode_t {
 
 int mik_debug (int err);
 
-void mik_print_addr(struct sockaddr *addr, socklen_t s);
+int mik_print_addr(struct sockaddr *addr, socklen_t s);
 
 const char *mik_errstr(int err);
+
+int mik_bind (int *t, int *u, struct addrinfo h, uint16_t p);
 
 int miknode (miknode_t *n, mikip_t ip, uint16_t port);
 

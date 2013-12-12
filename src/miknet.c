@@ -19,13 +19,17 @@ int mik_debug (int err)
  *
  *  @a: the address, likely a casted struct sockaddr_storage pointer
  *  @s: length of the memory a points to
+ *
+ *  @return: the port number
  */
-void mik_print_addr (struct sockaddr *a, socklen_t s)
+int mik_print_addr (struct sockaddr *a, socklen_t s)
 {
 	char hostname[256] = {0};
 	char service[256] = {0};
 	getnameinfo(a, s, hostname, 256, service, 256, 0);
 	fprintf(stderr, "Bound to: %s:%s.\n", hostname, service);
+
+	return atoi(service);
 }
 
 /**
