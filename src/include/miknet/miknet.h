@@ -66,6 +66,12 @@ typedef enum {
 	MIK_DATA = 2
 } miktype_t;
 
+typedef struct miklist_t {
+	struct miklist_t *next;
+	size_t len;
+	void *data;
+} miklist_t;
+
 typedef struct mikpeer_t {
 	struct miknode_t *node;
 	int tcp;
