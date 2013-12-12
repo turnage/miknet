@@ -21,9 +21,6 @@
 #define MIK_CHAN_MAX 100
 #define MIK_PACK_MAX 1200
 #define MIK_PORT_MAX 6
-#define MIK_IPST_MAX 48
-#define MIK_WAIT_MAX 64
-#define MIK_PEER_MAX 100
 #define MIK_LIST_MAX 100
 
 #define MIK_DEBUG 1
@@ -46,16 +43,14 @@ enum {
 
 typedef enum {
 	MIK_DISC = 0,
-	MIK_AUTH = 1,
-	MIK_CONN = 2,
-	MIK_LEAV = 3
+	MIK_CONN = 2
 } mikstate_t;
 
 typedef enum {
 	MIK_FAST = 1,
 	MIK_UDP  = 1,
 	MIK_SAFE = 2,
-	MIK_TCP  = 3
+	MIK_TCP  = 2
 } miknet_t;
 
 typedef enum {
@@ -64,32 +59,28 @@ typedef enum {
 } mikip_t;
 
 typedef enum {
+	MIK_ERR  = -1,
 	MIK_INIT = 0,
 	MIK_QUIT = 1,
-	MIK_DATA = 2,
-	MIK_CIPH = 3,
-	MIK_VERI = 4,
-	MIK_PKEY = 5
+	MIK_DATA = 2
 } miktype_t;
 
 typedef struct mikpeer_t {
 	int tcp;
-	mikstate_t state;
 	struct sockaddr_storage addr;
 	socklen_t addrlen;
-	char ipst[MIK_IPST_MAX];
+	mikstate_t state;
 	uint32_t sent;
 	uint32_t recvd;
 } mikpeer_t;
 
 typedef struct mikpack_t {
 	miktype_t meta;
-	uint16_t peer;
 	uint16_t len;
-	char *data;
+	void *data;
 } mikpack_t;
 
-typedef struct mikserv_t {
+typedef struct miknode_t {
 	int tcp;
 	int udp;
 	mikip_t ip;
@@ -100,42 +91,12 @@ typedef struct mikserv_t {
 	mikpack_t *packs;
 	uint32_t upcap;
 	uint32_t downcap;
-} mikserv_t;
-
-typedef struct mikcli_t {
-	int tcp;
-	int udp;
-	struct addrinfo meta;
-	char ipst[MIK_IPST_MAX];
-	miknet_t ip;
-} mikcli_t;
+} miknode_t;
 
 int mik_debug (int err);
 
-void mik_print_addr(struct sockaddr *addr, socklen_t l);
-
-int mik_send (int sockfd, miktype_t t, char *data, int len);
-
-mikpack_t mik_tcp_recv (int sockfd, uint16_t peer);
-
-int mik_peer(mikserv_t *s);
-
-int mik_poll(mikserv_t *s);
+void mik_print_addr(struct sockaddr *addr, socklen_t s);
 
 const char *mik_errstr(int err);
-
-int mik_serv_make (mikserv_t *s, uint16_t port, mikip_t ip);
-
-int mik_serv_config (mikserv_t *s, uint16_t pm, uint32_t u, uint32_t d);
-
-int mik_serv_poll (mikserv_t *s, int t);
-
-int mik_serv_close (mikserv_t *s);
-
-int mik_cli_make (mikcli_t *c, mikip_t ip);
-
-int mik_cli_connect (mikcli_t *c, uint16_t port, const char *addr);
-
-int mik_cli_close (mikcli_t *c);
 
 #endif /* miknet_h */
