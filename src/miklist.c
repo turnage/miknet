@@ -52,6 +52,9 @@ void miklist_close (miklist_t *head)
 {
 	miklist_t *i, *pos;
 
+	if (!head)
+		return;
+	
 	if (head->next) {
 		pos = head;
 		for (i = head->next; i; i = i->next) {
@@ -67,7 +70,7 @@ void miklist_close (miklist_t *head)
 		}
 		free(pos->data);
 		free(pos);
-	} else if (head) {
+	} else {
 		free(head->data);
 		free(head);
 	}

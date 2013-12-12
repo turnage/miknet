@@ -168,7 +168,8 @@ void miknode_close (miknode_t *n)
 
 	int i;
 	for (i = 0; i < n->peermax; ++i)
-		mikpeer_close(&n->peers[i]);
+		if (n->peers[i].state == MIK_CONN)
+			mikpeer_close(&n->peers[i]);
 
 	free(n->fds);
 	free(n->peers);
