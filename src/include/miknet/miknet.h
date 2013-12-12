@@ -28,7 +28,6 @@
 enum {
 	ERR_MISSING_PTR  = -1,
 	ERR_INVALID_MODE = -2,
-	ERR_INVALID_IP   = -3,
 	ERR_SOCKET       = -4,
 	ERR_ADDRESS      = -5,
 	ERR_SOCK_OPT     = -6,
@@ -98,5 +97,7 @@ int mik_debug (int err);
 void mik_print_addr(struct sockaddr *addr, socklen_t s);
 
 const char *mik_errstr(int err);
+
+int miknode (miknode_t *n, mikip_t ip, uint16_t port);
 
 #endif /* miknet_h */

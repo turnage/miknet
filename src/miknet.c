@@ -50,16 +50,6 @@ const char *mik_errstr(int err)
 			break;
 		}
 
-		case ERR_INVALID_MODE: {
-			str = "Network mode invalid.";
-			break;
-		}
-
-		case ERR_INVALID_IP: {
-			str = "IP address type invalid.";
-			break;
-		}
-
 		case ERR_SOCKET: {
 			str = "Failed to create socket.";
 			break;
