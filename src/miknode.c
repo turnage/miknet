@@ -123,3 +123,37 @@ int miknode (miknode_t *n, mikip_t ip, uint16_t port)
 
 	return 0;
 }
+
+/**
+ *  Prepare a miknode for use.
+ *
+ *  @peers: maximum amount of peers
+ *  @up: up bandwidth limit (bytes/sec)
+ *  @down: down bandwidth limit (bytes/sec)
+ *
+ *  @return: 0 on success
+ */
+int miknode_config (miknode_t *n, uint16_t peers, uint32_t up, uint32_t down)
+{
+	if (!n)
+		return ERR_MISSING_PTR;
+
+	n->peermax = peers;
+	n->peerc = 0;
+	n->upcap = up;
+	n->downcap = down;
+
+	n->peers = calloc(n->peermax, sizeof(mikpeer_t));
+	n->fds = calloc(n->peermax + 2, sizeof(mikpeer_t));
+	if (!n->peers || !n->fds)
+		return mik_debug(ERR_MEMORY);
+
+	n->fds[0].fd = n->tcp;
+	n->fds[1].fd = n->udp;
+	n->fds[0].events = POLLIN;
+	n->fds[1].events = POLLIN;
+
+	memset(n->packs, 0, sizeof(n->packs));
+
+	return 0;
+}

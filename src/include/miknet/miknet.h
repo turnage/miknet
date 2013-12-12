@@ -87,7 +87,7 @@ typedef struct miknode_t {
 	mikpeer_t *peers;
 	uint16_t peerc;
 	uint16_t peermax;
-	mikpack_t *packs;
+	mikpack_t packs[MIK_LIST_MAX];
 	uint32_t upcap;
 	uint32_t downcap;
 } miknode_t;
@@ -101,5 +101,7 @@ const char *mik_errstr(int err);
 int mik_bind (int *t, int *u, struct addrinfo h, uint16_t p);
 
 int miknode (miknode_t *n, mikip_t ip, uint16_t port);
+
+int miknode_config (miknode_t *n, uint16_t peers, uint32_t up, uint32_t down);
 
 #endif /* miknet_h */
