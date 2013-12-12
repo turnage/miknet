@@ -148,8 +148,8 @@ int miknode_config (miknode_t *n, uint16_t peers, uint32_t up, uint32_t down)
 	n->fds[1].fd = n->udp;
 	n->fds[0].events = POLLIN;
 	n->fds[1].events = POLLIN;
-
-	memset(n->packs, 0, sizeof(n->packs));
+	n->packs = NULL;
+	n->commands = NULL;
 
 	listen(n->tcp, n->peermax);
 

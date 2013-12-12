@@ -88,6 +88,17 @@ typedef struct mikpack_t {
 	void *data;
 } mikpack_t;
 
+typedef struct mikevent_t {
+	uint16_t peer;
+	mikpack_t pack;
+} mikevent_t;
+
+typedef struct mikcommand_t {
+	uint16_t peer;
+	mikpack_t pack;
+	miknet_t mode;
+} mikcommand_t;
+
 typedef struct miknode_t {
 	int tcp;
 	int udp;
@@ -96,7 +107,8 @@ typedef struct miknode_t {
 	mikpeer_t *peers;
 	uint16_t peerc;
 	uint16_t peermax;
-	mikpack_t packs[MIK_LIST_MAX];
+	miklist_t *packs;
+	miklist_t *commands;
 	uint32_t upcap;
 	uint32_t downcap;
 } miknode_t;
