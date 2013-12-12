@@ -32,6 +32,8 @@ int mikpeer (miknode_t *n)
 	n->peers[pos].addrlen = addrlen;
 	n->peers[pos].sent = 0;
 	n->peers[pos].recvd = 0;
+	n->fds[2 + pos].fd = sock;
+	n->fds[2 + pos].events = POLLIN;
 
 	return 0;
 }
