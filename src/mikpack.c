@@ -8,5 +8,8 @@ mikpack_t mikpack (miktype_t type, void *data, uint16_t len)
 	pack.len = len;
 	pack.data = data;
 
+	if (!pack.data)
+		pack.len = 0;
+
 	return pack;
 }
