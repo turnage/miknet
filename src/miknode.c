@@ -31,8 +31,6 @@ static int mik_testbind (int s, struct addrinfo *h, const char *p)
 	for (i = li; i; i = i->ai_next) {
 		err = bind(s, i->ai_addr, i->ai_addrlen);
 		if (!err) {
-			h->ai_addr = i->ai_addr;
-			h->ai_addrlen = i->ai_addrlen;
 			bound = 1;
 			break;
 		}
@@ -70,8 +68,6 @@ int mik_bind (int *t, int *u, struct addrinfo h, uint16_t p)
 	while (socks < 2) {
 		memset(portstr, 0, MIK_PORT_MAX);
 		sprintf(portstr, "%u", port);
-		h.ai_addr = 0;
-		h.ai_addrlen = 0;
 
 		h.ai_socktype = SOCK_STREAM;
 		if (mik_testbind(*t, &h, portstr) > 0)
