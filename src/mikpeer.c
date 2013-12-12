@@ -39,6 +39,76 @@ int mikpeer (miknode_t *n)
 }
 
 /**
+ *  Connect to an address.
+ *
+ *  @n: node
+ *  @a: address to connect to
+ *  @p: port to connect on
+ *
+ *  @return: index of the new peer
+ */
+int mikpeer_connect(miknode_t *n, const char *a, uint16_t p)
+{
+	if (n->peerc >= n->peermax)
+		return ERR_WOULD_FAULT;
+
+	int err, sock, yes = 1;
+	int pos = 0, j;
+	struct addrinfo hint = {0}, *li, *i;
+	char portstr[MIK_PORT_MAX] = {0};
+	sprintf(portstr, "%u", p);
+
+	if (n->ip == MIK_IPV4)
+		hint.ai_family = AF_INET;
+	else if (n->ip == MIK_IPV6)
+		hint.ai_family = AF_INET6;
+
+	hint.ai_socktype = SOCK_STREAM;
+
+	if (!a)
+		hint.ai_flags = AI_PASSIVE;
+
+	sock = socket(hint.ai_family, SOCK_STREAM, 0);
+	setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
+
+	err = getaddrinfo(a, portstr, &hint, &li);
+	if (err < 0)
+		return mik_debug(ERR_ADDRESS);
+
+	for (i = li; i; i = i->ai_next) {
+		err = connect(sock, i->ai_addr, i->ai_addrlen);
+		if (!err)
+			break;
+	}
+
+	freeaddrinfo(li);
+
+	if (err)
+		return mik_debug(ERR_CONNECT);
+
+	for (j = 0; j < n->peermax; ++j) {
+		if (n->peers[j].state == MIK_DISC) {
+			pos = j;
+			break;
+		}
+	}
+
+	n->peers[pos].node = n;
+	n->peers[pos].index = pos;
+	n->peers[pos].state = MIK_CONN;
+	n->peers[pos].tcp = sock;
+	n->peers[pos].addrlen = i->ai_addrlen;
+	n->peers[pos].sent = 0;
+	n->peers[pos].recvd = 0;
+	n->fds[2 + pos].fd = sock;
+	n->fds[2 + pos].events = POLLIN;
+
+	memcpy(&n->peers[pos].addr, i->ai_addr, i->ai_addrlen);
+
+	return pos;
+}
+
+/**
  *  Send data to a peer.
  *
  *  @p: peer to send to

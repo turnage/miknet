@@ -136,7 +136,11 @@ int miknode (miknode_t *n, mikip_t ip, uint16_t port);
 
 int miknode_config (miknode_t *n, uint16_t peers, uint32_t up, uint32_t down);
 
+void miknode_close (miknode_t *n);
+
 int mikpeer (miknode_t *n);
+
+int mikpeer_connect(miknode_t *n, const char *a, uint16_t p);
 
 int mikpeer_send (mikpeer_t *p, miktype_t t, void *d, size_t len, miknet_t m);
 
