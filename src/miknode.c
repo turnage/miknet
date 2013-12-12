@@ -155,5 +155,7 @@ int miknode_config (miknode_t *n, uint16_t peers, uint32_t up, uint32_t down)
 
 	memset(n->packs, 0, sizeof(n->packs));
 
+	listen(n->tcp, n->peermax);
+
 	return 0;
 }
