@@ -155,3 +155,24 @@ int miknode_config (miknode_t *n, uint16_t peers, uint32_t up, uint32_t down)
 
 	return 0;
 }
+
+/**
+ *  Free all the resources used by a miknode.
+ *
+ *  @n: the miknode
+ */
+void miknode_close (miknode_t *n)
+{
+	miklist_close(n->commands);
+	miklist_close(n->packs);
+
+	int i;
+	for (i = 0; i < n->peermax; ++i)
+		mikpeer_close(&n->peers[i]);
+
+	free(n->fds);
+	free(n->peers);
+
+	close(n->tcp);
+	close(n->udp);
+}

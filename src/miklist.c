@@ -67,7 +67,7 @@ void miklist_close (miklist_t *head)
 		}
 		free(pos->data);
 		free(pos);
-	} else {
+	} else if (head) {
 		free(head->data);
 		free(head);
 	}
