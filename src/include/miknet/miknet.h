@@ -25,6 +25,8 @@
 
 #define MIK_DEBUG 1
 
+struct miknode_t;
+
 enum {
 	ERR_MISSING_PTR  = -1,
 	ERR_INVALID_MODE = -2,
@@ -65,6 +67,7 @@ typedef enum {
 } miktype_t;
 
 typedef struct mikpeer_t {
+	struct miknode_t *node;
 	int tcp;
 	struct sockaddr_storage addr;
 	socklen_t addrlen;

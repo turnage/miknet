@@ -24,6 +24,7 @@ int mikpeer (miknode_t *n)
 		}
 	}
 
+	n->peers[pos].node = n;
 	n->peers[pos].state = MIK_CONN;
 	n->peers[pos].tcp = sock;
 	n->peers[pos].addr = addr;
