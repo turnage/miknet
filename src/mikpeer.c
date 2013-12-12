@@ -25,12 +25,36 @@ int mikpeer (miknode_t *n)
 	}
 
 	n->peers[pos].node = n;
+	n->peers[pos].index = pos;
 	n->peers[pos].state = MIK_CONN;
 	n->peers[pos].tcp = sock;
 	n->peers[pos].addr = addr;
 	n->peers[pos].addrlen = addrlen;
 	n->peers[pos].sent = 0;
 	n->peers[pos].recvd = 0;
+
+	return 0;
+}
+
+/**
+ *  Send data to a peer.
+ *
+ *  @p: peer to send to
+ *  @t: metadata for this packet
+ *  @d: data to send
+ *  @len: length of the data to send
+ *  @m: mode; tcp or udp
+ *
+ *  @return: 0 on success
+ */
+int mikpeer_send (mikpeer_t *p, miktype_t t, void *d, size_t len, miknet_t m)
+{
+	mikcommand_t command = {0};
+	command.peer = p->index;
+	command.pack = mikpack(t, d, len);
+	command.mode = m;
+
+	miklist_add(p->node->commands, &command, sizeof(mikcommand_t));
 
 	return 0;
 }

@@ -73,6 +73,7 @@ typedef struct miklist_t {
 } miklist_t;
 
 typedef struct mikpeer_t {
+	int index;
 	struct miknode_t *node;
 	int tcp;
 	struct sockaddr_storage addr;
@@ -121,8 +122,24 @@ const char *mik_errstr(int err);
 
 int mik_bind (int *t, int *u, struct addrinfo h, uint16_t p);
 
+mikpack_t mikpack (miktype_t type, void *data, uint16_t len);
+
+miklist_t *miklist (void *data, size_t len);
+
+miklist_t *miklist_add (miklist_t *head, void *data, size_t len);
+
+miklist_t *miklist_next (miklist_t *head);
+
+void miklist_close (miklist_t *head);
+
 int miknode (miknode_t *n, mikip_t ip, uint16_t port);
 
 int miknode_config (miknode_t *n, uint16_t peers, uint32_t up, uint32_t down);
+
+int mikpeer (miknode_t *n);
+
+int mikpeer_send (mikpeer_t *p, miktype_t t, void *d, size_t len, miknet_t m);
+
+int mikpeer_close (mikpeer_t *p);
 
 #endif /* miknet_h */
