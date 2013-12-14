@@ -157,6 +157,32 @@ int miknode_config (miknode_t *n, uint16_t peers, uint32_t up, uint32_t down)
 }
 
 /**
+ *  Service the node. Execute commands in the queue and add incoming events.
+ *
+ *  @n: the node
+ *  @t: time, in milliseconds
+ *
+ *  @return: the number of events to be handled
+ */
+int miknode_poll (miknode_t *n, int t)
+{
+	if (!n)
+		return ERR_MISSING_PTR;
+
+	int events = 0;
+	int err = poll(n->fds, n->peermax + 2, t);
+
+	/* Connection on master TCP socket. */
+	if (n->fds[0].revents & POLLIN) {
+		err = mikpeer(n);
+		if (err < 0)
+			mik_debug(err);
+	}
+
+	return events;
+}
+
+/**
  *  Free all the resources used by a miknode.
  *
  *  @n: the miknode

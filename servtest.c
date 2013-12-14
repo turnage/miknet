@@ -2,13 +2,14 @@
 
 int main (int argc, char **argv)
 {
-	int err;
+	int err, i;
 	miknode_t node = {0};
 
 	err = miknode(&node, MIK_IPV4, 8000);
 	err = miknode_config(&node, 20, 0, 0);
 
-	sleep(10);
+	for (i = 0; i < 10; ++i)
+		miknode_poll(&node, 1000);
 
 	miknode_close(&node);
 
