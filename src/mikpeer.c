@@ -4,7 +4,7 @@ int mikpeer (miknode_t *n)
 {
 	int sock, i, pos = 0;
 	struct sockaddr_storage addr;
-	socklen_t addrlen;
+	socklen_t addrlen = sizeof(struct sockaddr_storage);
 
 	sock = accept(n->tcp, (struct sockaddr *)&addr, &addrlen);
 	if (sock < 0)
