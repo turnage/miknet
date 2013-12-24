@@ -58,9 +58,8 @@ void miklist_close (miklist_t *head)
 	if (head->next) {
 		pos = head;
 		for (i = head->next; i; i = i->next) {
-
-			if (pos->len == sizeof(mikevent_t))
-				free(((mikevent_t *)pos->data)->pack.data);
+			mikevent_t *event = (mikevent_t *)pos->data;
+			free(event->pack.data);
 
 			free(pos->data);
 			free(pos);
