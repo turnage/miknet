@@ -8,7 +8,7 @@ for people that like networking libraries.
 
 Features
 
-* TCP and/or UDP
+* TCP ~~and/or UDP~~
 * IPv4 and/or IPv6
 * Bandwidth caps
 * Thread safety

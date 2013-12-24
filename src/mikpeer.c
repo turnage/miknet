@@ -115,18 +115,16 @@ int mikpeer_connect(miknode_t *n, const char *a, uint16_t p)
  *  @t: metadata for this packet
  *  @d: data to send
  *  @len: length of the data to send
- *  @m: mode; tcp or udp
  *
  *  @return: 0 on success
  */
-int mikpeer_send (mikpeer_t *p, miktype_t t, void *d, size_t len, miknet_t m)
+int mikpeer_send (mikpeer_t *p, miktype_t t, void *d, size_t len)
 {
-	mikcommand_t command = {0};
+	mikevent_t command = {0};
 	command.peer = p->index;
 	command.pack = mikpack(t, d, len);
-	command.mode = m;
 
-	miklist_add(p->node->commands, &command, sizeof(mikcommand_t));
+	miklist_add(p->node->commands, &command, sizeof(mikevent_t));
 
 	return 0;
 }

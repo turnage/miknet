@@ -94,12 +94,6 @@ typedef struct mikevent_t {
 	mikpack_t pack;
 } mikevent_t;
 
-typedef struct mikcommand_t {
-	uint16_t peer;
-	mikpack_t pack;
-	miknet_t mode;
-} mikcommand_t;
-
 typedef struct miknode_t {
 	int tcp;
 	int udp;
@@ -119,8 +113,6 @@ int mik_debug (int err);
 int mik_print_addr(struct sockaddr *addr, socklen_t s);
 
 const char *mik_errstr(int err);
-
-int mik_bind (int *t, int *u, struct addrinfo h, uint16_t p);
 
 mikpack_t mikpack (miktype_t type, void *data, uint16_t len);
 
@@ -144,7 +136,7 @@ int mikpeer (miknode_t *n);
 
 int mikpeer_connect(miknode_t *n, const char *a, uint16_t p);
 
-int mikpeer_send (mikpeer_t *p, miktype_t t, void *d, size_t len, miknet_t m);
+int mikpeer_send (mikpeer_t *p, miktype_t t, void *d, size_t len);
 
 int mikpeer_close (mikpeer_t *p);
 

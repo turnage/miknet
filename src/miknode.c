@@ -1,16 +1,14 @@
 #include <miknet/miknet.h>
 
-static int mik_sockpair (int *t, int *u, struct addrinfo *h)
+static int mik_sock (int *t, struct addrinfo *h)
 {
 	int err, yes = 1;
 
 	*t = socket(h->ai_family, SOCK_STREAM, 0);
-	*u = socket(h->ai_family, SOCK_DGRAM, 0);
-	if ((*t < 0) || (*u < 0))
+	if (*t < 0)
 		return mik_debug(ERR_SOCKET);
 
 	err = setsockopt(*t, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
-	err += setsockopt(*u, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
 	if (err < 0)
 		return mik_debug(ERR_SOCK_OPT);
 
@@ -46,47 +44,19 @@ static int mik_testbind (int s, struct addrinfo *h, const char *p)
  *  (on different protocols).
  *
  *  @t: SOCK_STREAM socket
- *  @u: SOCK_DGRAM socket
  *  @h: copy of address request
  *  @p: port or 0 for auto-assign
  *
  *  @return: the port bound to
  */
-int mik_bind (int *t, int *u, struct addrinfo h, uint16_t p)
+static int mik_bind (int *t, struct addrinfo h, uint16_t p)
 {
-	int socks = 0;
-	uint16_t port;
 	char portstr[MIK_PORT_MAX] = {0};
 
-	if (p == 0)
-		port = 1025;
-	else
-		port = p;
+	sprintf(portstr, "%u", p);
+	mik_sock(t, &h);
 
-	mik_sockpair(t, u, &h);
-
-	while (socks < 2) {
-		memset(portstr, 0, MIK_PORT_MAX);
-		sprintf(portstr, "%u", port);
-
-		h.ai_socktype = SOCK_STREAM;
-		if (mik_testbind(*t, &h, portstr) > 0)
-			socks += 1;
-
-		h.ai_socktype = SOCK_DGRAM;
-		if (mik_testbind(*u, &h, portstr) > 0)
-			socks += 1;
-
-		if (socks < 2) {
-			close(*t);
-			close(*u);
-			mik_sockpair(t, u, &h);
-			socks = 0;
-			port++;
-		}
-	}
-
-	return port;
+	return mik_testbind(*t, &h, portstr);
 }
 
 /**
@@ -114,8 +84,9 @@ int miknode (miknode_t *n, mikip_t ip, uint16_t port)
 		hint.ai_family = AF_INET6;
 
 	hint.ai_flags = AI_PASSIVE;
+	hint.ai_socktype = SOCK_STREAM;
 
-	mik_bind(&n->tcp, &n->udp, hint, port);
+	mik_bind(&n->tcp, hint, port);
 
 	return 0;
 }
@@ -140,14 +111,12 @@ int miknode_config (miknode_t *n, uint16_t peers, uint32_t up, uint32_t down)
 	n->downcap = down;
 
 	n->peers = calloc(n->peermax, sizeof(mikpeer_t));
-	n->fds = calloc(n->peermax + 2, sizeof(mikpeer_t));
+	n->fds = calloc(n->peermax + 1, sizeof(mikpeer_t));
 	if (!n->peers || !n->fds)
 		return mik_debug(ERR_MEMORY);
 
 	n->fds[0].fd = n->tcp;
-	n->fds[1].fd = n->udp;
 	n->fds[0].events = POLLIN;
-	n->fds[1].events = POLLIN;
 	n->packs = NULL;
 	n->commands = NULL;
 
@@ -201,5 +170,4 @@ void miknode_close (miknode_t *n)
 	free(n->peers);
 
 	close(n->tcp);
-	close(n->udp);
 }
