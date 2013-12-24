@@ -100,8 +100,8 @@ int mikpeer_connect(miknode_t *n, const char *a, uint16_t p)
 	n->peers[pos].addrlen = i->ai_addrlen;
 	n->peers[pos].sent = 0;
 	n->peers[pos].recvd = 0;
-	n->fds[2 + pos].fd = sock;
-	n->fds[2 + pos].events = POLLIN;
+	n->fds[1 + pos].fd = sock;
+	n->fds[1 + pos].events = POLLIN;
 
 	memcpy(&n->peers[pos].addr, i->ai_addr, i->ai_addrlen);
 
@@ -131,6 +131,8 @@ int mikpeer_send (mikpeer_t *p, miktype_t t, void *d, size_t len)
 
 int mikpeer_close (mikpeer_t *p)
 {
+	p->node->fds[1 + pos].fd = -1;
+
 	close(p->tcp);
 	memset(&p->addr, 0, sizeof(struct sockaddr_storage));
 
