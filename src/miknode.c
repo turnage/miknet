@@ -115,6 +115,10 @@ int miknode_config (miknode_t *n, uint16_t peers, uint32_t up, uint32_t down)
 	if (!n->peers || !n->fds)
 		return mik_debug(ERR_MEMORY);
 
+	int i;
+	for (i = 0; i < n->peermax + 1; ++i)
+		n->fds[i].fd = -1;
+
 	n->fds[0].fd = n->tcp;
 	n->fds[0].events = POLLIN;
 	n->packs = NULL;
