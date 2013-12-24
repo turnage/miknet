@@ -76,8 +76,6 @@ typedef struct mikpeer_t {
 	int index;
 	struct miknode_t *node;
 	int tcp;
-	struct sockaddr_storage addr;
-	socklen_t addrlen;
 	mikstate_t state;
 	uint32_t sent;
 	uint32_t recvd;
@@ -137,6 +135,8 @@ int mikpeer (miknode_t *n);
 int mikpeer_connect(miknode_t *n, const char *a, uint16_t p);
 
 int mikpeer_send (mikpeer_t *p, miktype_t t, void *d, size_t len);
+
+int mikpeer_recv (mikpeer_t *p);
 
 int mikpeer_close (mikpeer_t *p);
 
