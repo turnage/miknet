@@ -2,19 +2,16 @@
 
 int main (int argc, char **argv)
 {
-	mikserv_t server;
-	int err;
+	int err, i;
+	miknode_t node = {0};
 
-	err = mik_serv_make(&server, 8016, MIK_SAFE, MIK_IPV6);
-	printf("Make:   %s\n", mik_errstr(err));
-	err = mik_serv_config(&server, 100, 0, 0);
-	printf("Config: %s\n", mik_errstr(err));
+	err = miknode(&node, MIK_IPV4, 8000);
+	err = miknode_config(&node, 20, 0, 0);
 
-	while(server.peerc < 1) {
-		mik_serv_poll(&server, 1000);
-	}
+	for (i = 0; i < 10; ++i)
+		miknode_poll(&node, 1000);
 
-	mik_serv_close(&server);
+	miknode_close(&node);
 
 	return 0;
 }

@@ -2,16 +2,19 @@
 
 int main (int argc, char **argv)
 {
-	mikcli_t client;
 	int err;
+	miknode_t node = {0};
 
-	err = mik_cli_make(&client, MIK_SAFE, MIK_IPV6);
-	printf("Status: %s\n", mik_errstr(err));
+	err = miknode(&node, MIK_IPV4, 7000);
+	err = miknode_config(&node, 20, 0, 0);
 
-	err = mik_cli_connect(&client, 8016, NULL);
-	printf("Status: %s\n", mik_errstr(err));
+	fprintf(stderr, "Status: %d.\n", err);
 
-	mik_cli_close(&client);
+	err = mikpeer_connect(&node, "localhost", 8000);
+
+	fprintf(stderr, "Connected on slot %d.\n", err);
+
+	miknode_close(&node);
 
 	return 0;
 }

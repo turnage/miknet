@@ -1,80 +1,35 @@
 #include <miknet/miknet.h>
 
-void mik_print_addr (struct sockaddr *a, socklen_t l)
+/**
+ *  Call this when something goes wrong and you need to know why without making
+ *  things ugly.
+ */
+int mik_debug (int err)
+{
+	if (MIK_DEBUG) {
+		fprintf(stderr, "SYS: %s\n", strerror(errno));
+	}
+
+	return err;
+}
+
+/**
+ *  This is a function for debugging (both while writing the library and with
+ *  the library). It will represent an address in presentation form.
+ *
+ *  @a: the address, likely a casted struct sockaddr_storage pointer
+ *  @s: length of the memory a points to
+ *
+ *  @return: the port number
+ */
+int mik_print_addr (struct sockaddr *a, socklen_t s)
 {
 	char hostname[256] = {0};
 	char service[256] = {0};
-	getnameinfo(a, l, hostname, 256, service, 256, 0);
+	getnameinfo(a, s, hostname, 256, service, 256, 0);
 	fprintf(stderr, "Bound to: %s:%s.\n", hostname, service);
-}
 
-int mik_tcp_peer (mikserv_t *s)
-{
-	if (!s)
-		return ERR_MISSING_PTR;
-
-	int err;
-
-	struct sockaddr_storage a;
-	socklen_t alen;
-
-	err = accept(s->sock, (struct sockaddr *)&a, &alen);
-	if (err < 0) {
-		if (MIK_DEBUG)
-			fprintf(stderr, "SYS: %s.\n", strerror(errno));
-		return ERR_SOCKET;
-	}
-
-	if (s->peerc == s->peermax) {
-		close(err);
-		return ERR_PEER_MAX;
-	}
-
-	s->peerc++;	
-	s->peers = realloc(s->peers, s->peerc * sizeof(mikpeer_t));
-	s->fds = realloc(s->fds, s->nfds * sizeof(struct pollfd));
-	if (!s->peers || !s->fds)
-		return ERR_MEMORY;
-
-	memset(&s->peers[s->peerc - 1], 0, sizeof(mikpeer_t));
-	s->peers[s->peerc - 1].sock = err;
-	s->peers[s->peerc - 1].addr = a;
-	s->peers[s->peerc - 1].addrlen = alen;
-	if (s->peerc > 1) {
-		s->peers[s->peerc - 2].next = &s->peers[s->peerc - 1];
-		s->peers[s->peerc - 1].prev = &s->peers[s->peerc - 2];
-	}
-
-	memset(&s->fds[s->nfds - 1], 0, sizeof(struct pollfd));
-	s->fds[s->nfds - 1].fd = s->peers[s->peerc - 1].sock;
-	s->fds[s->nfds - 1].events = POLLIN;
-
-	if (MIK_DEBUG) {
-		fprintf(stderr, "Client [%d]: %s.\n", s->peerc,
-			s->peers[s->peerc - 1].ipst);
-	}
-
-	return 0;
-}
-
-int mik_tcp_poll (mikserv_t *s, int t)
-{
-	if (!s)
-		return ERR_MISSING_PTR;
-
-	/* 1 is magic for now; only poll master socket. */
-	int err = poll(s->fds, 1, t);
-	if (err < 0) {
-		if (MIK_DEBUG)
-			fprintf(stderr, "SYS: %s.\n", strerror(errno));
-		return ERR_POLL;
-	}
-
-	if (s->fds[0].revents & POLLIN) {
-		return mik_tcp_peer(s);
-	}
-
-	return 0;
+	return atoi(service);
 }
 
 /**
@@ -96,16 +51,6 @@ const char *mik_errstr(int err)
 
 		case ERR_MISSING_PTR: {
 			str = "A passed pointer was NULL.";
-			break;
-		}
-
-		case ERR_INVALID_MODE: {
-			str = "Network mode invalid.";
-			break;
-		}
-
-		case ERR_INVALID_IP: {
-			str = "IP address type invalid.";
 			break;
 		}
 
@@ -131,6 +76,31 @@ const char *mik_errstr(int err)
 
 		case ERR_CONNECT: {
 			str = "Failed to connect socket.";
+			break;
+		}
+
+		case ERR_PEER_MAX: {
+			str = "Argument exceeds peer maximum.";
+			break;
+		}
+
+		case ERR_POLL: {
+			str = "The poll call failed.";
+			break;
+		}
+
+		case ERR_MEMORY: {
+			str = "Memory allocation failed.";
+			break;
+		}
+
+		case ERR_WOULD_FAULT: {
+			str = "This operation would have segfaulted.";
+			break;
+		}
+
+		case ERR_LISTEN: {
+			str = "Configuring the SOCK_STREAM backlog failed.";
 			break;
 		}
 
