@@ -161,13 +161,14 @@ int miknode_poll (miknode_t *n, int t)
 		event = (mikevent_t *)n->commands->data;
 		int sock = n->peers[event->peer].tcp;
 		void *data = (void *)event->pack.data;
-		char buffer[sizeof(mikpack_t) + event->pack.len];
+		int length = sizeof(mikpack_t) + event->pack.len;
+		char buffer[length];
 
-		memset(buffer, 0, sizeof(mikpack_t) + event->pack.len);
+		memset(buffer, 0, length);
 		memcpy(buffer, &event->pack, sizeof(mikpack_t));
 		memcpy(buffer + sizeof(mikpack_t), data, event->pack.len);
 
-		send(sock, buffer, sizeof(mikpack_t) + event->pack.len, 0);
+		send(sock, buffer, length, 0);
 
 		n->commands = miklist_next(n->commands);
 	}
