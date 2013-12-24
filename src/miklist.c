@@ -42,6 +42,7 @@ miklist_t *miklist_next (miklist_t *head)
 {
 	miklist_t *new_head = head->next;
 
+	free(((mikevent_t *)head->data)->pack.data);
 	free(head->data);
 	free(head);
 
@@ -50,25 +51,7 @@ miklist_t *miklist_next (miklist_t *head)
 
 void miklist_close (miklist_t *head)
 {
-	miklist_t *i, *pos;
-
-	if (!head)
-		return;
-	
-	if (head->next) {
-		pos = head;
-		for (i = head->next; i; i = i->next) {
-			mikevent_t *event = (mikevent_t *)pos->data;
-			free(event->pack.data);
-
-			free(pos->data);
-			free(pos);
-			pos = i;
-		}
-		free(pos->data);
-		free(pos);
-	} else {
-		free(head->data);
-		free(head);
+	while (head) {
+		head = miklist_next(head);
 	}
 }

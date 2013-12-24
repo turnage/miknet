@@ -28,12 +28,10 @@ int mikpeer (miknode_t *n)
 	n->peers[pos].index = pos;
 	n->peers[pos].state = MIK_CONN;
 	n->peers[pos].tcp = sock;
-	n->peers[pos].addr = addr;
-	n->peers[pos].addrlen = addrlen;
 	n->peers[pos].sent = 0;
 	n->peers[pos].recvd = 0;
-	n->fds[2 + pos].fd = sock;
-	n->fds[2 + pos].events = POLLIN;
+	n->fds[1 + pos].fd = sock;
+	n->fds[1 + pos].events = POLLIN;
 
 	return 0;
 }
@@ -97,13 +95,10 @@ int mikpeer_connect(miknode_t *n, const char *a, uint16_t p)
 	n->peers[pos].index = pos;
 	n->peers[pos].state = MIK_CONN;
 	n->peers[pos].tcp = sock;
-	n->peers[pos].addrlen = i->ai_addrlen;
 	n->peers[pos].sent = 0;
 	n->peers[pos].recvd = 0;
 	n->fds[1 + pos].fd = sock;
 	n->fds[1 + pos].events = POLLIN;
-
-	memcpy(&n->peers[pos].addr, i->ai_addr, i->ai_addrlen);
 
 	return pos;
 }
@@ -121,24 +116,66 @@ int mikpeer_connect(miknode_t *n, const char *a, uint16_t p)
 int mikpeer_send (mikpeer_t *p, miktype_t t, void *d, size_t len)
 {
 	mikevent_t command = {0};
+	miklist_t *cmds = p->node->commands;
 	command.peer = p->index;
 	command.pack = mikpack(t, d, len);
 
-	miklist_add(p->node->commands, &command, sizeof(mikevent_t));
+	p->node->commands = miklist_add(cmds, &command, sizeof(mikevent_t));
+
+	return 0;
+}
+
+/**
+ *  Receive data from a peer.
+ *
+ *  @p: peer to receive from
+ *
+ *  @return: 0 on success
+ */
+int mikpeer_recv (mikpeer_t *p)
+{
+	mikpack_t pack = {0};
+	miklist_t *e = p->node->packs;
+	int size = recv(p->tcp, &pack, sizeof(mikpack_t), MSG_PEEK);
+	if (size < 0)
+		mik_debug(ERR_SOCKET);
+
+	if (!size) {
+		/* peer disconnected */
+		char buffer[10] = {0};
+		recv(p->tcp, buffer, 10, 0);
+		mikevent_t event = {0};
+		event.peer = p->index;
+		event.pack.meta = MIK_QUIT;
+		p->node->packs = miklist_add(e, &event, sizeof(mikevent_t));
+		mikpeer_close(p);
+	} else {
+		if (pack.len > MIK_PACK_MAX)
+			return ERR_WOULD_FAULT;
+
+		recv(p->tcp, &pack, sizeof(mikpack_t), 0);
+		char *buffer = calloc(1, pack.len);
+		recv(p->tcp, buffer, pack.len, 0);
+
+		mikevent_t event= {0};
+		event.peer = p->index;
+		event.pack = pack;
+		event.pack.data = (void *)buffer;
+
+		p->node->packs = miklist_add(e, &event, sizeof(mikevent_t));
+	}
 
 	return 0;
 }
 
 int mikpeer_close (mikpeer_t *p)
 {
-	p->node->fds[1 + p->index].fd = -1;
+	p->node->fds[1 + p->index].fd = 0;
 
 	close(p->tcp);
-	memset(&p->addr, 0, sizeof(struct sockaddr_storage));
 
 	p->state = MIK_DISC;
 	p->tcp = 0;
-	p->addrlen = 0;
 	p->sent = 0;
 	p->recvd = 0;
 

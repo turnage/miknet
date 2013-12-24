@@ -115,10 +115,6 @@ int miknode_config (miknode_t *n, uint16_t peers, uint32_t up, uint32_t down)
 	if (!n->peers || !n->fds)
 		return mik_debug(ERR_MEMORY);
 
-	int i;
-	for (i = 0; i < n->peermax + 1; ++i)
-		n->fds[i].fd = -1;
-
 	n->fds[0].fd = n->tcp;
 	n->fds[0].events = POLLIN;
 	n->packs = NULL;
@@ -142,14 +138,38 @@ int miknode_poll (miknode_t *n, int t)
 	if (!n)
 		return ERR_MISSING_PTR;
 
-	int events = 0;
-	int err = poll(n->fds, n->peermax + 2, t);
+	int i, events = 0;
+	int err = poll(n->fds, 1 + n->peermax, t);
 
 	/* Connection on master TCP socket. */
 	if (n->fds[0].revents & POLLIN) {
 		err = mikpeer(n);
 		if (err < 0)
 			mik_debug(err);
+	}
+
+	for (i = 0; i < n->peermax; ++i) {
+		if (n->fds[1 + i].revents & POLLIN) {
+			mikpeer_recv(&n->peers[i]);
+			n->fds[1 + i].revents = 0;
+		}
+	}
+
+	mikevent_t *event;
+
+	while (n->commands) {
+		event = (mikevent_t *)n->commands->data;
+		int sock = n->peers[event->peer].tcp;
+		void *data = (void *)event->pack.data;
+		char buffer[sizeof(mikpack_t) + event->pack.len];
+
+		memset(buffer, 0, sizeof(mikpack_t) + event->pack.len);
+		memcpy(buffer, &event->pack, sizeof(mikpack_t));
+		memcpy(buffer + sizeof(mikpack_t), data, event->pack.len);
+
+		send(sock, buffer, sizeof(mikpack_t) + event->pack.len, 0);
+
+		n->commands = miklist_next(n->commands);
 	}
 
 	return events;
