@@ -131,7 +131,7 @@ int mikpeer_send (mikpeer_t *p, miktype_t t, void *d, size_t len)
 
 int mikpeer_close (mikpeer_t *p)
 {
-	p->node->fds[1 + pos].fd = -1;
+	p->node->fds[1 + p->index].fd = -1;
 
 	close(p->tcp);
 	memset(&p->addr, 0, sizeof(struct sockaddr_storage));
