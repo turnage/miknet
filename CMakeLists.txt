@@ -5,8 +5,16 @@ INCLUDE_DIRECTORIES(src/include)
 
 FILE(GLOB SRC_MIKNET src/*.c)
 
-ADD_EXECUTABLE(servtest servtest.c ${SRC_MIKNET})
-ADD_EXECUTABLE(clitest clitest.c ${SRC_MIKNET})
+ADD_LIBRARY(miknet ${SRC_MIKNET})
+
+ADD_EXECUTABLE(servtest servtest.c)
+ADD_EXECUTABLE(clitest clitest.c)
+
+ADD_DEPENDENCIES(servtest miknet)
+ADD_DEPENDENCIES(clitest miknet)
+
+TARGET_LINK_LIBRARIES(servtest miknet)
+TARGET_LINK_LIBRARIES(clitest miknet)
 
 SET(CMAKE_C_WARNINGS "-Wall")
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
