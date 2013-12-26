@@ -34,8 +34,8 @@ int mikpeer (miknode_t *n)
 	n->fds[1 + pos].events = POLLIN;
 
 	miklist_t join = {0};
-	join.peer = pos;
 	join.pack = mikpack(MIK_INIT, NULL, 0);
+	join.pack.peer = pos;
 	n->packs = miklist_add(n->packs, &join);
 
 	return 0;
@@ -124,8 +124,8 @@ int mikpeer_send (mikpeer_t *p, void *d, size_t len)
 {
 	miklist_t command = {0};
 	miklist_t *cmds = p->node->commands;
-	command.peer = p->index;
 	command.pack = mikpack(MIK_DATA, d, len);
+	command.pack.peer = p->index;
 
 	p->node->commands = miklist_add(cmds, &command);
 
@@ -152,7 +152,7 @@ int mikpeer_recv (mikpeer_t *p)
 		char buffer[10] = {0};
 		recv(p->tcp, buffer, 10, 0);
 		miklist_t event = {0};
-		event.peer = p->index;
+		event.pack.peer = p->index;
 		event.pack.meta = MIK_QUIT;
 		p->node->packs = miklist_add(e, &event);
 		mikpeer_close(p);
@@ -165,8 +165,8 @@ int mikpeer_recv (mikpeer_t *p)
 		recv(p->tcp, buffer, pack.len, 0);
 
 		miklist_t event= {0};
-		event.peer = p->index;
 		event.pack = pack;
+		event.pack.peer = p->index;
 		event.pack.data = (void *)buffer;
 
 		p->node->packs = miklist_add(e, &event);

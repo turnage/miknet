@@ -156,7 +156,7 @@ int miknode_poll (miknode_t *n, int t)
 	}
 
 	while (n->commands) {
-		int sock = n->peers[n->commands->peer].tcp;
+		int sock = n->peers[n->commands->pack.peer].tcp;
 		void *data = (void *)n->commands->pack.data;
 		int length = sizeof(mikpack_t) + n->commands->pack.len;
 		char buffer[length];

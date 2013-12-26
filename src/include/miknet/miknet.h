@@ -68,13 +68,13 @@ typedef enum {
 
 typedef struct mikpack_t {
 	miktype_t meta;
+	uint16_t peer;
 	uint16_t len;
 	void *data;
 } mikpack_t;
 
 typedef struct miklist_t {
 	struct miklist_t *next;
-	uint16_t peer;
 	mikpack_t pack;
 } miklist_t;
 
