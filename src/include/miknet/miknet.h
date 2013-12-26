@@ -67,7 +67,7 @@ typedef enum {
 } miktype_t;
 
 typedef struct mikpack_t {
-	miktype_t meta;
+	miktype_t type;
 	uint16_t peer;
 	uint16_t len;
 	void *data;

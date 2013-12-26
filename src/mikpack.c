@@ -4,7 +4,7 @@ mikpack_t mikpack (miktype_t type, void *data, uint16_t len)
 {
 	mikpack_t pack;
 
-	pack.meta = type;
+	pack.type = type;
 
 	if (!data) {
 		pack.data = NULL;

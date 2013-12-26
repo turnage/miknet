@@ -153,7 +153,7 @@ int mikpeer_recv (mikpeer_t *p)
 		recv(p->tcp, buffer, 10, 0);
 		miklist_t event = {0};
 		event.pack.peer = p->index;
-		event.pack.meta = MIK_QUIT;
+		event.pack.type = MIK_QUIT;
 		p->node->packs = miklist_add(e, &event);
 		mikpeer_close(p);
 	} else {
