@@ -61,7 +61,7 @@ typedef enum {
 
 typedef enum {
 	MIK_ERR  = -1,
-	MIK_INIT = 0,
+	MIK_JOIN = 0,
 	MIK_QUIT = 1,
 	MIK_DATA = 2
 } miktype_t;
