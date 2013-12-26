@@ -16,6 +16,9 @@ ADD_DEPENDENCIES(clitest miknet)
 TARGET_LINK_LIBRARIES(servtest miknet)
 TARGET_LINK_LIBRARIES(clitest miknet)
 
+INSTALL(FILES src/include/miknet/miknet.h DESTINATION include/miknet)
+INSTALL(TARGETS miknet ARCHIVE DESTINATION lib)
+
 SET(CMAKE_C_WARNINGS "-Wall")
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
 
