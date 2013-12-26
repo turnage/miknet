@@ -1,49 +1,40 @@
 #include <miknet/miknet.h>
 
-miklist_t *miklist (void *data, size_t len)
+miklist_t *miklist (void *data)
 {
-	miklist_t list, *head;
-	list.next = NULL;
-	list.len = len;
-	list.data = data;
+	miklist_t *head;
 
 	head = calloc(1, sizeof(miklist_t));
-	list.data = calloc(1, len);
-
-	memcpy(head, &list, sizeof(miklist_t));
-	memcpy(head->data, data, len);
+	memcpy(head, data, sizeof(miklist_t));
 
 	return head;
 }
 
-miklist_t *miklist_add (miklist_t *head, void *data, size_t len)
+miklist_t *miklist_add (miklist_t *head, void *data)
 {
 	if (!head)
-		return miklist (data, len);
+		return miklist (data);
 
-	miklist_t list, *i, *pos;
-	list.next = NULL;
-	list.len = len;
+	miklist_t *i, *pos;
 
 	for (i = head; i; i = i->next) {
 		pos = i;
 	}
 
 	pos->next = calloc(1, sizeof(miklist_t));
-	memcpy(pos->next, &list, sizeof(miklist_t));
-
-	pos->data = calloc(1, len);
-	memcpy(pos->data, data, len);
+	memcpy(pos->next, data, sizeof(miklist_t));
 
 	return head;
 }
 
 miklist_t *miklist_next (miklist_t *head)
 {
+	if (!head)
+		return NULL;
+
 	miklist_t *new_head = head->next;
 
-	free(((mikevent_t *)head->data)->pack.data);
-	free(head->data);
+	free(head->pack.data);
 	free(head);
 
 	return new_head;

@@ -66,10 +66,16 @@ typedef enum {
 	MIK_DATA = 2
 } miktype_t;
 
+typedef struct mikpack_t {
+	miktype_t meta;
+	uint16_t len;
+	void *data;
+} mikpack_t;
+
 typedef struct miklist_t {
 	struct miklist_t *next;
-	size_t len;
-	void *data;
+	uint16_t peer;
+	mikpack_t pack;
 } miklist_t;
 
 typedef struct mikpeer_t {
@@ -80,17 +86,6 @@ typedef struct mikpeer_t {
 	uint32_t sent;
 	uint32_t recvd;
 } mikpeer_t;
-
-typedef struct mikpack_t {
-	miktype_t meta;
-	uint16_t len;
-	void *data;
-} mikpack_t;
-
-typedef struct mikevent_t {
-	uint16_t peer;
-	mikpack_t pack;
-} mikevent_t;
 
 typedef struct miknode_t {
 	int tcp;
@@ -114,9 +109,9 @@ const char *mik_errstr(int err);
 
 mikpack_t mikpack (miktype_t type, void *data, uint16_t len);
 
-miklist_t *miklist (void *data, size_t len);
+miklist_t *miklist (void *data);
 
-miklist_t *miklist_add (miklist_t *head, void *data, size_t len);
+miklist_t *miklist_add (miklist_t *head, void *data);
 
 miklist_t *miklist_next (miklist_t *head);
 

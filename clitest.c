@@ -12,6 +12,9 @@ int main (int argc, char **argv)
 
 	err = mikpeer_connect(&node, "localhost", 8000);
 	mikpeer_send(&node.peers[0], MIK_DATA, "Hello", 5);
+	mikpeer_send(&node.peers[0], MIK_DATA, "Hello", 5);
+	mikpeer_send(&node.peers[0], MIK_DATA, "Hello", 5);
+	mikpeer_send(&node.peers[0], MIK_DATA, "Hello", 5);
 	miknode_poll(&node, 1000);
 
 	miknode_close(&node);

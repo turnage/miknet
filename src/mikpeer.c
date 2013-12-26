@@ -115,12 +115,12 @@ int mikpeer_connect(miknode_t *n, const char *a, uint16_t p)
  */
 int mikpeer_send (mikpeer_t *p, miktype_t t, void *d, size_t len)
 {
-	mikevent_t command = {0};
+	miklist_t command = {0};
 	miklist_t *cmds = p->node->commands;
 	command.peer = p->index;
 	command.pack = mikpack(t, d, len);
 
-	p->node->commands = miklist_add(cmds, &command, sizeof(mikevent_t));
+	p->node->commands = miklist_add(cmds, &command);
 
 	return 0;
 }
@@ -144,10 +144,10 @@ int mikpeer_recv (mikpeer_t *p)
 		/* peer disconnected */
 		char buffer[10] = {0};
 		recv(p->tcp, buffer, 10, 0);
-		mikevent_t event = {0};
+		miklist_t event = {0};
 		event.peer = p->index;
 		event.pack.meta = MIK_QUIT;
-		p->node->packs = miklist_add(e, &event, sizeof(mikevent_t));
+		p->node->packs = miklist_add(e, &event);
 		mikpeer_close(p);
 	} else {
 		if (pack.len > MIK_PACK_MAX)
@@ -157,12 +157,12 @@ int mikpeer_recv (mikpeer_t *p)
 		char *buffer = calloc(1, pack.len);
 		recv(p->tcp, buffer, pack.len, 0);
 
-		mikevent_t event= {0};
+		miklist_t event= {0};
 		event.peer = p->index;
 		event.pack = pack;
 		event.pack.data = (void *)buffer;
 
-		p->node->packs = miklist_add(e, &event, sizeof(mikevent_t));
+		p->node->packs = miklist_add(e, &event);
 	}
 
 	return 0;
