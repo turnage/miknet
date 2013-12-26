@@ -41,6 +41,11 @@ int main (int argc, char **argv)
 				MIK_DATA: A peer sent data; data field is set. 
 			*/
 
+			/* Miknet packets can be sent over virtual channels,
+			   market by an unsigned 32 bit integer. The default
+			   channel (for join/quit notifications) is 0. */
+			printf("Packet on channel %u; ", packet.channel);
+
 			if (packet.type == MIK_JOIN) {
 				printf("New peer in slot %d.\n", packet.peer);
 			} else if (packet.type == MIK_QUIT) {

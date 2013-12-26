@@ -34,7 +34,7 @@ int mikpeer (miknode_t *n)
 	n->fds[1 + pos].events = POLLIN;
 
 	miklist_t join = {0};
-	join.pack = mikpack(MIK_JOIN, NULL, 0);
+	join.pack = mikpack(MIK_JOIN, NULL, 0, 0);
 	join.pack.peer = pos;
 	n->packs = miklist_add(n->packs, &join);
 
@@ -125,11 +125,11 @@ int mikpeer_connect(miknode_t *n, const char *a, uint16_t p)
  *
  *  @return: 0 on success
  */
-int mikpeer_send (mikpeer_t *p, void *d, size_t len)
+int mikpeer_send (mikpeer_t *p, void *d, size_t len, uint32_t channel)
 {
 	miklist_t command = {0};
 	miklist_t *cmds = p->node->commands;
-	command.pack = mikpack(MIK_DATA, d, len);
+	command.pack = mikpack(MIK_DATA, d, len, channel);
 	command.pack.peer = p->index;
 
 	p->node->commands = miklist_add(cmds, &command);

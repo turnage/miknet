@@ -68,6 +68,7 @@ typedef enum {
 
 typedef struct mikpack_t {
 	miktype_t type;
+	uint32_t channel;
 	uint16_t peer;
 	uint16_t len;
 	void *data;
@@ -107,7 +108,7 @@ int mik_print_addr(struct sockaddr *addr, socklen_t s);
 
 const char *mik_errstr(int err);
 
-mikpack_t mikpack (miktype_t type, void *data, uint16_t len);
+mikpack_t mikpack (miktype_t type, void *data, uint16_t len, uint32_t channel);
 
 miklist_t *miklist (void *data);
 
@@ -129,7 +130,7 @@ int mikpeer (miknode_t *n);
 
 int mikpeer_connect(miknode_t *n, const char *a, uint16_t p);
 
-int mikpeer_send (mikpeer_t *p, void *d, size_t len);
+int mikpeer_send (mikpeer_t *p, void *d, size_t len, uint32_t channel);
 
 int mikpeer_recv (mikpeer_t *p);
 
