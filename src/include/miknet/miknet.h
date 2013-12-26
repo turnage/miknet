@@ -15,11 +15,8 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 
-#define MIK_PEER_MAX 100
-#define MIK_CHAN_MAX 100
 #define MIK_PACK_MAX 1200
 #define MIK_PORT_MAX 6
-#define MIK_LIST_MAX 100
 
 #define MIK_DEBUG 1
 
