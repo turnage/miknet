@@ -265,6 +265,7 @@ static int miknode_recv (mikpeer_t *p)
 		event.pack.data = (void *)buffer;
 
 		p->node->packs = miklist_add(e, &event);
+		p->recvd += sizeof(mikpack_t) + pack.len;
 	}
 
 	return 0;
@@ -312,7 +313,8 @@ int miknode_poll (miknode_t *n, int t)
 		memcpy(buffer, &n->commands->pack, sizeof(mikpack_t));
 		memcpy(buffer + sizeof(mikpack_t), data, n->commands->pack.len);
 
-		send(sock, buffer, length, 0);
+		int sent = send(sock, buffer, length, 0);
+		n->peers[n->commands->pack.peer].sent += sent;
 
 		n->commands = miklist_next(n->commands);
 	}
