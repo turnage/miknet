@@ -6,21 +6,26 @@ for people that like networking libraries.
 
     Notice: under construction.
 
-Build instructions:
+Miknet can be installed on POSIX compliant Unix-like operating systems and
+Windows. For Windows, compile in Cygwin or Msys.
 
+Run these
+
+    git clone https://github.com/PaytonTurnage/Miknet.git && cd Miknet
     mkdir build
     cd build
     cmake ..
     cmake --build .
 
-This should get you libmiknet.a, which you can link against in your programs. To
-install it for linking anywhere, run the following command as root
+This should get you libmiknet.a, which you can link against in your programs.
 
-    mv libmiknet.a /usr/local/lib/libmiknet.a
+To install (reccomended for new users), run the following as root
 
-Features
+    make install
 
-* TCP ~~and/or UDP~~
-* IPv4 and/or IPv6
-* Bandwidth caps
-* Thread safety
+For users unfamiliar with linking against libraries, perform the above command
+to install, and append the flag
+
+    -lmiknet
+
+to your compiler invocation.
