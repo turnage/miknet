@@ -33,6 +33,11 @@ int mikpeer (miknode_t *n)
 	n->fds[1 + pos].fd = sock;
 	n->fds[1 + pos].events = POLLIN;
 
+	miklist_t join = {0};
+	join.peer = pos;
+	join.pack = mikpack(MIK_INIT, NULL, 0);
+	n->packs = miklist_add(n->packs, &join);
+
 	return 0;
 }
 
