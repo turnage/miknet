@@ -155,8 +155,7 @@ int mikpeer_recv (mikpeer_t *p)
 
 	if (!size) {
 		/* peer disconnected */
-		char buffer[10] = {0};
-		recv(p->tcp, buffer, 10, 0);
+		recv(p->tcp, NULL, 0, 0);
 		miklist_t event = {0};
 		event.pack.peer = p->index;
 		event.pack.type = MIK_QUIT;
