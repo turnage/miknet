@@ -14,25 +14,6 @@ int mik_debug (int err)
 }
 
 /**
- *  This is a function for debugging (both while writing the library and with
- *  the library). It will represent an address in presentation form.
- *
- *  @a: the address, likely a casted struct sockaddr_storage pointer
- *  @s: length of the memory a points to
- *
- *  @return: the port number
- */
-int mik_print_addr (struct sockaddr *a, socklen_t s)
-{
-	char hostname[256] = {0};
-	char service[256] = {0};
-	getnameinfo(a, s, hostname, 256, service, 256, 0);
-	fprintf(stderr, "Bound to: %s:%s.\n", hostname, service);
-
-	return atoi(service);
-}
-
-/**
  *  Convert an error code into a human-readable string.
  *
  *  @err: error code
