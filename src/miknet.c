@@ -41,7 +41,7 @@ int mik_print_addr (struct sockaddr *a, socklen_t s)
  */
 const char *mik_errstr(int err)
 {
-	const char *str;
+	const char *str = NULL;
 
 	switch (err) {
 		case 0:	{

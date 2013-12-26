@@ -2,11 +2,11 @@
 
 int mikpeer (miknode_t *n)
 {
-	int sock, i, pos = 0;
-	struct sockaddr_storage addr;
-	socklen_t addrlen = sizeof(struct sockaddr_storage);
+	int sock = 0;
+	int i = 0;
+	int pos = 0;
 
-	sock = accept(n->tcp, (struct sockaddr *)&addr, &addrlen);
+	sock = accept(n->tcp, NULL, NULL);
 	if (sock < 0)
 		return mik_debug(ERR_SOCKET);
 
@@ -55,9 +55,14 @@ int mikpeer_connect(miknode_t *n, const char *a, uint16_t p)
 	if (n->peerc >= n->peermax)
 		return ERR_WOULD_FAULT;
 
-	int err, sock, yes = 1;
-	int pos = -1, j;
-	struct addrinfo hint = {0}, *li, *i;
+	int err = 0;
+	int sock = 0;
+	int yes = 1;
+	int pos = -1;
+	int j = 0;
+	struct addrinfo hint = {0};
+	struct addrinfo *li = NULL;
+	struct addrinfo *i = NULL;
 	char portstr[MIK_PORT_MAX] = {0};
 	sprintf(portstr, "%u", p);
 
@@ -144,6 +149,7 @@ int mikpeer_recv (mikpeer_t *p)
 	mikpack_t pack = {0};
 	miklist_t *e = p->node->packs;
 	int size = recv(p->tcp, &pack, sizeof(mikpack_t), MSG_PEEK);
+
 	if (size < 0)
 		mik_debug(ERR_SOCKET);
 

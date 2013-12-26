@@ -2,7 +2,7 @@
 
 mikpack_t mikpack (miktype_t type, void *data, uint16_t len)
 {
-	mikpack_t pack;
+	mikpack_t pack = {0};
 
 	pack.type = type;
 

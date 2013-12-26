@@ -2,7 +2,8 @@
 
 static int mik_sock (int *t, struct addrinfo *h)
 {
-	int err, yes = 1;
+	int err = 0;
+	int yes = 1;
 
 	*t = socket(h->ai_family, SOCK_STREAM, 0);
 	if (*t < 0)
@@ -17,10 +18,12 @@ static int mik_sock (int *t, struct addrinfo *h)
 
 static int mik_testbind (int s, struct addrinfo *h, const char *p)
 {
-	int err, bound = 0;
-	struct addrinfo *li, *i, c;
+	int err = 0;
+	int bound = 0;
+	struct addrinfo *li = NULL;
+	struct addrinfo *i = NULL;
+	struct addrinfo c = *h;
 
-	c = *h;
 	err = getaddrinfo(NULL, p, &c, &li);
 	
 	if (err < 0)
@@ -138,7 +141,8 @@ int miknode_poll (miknode_t *n, int t)
 	if (!n)
 		return ERR_MISSING_PTR;
 
-	int i, events = 0;
+	int i = 0;
+	int events = 0;
 	int err = poll(n->fds, 1 + n->peermax, t);
 
 	/* Connection on master TCP socket. */

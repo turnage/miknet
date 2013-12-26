@@ -2,9 +2,7 @@
 
 miklist_t *miklist (void *data)
 {
-	miklist_t *head;
-
-	head = calloc(1, sizeof(miklist_t));
+	miklist_t *head = calloc(1, sizeof(miklist_t));
 	memcpy(head, data, sizeof(miklist_t));
 
 	return head;
@@ -15,7 +13,8 @@ miklist_t *miklist_add (miklist_t *head, void *data)
 	if (!head)
 		return miklist (data);
 
-	miklist_t *i, *pos;
+	miklist_t *i = NULL;
+	miklist_t *pos = NULL;
 
 	for (i = head; i; i = i->next) {
 		pos = i;
