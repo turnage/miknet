@@ -214,6 +214,9 @@ int miknode_connect(miknode_t *n, const char *a, uint16_t p)
  */
 int miknode_send (mikpeer_t *p, ref *d, size_t len, uint32_t channel)
 {
+	if (len > MIK_PACK_MAX)
+		return ERR_WOULD_FAULT;
+
 	miklist_t command = {0};
 	miklist_t *cmds = p->node->commands;
 	command.pack = mikpack(MIK_DATA, d, len, channel);
