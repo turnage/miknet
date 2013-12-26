@@ -83,6 +83,7 @@ typedef struct mikpeer_t {
 	int index;
 	struct miknode_t *node;
 	int tcp;
+	void *data;
 	mikstate_t state;
 	uint32_t sent;
 	uint32_t recvd;
