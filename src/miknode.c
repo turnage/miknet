@@ -129,6 +129,145 @@ int miknode_config (miknode_t *n, uint16_t peers, uint32_t up, uint32_t down)
 }
 
 /**
+ *  Connect to an address.
+ *
+ *  @n: node
+ *  @a: address to connect to
+ *  @p: port to connect on
+ *
+ *  @return: index of the new peer
+ */
+int miknode_connect(miknode_t *n, const char *a, uint16_t p)
+{
+	if (n->peerc >= n->peermax)
+		return ERR_WOULD_FAULT;
+
+	int err = 0;
+	int sock = 0;
+	int yes = 1;
+	int pos = -1;
+	int j = 0;
+	struct addrinfo hint = {0};
+	struct addrinfo *li = NULL;
+	struct addrinfo *i = NULL;
+	char portstr[MIK_PORT_MAX] = {0};
+	sprintf(portstr, "%u", p);
+
+	if (n->ip == MIK_IPV4)
+		hint.ai_family = AF_INET;
+	else if (n->ip == MIK_IPV6)
+		hint.ai_family = AF_INET6;
+
+	hint.ai_socktype = SOCK_STREAM;
+
+	if (!a)
+		hint.ai_flags = AI_PASSIVE;
+
+	sock = socket(hint.ai_family, SOCK_STREAM, 0);
+	setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
+
+	err = getaddrinfo(a, portstr, &hint, &li);
+	if (err < 0)
+		return mik_debug(ERR_ADDRESS);
+
+	for (i = li; i; i = i->ai_next) {
+		err = connect(sock, i->ai_addr, i->ai_addrlen);
+		if (!err)
+			break;
+	}
+
+	freeaddrinfo(li);
+
+	if (err)
+		return mik_debug(ERR_CONNECT);
+
+	for (j = 0; j < n->peermax; ++j) {
+		if (n->peers[j].state == MIK_DISC) {
+			pos = j;
+			break;
+		}
+	}
+
+	if (pos >= 0) {
+		n->peers[pos].node = n;
+		n->peers[pos].index = pos;
+		n->peers[pos].state = MIK_CONN;
+		n->peers[pos].tcp = sock;
+		n->peers[pos].sent = 0;
+		n->peers[pos].recvd = 0;
+		n->fds[1 + pos].fd = sock;
+		n->fds[1 + pos].events = POLLIN;
+	}
+
+	return pos;
+}
+
+/**
+ *  Send data to a peer.
+ *
+ *  @p: peer to send to
+ *  @t: metadata for this packet
+ *  @d: data to send
+ *  @len: length of the data to send
+ *
+ *  @return: 0 on success
+ */
+int miknode_send (mikpeer_t *p, void *d, size_t len, uint32_t channel)
+{
+	miklist_t command = {0};
+	miklist_t *cmds = p->node->commands;
+	command.pack = mikpack(MIK_DATA, d, len, channel);
+	command.pack.peer = p->index;
+
+	p->node->commands = miklist_add(cmds, &command);
+
+	return 0;
+}
+
+/**
+ *  Receive data from a peer.
+ *
+ *  @p: peer to receive from
+ *
+ *  @return: 0 on success
+ */
+static int miknode_recv (mikpeer_t *p)
+{
+	mikpack_t pack = {0};
+	miklist_t *e = p->node->packs;
+	int size = recv(p->tcp, &pack, sizeof(mikpack_t), MSG_PEEK);
+
+	if (size < 0)
+		mik_debug(ERR_SOCKET);
+
+	if (!size) {
+		/* peer disconnected */
+		recv(p->tcp, NULL, 0, 0);
+		miklist_t event = {0};
+		event.pack.peer = p->index;
+		event.pack.type = MIK_QUIT;
+		p->node->packs = miklist_add(e, &event);
+		mikpeer_close(p);
+	} else {
+		if (pack.len > MIK_PACK_MAX)
+			return ERR_WOULD_FAULT;
+
+		recv(p->tcp, &pack, sizeof(mikpack_t), 0);
+		char *buffer = calloc(1, pack.len);
+		recv(p->tcp, buffer, pack.len, 0);
+
+		miklist_t event= {0};
+		event.pack = pack;
+		event.pack.peer = p->index;
+		event.pack.data = (void *)buffer;
+
+		p->node->packs = miklist_add(e, &event);
+	}
+
+	return 0;
+}
+
+/**
  *  Service the node. Execute commands in the queue and add incoming events.
  *
  *  @n: the node
@@ -154,7 +293,7 @@ int miknode_poll (miknode_t *n, int t)
 
 	for (i = 0; i < n->peermax; ++i) {
 		if (n->fds[1 + i].revents & POLLIN) {
-			mikpeer_recv(&n->peers[i]);
+			miknode_recv(&n->peers[i]);
 			n->fds[1 + i].revents = 0;
 			events++;
 		}

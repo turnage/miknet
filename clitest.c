@@ -23,17 +23,17 @@ int main (int argc, char **argv)
 
 	/* Connect to a peer. This function will return the slot
 	   in which the new peer's data is stored, or -1 on failure. */
-	int position = mikpeer_connect(&node, argv[1], 8000);
+	int position = miknode_connect(&node, argv[1], 8000);
 	if (position < 0){
 		fprintf(stderr, "Failed to connect node.\n");
 		return -1;
 	}
 
 	/* Queue some data to be sent to the peer. */
-	mikpeer_send(&node.peers[position], "Hello!", 7, 1);
+	miknode_send(&node.peers[position], "Hello!", 7, 1);
 
 	/* The server example program will take this as a shut down signal. */
-	mikpeer_send(&node.peers[position], "quit", 5, 1);
+	miknode_send(&node.peers[position], "quit", 5, 1);
 
 	/* Let the node execute queued commands and collect
 	   incoming packets. Provide it a ~maximum blocking
