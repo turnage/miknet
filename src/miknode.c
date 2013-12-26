@@ -152,6 +152,7 @@ int miknode_poll (miknode_t *n, int t)
 		if (n->fds[1 + i].revents & POLLIN) {
 			mikpeer_recv(&n->peers[i]);
 			n->fds[1 + i].revents = 0;
+			events++;
 		}
 	}
 
