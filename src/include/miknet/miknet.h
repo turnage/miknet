@@ -104,8 +104,6 @@ typedef struct miknode_t {
 
 int mik_debug (int err);
 
-int mik_print_addr(struct sockaddr *addr, socklen_t s);
-
 const char *mik_errstr(int err);
 
 mikpack_t mikpack (miktype_t type, void *data, uint16_t len, uint32_t channel);
