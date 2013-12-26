@@ -1,6 +1,6 @@
 #include <miknet/miknet.h>
 
-miklist_t *miklist (void *data)
+miklist_t *miklist (ref *data)
 {
 	miklist_t *head = calloc(1, sizeof(miklist_t));
 	memcpy(head, data, sizeof(miklist_t));
@@ -8,7 +8,7 @@ miklist_t *miklist (void *data)
 	return head;
 }
 
-miklist_t *miklist_add (miklist_t *head, void *data)
+miklist_t *miklist_add (miklist_t *head, ref *data)
 {
 	if (!head)
 		return miklist (data);

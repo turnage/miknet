@@ -212,7 +212,7 @@ int miknode_connect(miknode_t *n, const char *a, uint16_t p)
  *
  *  @return: 0 on success
  */
-int miknode_send (mikpeer_t *p, void *d, size_t len, uint32_t channel)
+int miknode_send (mikpeer_t *p, ref *d, size_t len, uint32_t channel)
 {
 	miklist_t command = {0};
 	miklist_t *cmds = p->node->commands;

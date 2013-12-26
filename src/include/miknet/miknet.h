@@ -26,6 +26,7 @@
 #define MIK_DEBUG 1
 
 struct miknode_t;
+typedef const void ref;
 
 enum {
 	ERR_MISSING_PTR  = -1,
@@ -107,11 +108,11 @@ int mik_debug (int err);
 
 const char *mik_errstr(int err);
 
-mikpack_t mikpack (miktype_t type, void *data, uint16_t len, uint32_t channel);
+mikpack_t mikpack (miktype_t type, ref *data, uint16_t len, uint32_t channel);
 
-miklist_t *miklist (void *data);
+miklist_t *miklist (ref *data);
 
-miklist_t *miklist_add (miklist_t *head, void *data);
+miklist_t *miklist_add (miklist_t *head, ref *data);
 
 miklist_t *miklist_next (miklist_t *head);
 
@@ -123,7 +124,7 @@ int miknode_config (miknode_t *n, uint16_t peers, uint32_t up, uint32_t down);
 
 int miknode_connect(miknode_t *n, const char *a, uint16_t p);
 
-int miknode_send (mikpeer_t *p, void *d, size_t len, uint32_t channel);
+int miknode_send (mikpeer_t *p, ref *d, size_t len, uint32_t channel);
 
 int miknode_poll (miknode_t *n, int t);
 

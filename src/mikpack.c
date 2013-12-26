@@ -1,6 +1,6 @@
 #include <miknet/miknet.h>
 
-mikpack_t mikpack (miktype_t type, void *data, uint16_t len, uint32_t channel)
+mikpack_t mikpack (miktype_t type, ref *data, uint16_t len, uint32_t channel)
 {
 	mikpack_t pack = {0};
 
