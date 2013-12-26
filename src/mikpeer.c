@@ -113,12 +113,12 @@ int mikpeer_connect(miknode_t *n, const char *a, uint16_t p)
  *
  *  @return: 0 on success
  */
-int mikpeer_send (mikpeer_t *p, miktype_t t, void *d, size_t len)
+int mikpeer_send (mikpeer_t *p, void *d, size_t len)
 {
 	miklist_t command = {0};
 	miklist_t *cmds = p->node->commands;
 	command.peer = p->index;
-	command.pack = mikpack(t, d, len);
+	command.pack = mikpack(MIK_DATA, d, len);
 
 	p->node->commands = miklist_add(cmds, &command);
 

@@ -129,7 +129,7 @@ int mikpeer (miknode_t *n);
 
 int mikpeer_connect(miknode_t *n, const char *a, uint16_t p);
 
-int mikpeer_send (mikpeer_t *p, miktype_t t, void *d, size_t len);
+int mikpeer_send (mikpeer_t *p, void *d, size_t len);
 
 int mikpeer_recv (mikpeer_t *p);
 
