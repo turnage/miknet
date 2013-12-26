@@ -48,7 +48,7 @@ int main (int argc, char **argv)
 			} else if (packet.type == MIK_DATA) {
 				printf("Data from peer: %s\n", packet.data);
 
-				if (strcmp(packet.data, "quit"))
+				if (!strncmp(packet.data, "quit\0", 5))
 					quit = 1;
 			}
 
