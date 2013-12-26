@@ -51,7 +51,7 @@ int mikpeer_connect(miknode_t *n, const char *a, uint16_t p)
 		return ERR_WOULD_FAULT;
 
 	int err, sock, yes = 1;
-	int pos = 0, j;
+	int pos = -1, j;
 	struct addrinfo hint = {0}, *li, *i;
 	char portstr[MIK_PORT_MAX] = {0};
 	sprintf(portstr, "%u", p);
@@ -91,14 +91,16 @@ int mikpeer_connect(miknode_t *n, const char *a, uint16_t p)
 		}
 	}
 
-	n->peers[pos].node = n;
-	n->peers[pos].index = pos;
-	n->peers[pos].state = MIK_CONN;
-	n->peers[pos].tcp = sock;
-	n->peers[pos].sent = 0;
-	n->peers[pos].recvd = 0;
-	n->fds[1 + pos].fd = sock;
-	n->fds[1 + pos].events = POLLIN;
+	if (pos >= 0) {
+		n->peers[pos].node = n;
+		n->peers[pos].index = pos;
+		n->peers[pos].state = MIK_CONN;
+		n->peers[pos].tcp = sock;
+		n->peers[pos].sent = 0;
+		n->peers[pos].recvd = 0;
+		n->fds[1 + pos].fd = sock;
+		n->fds[1 + pos].events = POLLIN;
+	}
 
 	return pos;
 }
