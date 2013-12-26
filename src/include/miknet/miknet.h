@@ -44,13 +44,6 @@ typedef enum {
 } mikstate_t;
 
 typedef enum {
-	MIK_FAST = 1,
-	MIK_UDP  = 1,
-	MIK_SAFE = 2,
-	MIK_TCP  = 2
-} miknet_t;
-
-typedef enum {
 	MIK_IPV4 = 1,
 	MIK_IPV6 = 2
 } mikip_t;
