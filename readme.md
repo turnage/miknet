@@ -19,3 +19,8 @@ To install, clone the repo and
 
 Once it is installed, you can write programs with it by appending ```-lmiknet``` to
 your compiler invocation, and include ```<miknet/miknet.h>``` in your source code.
+
+Note: There are helpful debugging messages available. If you want to see these
+while programming with miknet, replace ```cmake ..``` above with this command:
+```cmake .. -DMIK_DEBUG=on```. You will probably not want this version when you
+release your program, however.

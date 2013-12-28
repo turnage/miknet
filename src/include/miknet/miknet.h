@@ -19,8 +19,6 @@
 #define MIK_PORT_MAX 6
 #define MIK_MEMEXP   100
 
-#define MIK_DEBUG 1
-
 struct miknode_t;
 typedef const void ref;
 
