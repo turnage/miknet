@@ -18,4 +18,4 @@ To install, clone the repo and
 ```make install``` will need to be run as root.
 
 Once it is installed, you can write programs with it by appending ```-lmiknet``` to
-your compiler invocation, and include <miknet/miknet.h> in your source code.
+your compiler invocation, and include ```<miknet/miknet.h>``` in your source code.
