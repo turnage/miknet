@@ -62,9 +62,31 @@ static int mik_bind (int *t, struct addrinfo h, uint16_t p)
 	return mik_testbind(*t, &h, portstr);
 }
 
+static int miknode_config (miknode_t *n, uint16_t peers)
+{
+        if (!n)
+                return ERR_MISSING_PTR;
+
+        n->peermax = peers;
+        n->peerc = 0;
+
+        n->peers = calloc(n->peermax, sizeof(mikpeer_t));
+        n->fds = calloc(n->peermax + 1, sizeof(mikpeer_t));
+        if (!n->peers || !n->fds)
+                return mik_debug(ERR_MEMORY);
+
+        n->fds[0].fd = n->tcp;
+        n->fds[0].events = POLLIN;
+        memset(&n->packs, 0, sizeof(mikvec_t));
+        memset(&n->commands, 0, sizeof(mikvec_t));
+
+        listen(n->tcp, n->peermax);
+
+        return 0;
+}
+
 /**
- *  Create a miknode on the network level. It does not need to be ready for use,
- *  only ready for configuration.
+ *  Create a miknode on the network level. It needs to be ready to use.
  *
  *  @n: the node
  *  @ip: IP type, 4 or 6
@@ -92,38 +114,6 @@ int miknode (miknode_t *n, mikip_t ip, uint16_t port, uint16_t peers)
 	mik_bind(&n->tcp, hint, port);
 
 	miknode_config(n, peers);
-
-	return 0;
-}
-
-/**
- *  Prepare a miknode for use.
- *
- *  @peers: maximum amount of peers
- *  @up: up bandwidth limit (bytes/sec)
- *  @down: down bandwidth limit (bytes/sec)
- *
- *  @return: 0 on success
- */
-static int miknode_config (miknode_t *n, uint16_t peers)
-{
-	if (!n)
-		return ERR_MISSING_PTR;
-
-	n->peermax = peers;
-	n->peerc = 0;
-
-	n->peers = calloc(n->peermax, sizeof(mikpeer_t));
-	n->fds = calloc(n->peermax + 1, sizeof(mikpeer_t));
-	if (!n->peers || !n->fds)
-		return mik_debug(ERR_MEMORY);
-
-	n->fds[0].fd = n->tcp;
-	n->fds[0].events = POLLIN;
-	memset(&n->packs, 0, sizeof(mikvec_t));
-	memset(&n->commands, 0, sizeof(mikvec_t));
-
-	listen(n->tcp, n->peermax);
 
 	return 0;
 }
