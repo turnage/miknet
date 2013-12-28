@@ -85,7 +85,6 @@ typedef struct mikpeer_t {
 
 typedef struct miknode_t {
 	int tcp;
-	int udp;
 	mikip_t ip;
 	struct pollfd *fds;
 	mikpeer_t *peers;
@@ -93,8 +92,6 @@ typedef struct miknode_t {
 	uint16_t peermax;
 	mikvec_t packs;
 	mikvec_t commands;
-	uint32_t upcap;
-	uint32_t downcap;
 } miknode_t;
 
 int mik_debug (int err);
@@ -115,9 +112,7 @@ mikvec_t mikvec_clear (mikvec_t vector);
 
 mikvec_t mikvec_close (mikvec_t vector);
 
-int miknode (miknode_t *n, mikip_t ip, uint16_t port);
-
-int miknode_config (miknode_t *n, uint16_t peers, uint32_t up, uint32_t down);
+int miknode (miknode_t *n, mikip_t ip, uint16_t port, uint16_t peers);
 
 int miknode_connect(miknode_t *n, const char *a, uint16_t p);
 
