@@ -72,7 +72,7 @@ static int mik_bind (int *t, struct addrinfo h, uint16_t p)
  *
  *  @return: 0 on success
  */
-int miknode (miknode_t *n, mikip_t ip, uint16_t port)
+int miknode (miknode_t *n, mikip_t ip, uint16_t port, uint16_t peers)
 {
 	if (!n)
 		return ERR_MISSING_PTR;
@@ -91,6 +91,8 @@ int miknode (miknode_t *n, mikip_t ip, uint16_t port)
 
 	mik_bind(&n->tcp, hint, port);
 
+	miknode_config(n, peers);
+
 	return 0;
 }
 
@@ -103,15 +105,13 @@ int miknode (miknode_t *n, mikip_t ip, uint16_t port)
  *
  *  @return: 0 on success
  */
-int miknode_config (miknode_t *n, uint16_t peers, uint32_t up, uint32_t down)
+static int miknode_config (miknode_t *n, uint16_t peers)
 {
 	if (!n)
 		return ERR_MISSING_PTR;
 
 	n->peermax = peers;
 	n->peerc = 0;
-	n->upcap = up;
-	n->downcap = down;
 
 	n->peers = calloc(n->peermax, sizeof(mikpeer_t));
 	n->fds = calloc(n->peermax + 1, sizeof(mikpeer_t));
