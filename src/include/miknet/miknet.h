@@ -17,6 +17,7 @@
 
 #define MIK_PACK_MAX 1200
 #define MIK_PORT_MAX 6
+#define MIK_MEMEXP   100
 
 #define MIK_DEBUG 1
 
@@ -63,10 +64,14 @@ typedef struct mikpack_t {
 	void *data;
 } mikpack_t;
 
-typedef struct miklist_t {
-	struct miklist_t *next;
-	mikpack_t pack;
-} miklist_t;
+typedef struct mikvec_t {
+	size_t size;
+	size_t memsize;
+	int index;
+	int rs_mall; /* rounds since malloc */
+	uint64_t total_size; /* cumulative; counts and resets with rs_mall */
+	mikpack_t *data;
+} mikvec_t;
 
 typedef struct mikpeer_t {
 	int index;
@@ -86,25 +91,29 @@ typedef struct miknode_t {
 	mikpeer_t *peers;
 	uint16_t peerc;
 	uint16_t peermax;
-	miklist_t *packs;
-	miklist_t *commands;
+	mikvec_t packs;
+	mikvec_t commands;
 	uint32_t upcap;
 	uint32_t downcap;
 } miknode_t;
 
 int mik_debug (int err);
 
+mikpack_t *mikevent (miknode_t *node);
+
 const char *mik_errstr(int err);
 
 mikpack_t mikpack (miktype_t type, ref *data, uint16_t len, uint32_t channel);
 
-miklist_t *miklist (ref *data);
+mikvec_t mikvec(mikpack_t data);
 
-miklist_t *miklist_add (miklist_t *head, ref *data);
+mikvec_t mikvec_add (mikvec_t vector, mikpack_t data);
 
-miklist_t *miklist_next (miklist_t *head);
+mikpack_t *mikvec_next (mikvec_t *vector);
 
-void miklist_close (miklist_t *head);
+mikvec_t mikvec_clear (mikvec_t vector);
+
+mikvec_t mikvec_close (mikvec_t vector);
 
 int miknode (miknode_t *n, mikip_t ip, uint16_t port);
 
