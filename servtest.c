@@ -9,16 +9,9 @@ int main (int argc, char **argv)
 	miknode_t node = {0};
 
 	/* Create the node and bind it to a port. */
-	err = miknode(&node, MIK_IPV4, 8000);
+	err = miknode(&node, MIK_IPV4, 8000, 20);
 	if (err < 0) {
 		fprintf(stderr, "Failed to create node.\n");
-		return -1;
-	}
-
-	/* Set the peer and bandwidth limits for the node. */
-	err = miknode_config(&node, 20, 0, 0);
-	if (err < 0){
-		fprintf(stderr, "Failed to configure node.\n");
 		return -1;
 	}
 
