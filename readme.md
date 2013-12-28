@@ -1,31 +1,21 @@
 Miknet
 ================================================================================
 
-Never fill a sockaddr_in struct by hand again! Miknet is a networking library
-for people that like networking libraries.
+Never fill a sockaddr_in struct by hand again! Miknet is a TCP networking
+library. It's fairly simple to use; no networking knowledge is required. It is
+also IPV6 friendly!
 
-    Notice: under construction.
+For up-to-date information whether you should use, and how you can use Miknet,
+visit [the wiki](https://github.com/PaytonTurnage/Miknet/wiki).
 
-Miknet can be installed on POSIX compliant Unix-like operating systems and
-Windows. For Windows, compile in Cygwin or Msys.
+To install, clone the repo and
 
-Run these
-
-    git clone https://github.com/PaytonTurnage/Miknet.git && cd Miknet
-    mkdir build
-    cd build
+    mkdir build && cd build
     cmake ..
-    cmake --build .
-
-This should get you libmiknet.a, which you can link against in your programs.
-
-To install (reccomended for new users), run the following as root
-
+    make
     make install
 
-For users unfamiliar with linking against libraries, perform the above command
-to install, and append the flag
+```make install``` will need to be run as root.
 
-    -lmiknet
-
-to your compiler invocation.
+Once it is installed, you can write programs with it by appending -lmiknet to
+your compiler invocation, and include <miknet/miknet.h> in your source code.
