@@ -14,6 +14,24 @@ int mik_debug (int err)
 }
 
 /**
+ *  Fetch the next event for the programmer to handle.
+ *
+ *  @node: pointer to the node
+ *
+ *  @return: pointer to the next event or NULL
+ */
+mikpack_t *mikevent (miknode_t *node)
+{
+	mikpack_t *event = mikvec_next(&node->packs);
+
+	if (!event)
+		node->packs = mikvec_clear(node->packs);
+
+	return event;
+}
+
+
+/**
  *  Convert an error code into a human-readable string.
  *
  *  @err: error code

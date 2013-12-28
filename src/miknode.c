@@ -120,8 +120,8 @@ int miknode_config (miknode_t *n, uint16_t peers, uint32_t up, uint32_t down)
 
 	n->fds[0].fd = n->tcp;
 	n->fds[0].events = POLLIN;
-	n->packs = NULL;
-	n->commands = NULL;
+	memset(&n->packs, 0, sizeof(mikvec_t));
+	memset(&n->commands, 0, sizeof(mikvec_t));
 
 	listen(n->tcp, n->peermax);
 
@@ -217,12 +217,10 @@ int miknode_send (mikpeer_t *p, ref *d, size_t len, uint32_t channel)
 	if (len > MIK_PACK_MAX)
 		return ERR_WOULD_FAULT;
 
-	miklist_t command = {0};
-	miklist_t *cmds = p->node->commands;
-	command.pack = mikpack(MIK_DATA, d, len, channel);
-	command.pack.peer = p->index;
+	mikpack_t command = mikpack(MIK_DATA, d, len, channel);
+	command.peer = p->index;
 
-	p->node->commands = miklist_add(cmds, &command);
+	p->node->commands = mikvec_add(p->node->commands, command);
 
 	return 0;
 }
@@ -237,7 +235,6 @@ int miknode_send (mikpeer_t *p, ref *d, size_t len, uint32_t channel)
 static int miknode_recv (mikpeer_t *p)
 {
 	mikpack_t pack = {0};
-	miklist_t *e = p->node->packs;
 	int size = recv(p->tcp, &pack, sizeof(mikpack_t), MSG_PEEK);
 
 	if (size < 0)
@@ -246,10 +243,10 @@ static int miknode_recv (mikpeer_t *p)
 	if (!size) {
 		/* peer disconnected */
 		recv(p->tcp, NULL, 0, 0);
-		miklist_t event = {0};
-		event.pack.peer = p->index;
-		event.pack.type = MIK_QUIT;
-		p->node->packs = miklist_add(e, &event);
+		mikpack_t event = {0};
+		event.peer = p->index;
+		event.type = MIK_QUIT;
+		p->node->packs = mikvec_add(p->node->packs, event);
 		mikpeer_close(p);
 	} else {
 		if (pack.len > MIK_PACK_MAX)
@@ -259,12 +256,11 @@ static int miknode_recv (mikpeer_t *p)
 		char *buffer = calloc(1, pack.len);
 		recv(p->tcp, buffer, pack.len, 0);
 
-		miklist_t event= {0};
-		event.pack = pack;
-		event.pack.peer = p->index;
-		event.pack.data = (void *)buffer;
+		mikpack_t event = pack;
+		event.peer = p->index;
+		event.data = (void *)buffer;
 
-		p->node->packs = miklist_add(e, &event);
+		p->node->packs = mikvec_add(p->node->packs, event);
 		p->recvd += sizeof(mikpack_t) + pack.len;
 	}
 
@@ -303,21 +299,28 @@ int miknode_poll (miknode_t *n, int t)
 		}
 	}
 
-	while (n->commands) {
-		int sock = n->peers[n->commands->pack.peer].tcp;
-		void *data = (void *)n->commands->pack.data;
-		int length = sizeof(mikpack_t) + n->commands->pack.len;
+	i = 0;
+	while (i < n->commands.size) {
+		int sock = n->peers[n->commands.data[i].peer].tcp;
+		void *data = (void *)n->commands.data[i].data;
+		int pack_length = n->commands.data[i].len;
+		int length = sizeof(mikpack_t) + pack_length;
 		char buffer[length];
 
 		memset(buffer, 0, length);
-		memcpy(buffer, &n->commands->pack, sizeof(mikpack_t));
-		memcpy(buffer + sizeof(mikpack_t), data, n->commands->pack.len);
+		memcpy(buffer, &n->commands.data[i], sizeof(mikpack_t));
+		memcpy(buffer + sizeof(mikpack_t), data, pack_length);
 
 		int sent = send(sock, buffer, length, 0);
-		n->peers[n->commands->pack.peer].sent += sent;
+		n->peers[n->commands.data[i].peer].sent += sent;
 
-		n->commands = miklist_next(n->commands);
+		i++;
 	}
+
+	n->commands = mikvec_clear(n->commands);
+
+	n->commands.rs_mall++;
+	n->packs.rs_mall++;
 
 	return events;
 }
@@ -329,8 +332,8 @@ int miknode_poll (miknode_t *n, int t)
  */
 void miknode_close (miknode_t *n)
 {
-	miklist_close(n->commands);
-	miklist_close(n->packs);
+	n->commands = mikvec_close(n->commands);
+	n->packs = mikvec_close(n->packs);
 
 	int i;
 	for (i = 0; i < n->peermax; ++i)
