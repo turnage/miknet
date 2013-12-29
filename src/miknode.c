@@ -92,7 +92,7 @@ static int miknode_config (miknode_t *n, uint16_t peers)
  *  @ip: IP type, 4 or 6
  *  @port: requested port or 0 for autoassign
  *
- *  @return: 0 on success
+ *  @return: the port the node listens on, or an error less than 0
  */
 int miknode (miknode_t *n, mikip_t ip, uint16_t port, uint16_t peers)
 {
@@ -111,11 +111,11 @@ int miknode (miknode_t *n, mikip_t ip, uint16_t port, uint16_t peers)
 	hint.ai_flags = AI_PASSIVE;
 	hint.ai_socktype = SOCK_STREAM;
 
-	mik_bind(&n->tcp, hint, port);
+	int port = mik_bind(&n->tcp, hint, port);
 
 	miknode_config(n, peers);
 
-	return 0;
+	return port;
 }
 
 /**
