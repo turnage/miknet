@@ -22,6 +22,9 @@ int mik_debug (int err)
  */
 mikpack_t *mikevent (miknode_t *node)
 {
+	if (!node)
+		return NULL;
+
 	mikpack_t *event = mikvec_next(&node->packs);
 
 	if (!event)

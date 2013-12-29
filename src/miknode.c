@@ -129,6 +129,9 @@ int miknode (miknode_t *n, mikip_t ip, uint16_t port, uint16_t peers)
  */
 int miknode_connect(miknode_t *n, const char *a, uint16_t p)
 {
+	if (!n)
+		return ERR_MISSING_PTR;
+
 	if (n->peerc >= n->peermax)
 		return ERR_WOULD_FAULT;
 
@@ -206,6 +209,9 @@ int miknode_connect(miknode_t *n, const char *a, uint16_t p)
  */
 int miknode_send (mikpeer_t *p, ref *d, size_t len, uint32_t channel)
 {
+	if (!p || !d)
+		return ERR_MISSING_PTR;
+
 	if (len > MIK_PACK_MAX)
 		return ERR_WOULD_FAULT;
 
@@ -229,6 +235,9 @@ int miknode_send (mikpeer_t *p, ref *d, size_t len, uint32_t channel)
  */
 static int miknode_recv (mikpeer_t *p)
 {
+	if (!p)
+		return ERR_MISSING_PTR;
+
 	mikpack_t pack = {0};
 	int size = recv(p->tcp, &pack, sizeof(mikpack_t), MSG_PEEK);
 
@@ -328,6 +337,9 @@ int miknode_poll (miknode_t *n, int t)
  */
 void miknode_close (miknode_t *n)
 {
+	if (!n)
+		return;
+
 	n->commands = mikvec_close(n->commands);
 	n->packs = mikvec_close(n->packs);
 

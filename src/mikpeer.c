@@ -2,6 +2,9 @@
 
 int mikpeer (miknode_t *n)
 {
+	if (!n)
+		return ERR_MISSING_PTR;
+
 	int sock = 0;
 	int i = 0;
 	int pos = 0;
@@ -42,6 +45,9 @@ int mikpeer (miknode_t *n)
 
 int mikpeer_close (mikpeer_t *p)
 {
+	if (!p)
+		return ERR_MISSING_PTR;
+
 	p->node->fds[1 + p->index].fd = 0;
 
 	close(p->tcp);
