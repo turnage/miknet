@@ -111,11 +111,11 @@ int miknode (miknode_t *n, mikip_t ip, uint16_t port, uint16_t peers)
 	hint.ai_flags = AI_PASSIVE;
 	hint.ai_socktype = SOCK_STREAM;
 
-	int port = mik_bind(&n->tcp, hint, port);
+	int ret = mik_bind(&n->tcp, hint, port);
 
 	miknode_config(n, peers);
 
-	return port;
+	return ret;
 }
 
 /**
@@ -208,6 +208,9 @@ int miknode_send (mikpeer_t *p, ref *d, size_t len, uint32_t channel)
 {
 	if (len > MIK_PACK_MAX)
 		return ERR_WOULD_FAULT;
+
+	if (p->state == MIK_DISC)
+		return ERR_CONNECT;
 
 	mikpack_t command = mikpack(MIK_DATA, d, len, channel);
 	command.peer = p->index;
