@@ -15,13 +15,7 @@ int mik_debug (int err)
 
 void *try_alloc(void *ptr, size_t bytes)
 {
-	int i = 0;
-	void *ret = NULL;
-
-	do {
-		ret = realloc(ptr, bytes);
-		i++;
-	} while (!ret && (i < MIK_MEMTRY));
+	void *ret = realloc(ptr, bytes);
 
 	if (!ret && MIK_DEBUG)
 		fprintf(stderr, "Memory failure; ptr: %p.\n", ptr);
