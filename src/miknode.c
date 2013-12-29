@@ -189,6 +189,8 @@ int miknode_connect(miknode_t *n, const char *a, uint16_t p)
 		n->fds[1 + pos].events = POLLIN;
 	}
 
+	n->peerc++;
+
 	return pos;
 }
 
@@ -237,6 +239,7 @@ static int miknode_recv (mikpeer_t *p)
 		event.peer = p->index;
 		event.type = MIK_QUIT;
 		p->node->packs = mikvec_add(p->node->packs, event);
+		p->node->peerc--;
 		mikpeer_close(p);
 	} else {
 		if (pack.len > MIK_PACK_MAX)
