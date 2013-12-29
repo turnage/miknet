@@ -18,6 +18,7 @@
 #define MIK_PACK_MAX 1200
 #define MIK_PORT_MAX 6
 #define MIK_MEMEXP   100
+#define MIK_MEMTRY   10
 
 struct miknode_t;
 typedef const void ref;
@@ -93,6 +94,8 @@ typedef struct miknode_t {
 } miknode_t;
 
 int mik_debug (int err);
+
+void *try_alloc(void *ptr, size_t bytes);
 
 mikpack_t *mikevent (miknode_t *node);
 

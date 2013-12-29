@@ -13,6 +13,22 @@ int mik_debug (int err)
 	return err;
 }
 
+void *try_alloc(void *ptr, size_t bytes)
+{
+	int i = 0;
+	void *ret = NULL;
+
+	do {
+		ret = realloc(ptr, bytes);
+		i++;
+	} while (!ret && (i < MIK_MEMTRY));
+
+	if (!ret && MIK_DEBUG)
+		fprintf(stderr, "Memory failure; ptr: %p.\n", ptr);
+
+	return ret ? ret : ptr;
+}
+
 /**
  *  Fetch the next event for the programmer to handle.
  *
