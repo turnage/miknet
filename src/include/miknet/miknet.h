@@ -23,6 +23,8 @@
 #define MIK_LEN_SZ   2
 #define MIK_META_SZ  6
 
+extern uint32_t MIK_TCP_MAX;
+
 struct miknode_t;
 typedef const void ref;
 
@@ -105,6 +107,8 @@ typedef struct miknode_t {
 int mik_debug (int err);
 
 void *try_alloc(void *ptr, size_t bytes);
+
+void mik_set_readsize (uint32_t size);
 
 mikmeta_t mik_read_meta (char *meta);
 

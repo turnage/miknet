@@ -1,5 +1,7 @@
 #include <miknet/miknet.h>
 
+uint32_t MIK_TCP_MAX = MIK_PACK_MAX;
+
 /**
  *  Call this when something goes wrong and you need to know why without making
  *  things ugly.
@@ -21,6 +23,16 @@ void *try_alloc(void *ptr, size_t bytes)
 		fprintf(stderr, "Memory failure; ptr: %p.\n", ptr);
 
 	return ret ? ret : ptr;
+}
+
+/**
+ *  Set the TCP read size (for MIK_BARE peers).
+ *
+ *  @size: the new read size
+ */
+void mik_set_readsize (uint32_t size)
+{
+	MIK_TCP_MAX = size;
 }
 
 /**

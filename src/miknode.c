@@ -271,8 +271,9 @@ static int miknode_recv (mikpeer_t *p)
 			event.channel = data.channel;
 			event.len = data.len;
 		} else if (p->state == MIK_BARE) {
-			char buffer[MIK_PACK_MAX] = {0};
-			int len = recv(p->tcp, buffer, MIK_PACK_MAX, 0);
+			char buffer[MIK_TCP_MAX];
+			memset(buffer, 0, MIK_TCP_MAX);
+			int len = recv(p->tcp, buffer, MIK_TCP_MAX, 0);
 
 			tmp = try_alloc(NULL, len);
 			memcpy(tmp, buffer, len);
