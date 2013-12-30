@@ -119,6 +119,52 @@ int miknode (miknode_t *n, mikip_t ip, uint16_t port, uint16_t peers)
 }
 
 /**
+ *  Set flags for a miknode.
+ *  
+ *  @n: the node
+ *  @flags: the flags to set
+ *  
+ *  @return: 0 on success, or an error if less than 0
+**/
+int miknode_set_flags(miknode_t *n, unsigned int flags) {
+	if(!n)
+		return ERR_MISSING_PTR;
+	
+	n->flags |= flags;
+	return 0;
+}
+
+/**
+ *  Unset flags for a miknode.
+ *  
+ *  @n: the node
+ *  @flags: the flags to unset
+ *  
+ *  @return: 0 on success, or an error if less than 0
+**/
+int miknode_unset_flags(miknode_t *n, unsigned int flags) {
+	if(!n)
+		return ERR_MISSING_PTR;
+	
+	n->flags &= ~flags;
+	return 0;
+}
+
+/**
+ *  Check if any of a set of flags are set.
+ *  
+ *  @n: the node
+ *  @flags: the flags to check
+ *  
+ *  @return: non-zero if any of the specified flags are set, 0 otherwise or on error
+**/
+int miknode_check_flags(miknode_t *n, unsigned int flags) {
+	if(!n)
+		return 0;
+	return (n->flags & flags);
+}
+
+/**
  *  Connect to an address.
  *
  *  @n: node
@@ -186,6 +232,7 @@ int miknode_connect(miknode_t *n, const char *a, uint16_t p)
 		n->peers[pos].index = pos;
 		n->peers[pos].state = MIK_CONN;
 		n->peers[pos].tcp = sock;
+		n->peers[pos].flags = n->flags;
 		n->peers[pos].sent = 0;
 		n->peers[pos].recvd = 0;
 		n->fds[1 + pos].fd = sock;
