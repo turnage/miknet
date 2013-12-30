@@ -238,13 +238,13 @@ static int miknode_recv (mikpeer_t *p)
 	if (!p)
 		return ERR_MISSING_PTR;
 
-	mikpack_t pack = {0};
-	int size = recv(p->tcp, &pack, sizeof(mikpack_t), MSG_PEEK);
+	char buffer[MIK_META_SZ] = {0};
+	int size = recv(p->tcp, buffer, MIK_META_SZ, MSG_PEEK);
+	mikmeta_t data = mik_read_meta(buffer);
 
-	if (size < 0)
+	if (size < 0) {
 		mik_debug(ERR_SOCKET);
-
-	if (!size) {
+	} else if (!size) {
 		/* peer disconnected */
 		recv(p->tcp, NULL, 0, 0);
 		mikpack_t event = {0};
@@ -254,19 +254,23 @@ static int miknode_recv (mikpeer_t *p)
 		p->node->peerc--;
 		mikpeer_close(p);
 	} else {
-		if (pack.len > MIK_PACK_MAX)
+		if (data.len > MIK_PACK_MAX)
 			return ERR_WOULD_FAULT;
 
-		recv(p->tcp, &pack, sizeof(mikpack_t), 0);
-		char *buffer = calloc(1, pack.len);
-		recv(p->tcp, buffer, pack.len, 0);
+		recv(p->tcp, buffer, MIK_META_SZ, 0);
 
-		mikpack_t event = pack;
+		void *tmp = try_alloc(NULL, data.len);
+		recv(p->tcp, tmp, data.len, 0);
+
+		mikpack_t event = {0};
+		event.type = data.type;
+		event.channel = data.channel;
+		event.len = data.len;
 		event.peer = p->index;
-		event.data = (void *)buffer;
+		event.data = tmp;
 
 		p->node->packs = mikvec_add(p->node->packs, event);
-		p->recvd += sizeof(mikpack_t) + pack.len;
+		p->recvd += MIK_META_SZ + event.len;
 	}
 
 	return 0;
@@ -308,15 +312,16 @@ int miknode_poll (miknode_t *n, int t)
 	while (i < n->commands.size) {
 		int sock = n->peers[n->commands.data[i].peer].tcp;
 		void *data = (void *)n->commands.data[i].data;
-		int pack_length = n->commands.data[i].len;
-		int length = sizeof(mikpack_t) + pack_length;
-		char buffer[length];
+		int len = n->commands.data[i].len;
+		char buffer[MIK_META_SZ + len];
 
-		memset(buffer, 0, length);
-		memcpy(buffer, &n->commands.data[i], sizeof(mikpack_t));
-		memcpy(buffer + sizeof(mikpack_t), data, pack_length);
+		mik_write_meta(n->commands.data[i], buffer);
+		memcpy(buffer + MIK_META_SZ, n->commands.data[i].data, len);
 
-		int sent = send(sock, buffer, length, 0);
+		int sent = send(sock, buffer, MIK_META_SZ + len, 0);
+		if (sent < 0)
+			mik_debug(ERR_SOCKET);
+
 		n->peers[n->commands.data[i].peer].sent += sent;
 
 		i++;

@@ -24,6 +24,53 @@ void *try_alloc(void *ptr, size_t bytes)
 }
 
 /**
+ *  Interpret metadata from a character array (for receiving packets).
+ *
+ *  @meta: pointer to the data read of the packet header
+ *
+ *  @return: a mikmeta_t object built from the header
+ */
+mikmeta_t mik_read_meta (char *meta)
+{
+	mikmeta_t data = {0};
+
+	if (!meta)
+		return data;
+
+	memcpy(&data.type, meta, MIK_TYPE_SZ);
+	memcpy(&data.channel, meta + MIK_TYPE_SZ, MIK_CHAN_SZ);
+	memcpy(&data.len, meta + MIK_TYPE_SZ + MIK_CHAN_SZ, MIK_LEN_SZ);
+
+	data.channel = ntohl(data.channel);
+	data.len = ntohs(data.len);
+
+	return data;
+}
+
+/**
+ *  Encode a packet header for sending safely over the network.
+ *
+ *  @data: the data to be written
+ *  @meta: a pointer to a char array of at least length MIK_META_SZ
+ *
+ *  @return: 0 on success; and error code less than 0 otherwise
+ */
+int mik_write_meta (mikpack_t data, char *meta)
+{
+	if (!meta)
+		return ERR_MISSING_PTR;
+
+	data.channel = htonl(data.channel);
+	data.len = htons(data.len);
+
+	memcpy(meta, &data.type, MIK_TYPE_SZ);
+	memcpy(meta + MIK_TYPE_SZ, &data.channel, MIK_CHAN_SZ);
+	memcpy(meta + MIK_TYPE_SZ + MIK_CHAN_SZ, &data.len, MIK_LEN_SZ);
+
+	return 0;
+}
+
+/**
  *  Fetch the next event for the programmer to handle.
  *
  *  @node: pointer to the node
