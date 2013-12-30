@@ -31,7 +31,6 @@ int mikpeer (miknode_t *n)
 	n->peers[pos].index = pos;
 	n->peers[pos].state = MIK_CONN;
 	n->peers[pos].tcp = sock;
-	n->peers[pos].flags = n->flags;
 	n->peers[pos].sent = 0;
 	n->peers[pos].recvd = 0;
 	n->fds[1 + pos].fd = sock;
@@ -59,26 +58,4 @@ int mikpeer_close (mikpeer_t *p)
 	p->recvd = 0;
 
 	return 0;
-}
-
-int mikpeer_set_flags(mikpeer_t *p, unsigned int flags) {
-	if(!p)
-		return ERR_MISSING_PTR;
-	
-	p->flags |= flags;
-	return 0;
-}
-
-int mikpeer_unset_flags(mikpeer_t *p, unsigned int flags) {
-	if(!p)
-		return ERR_MISSING_PTR;
-	
-	p->flags &= ~flags;
-	return 0;
-}
-
-int mikpeer_check_flags(mikpeer_t *p, unsigned int flags) {
-	if(!p)
-		return 0;
-	return (p->flags & flags);
 }

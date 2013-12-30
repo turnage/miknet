@@ -82,7 +82,6 @@ typedef struct mikpeer_t {
 	int index;
 	struct miknode_t *node;
 	int tcp;
-	uint32_t flags;
 	void *data;
 	mikstate_t state;
 	uint32_t sent;
@@ -138,9 +137,5 @@ void miknode_close (miknode_t *n);
 int mikpeer (miknode_t *n);
 
 int mikpeer_close (mikpeer_t *p);
-
-int mikpeer_set_flags(mikpeer_t *n, unsigned int flags);
-int mikpeer_unset_flags(mikpeer_t *n, unsigned int flags);
-int mikpeer_check_flags(mikpeer_t *n, unsigned int flags);
 
 #endif /* miknet_h */
