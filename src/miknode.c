@@ -311,7 +311,6 @@ int miknode_poll (miknode_t *n, int t)
 	i = 0;
 	while (i < n->commands.size) {
 		int sock = n->peers[n->commands.data[i].peer].tcp;
-		void *data = (void *)n->commands.data[i].data;
 		int len = n->commands.data[i].len;
 		char buffer[MIK_META_SZ + len];
 
