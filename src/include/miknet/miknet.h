@@ -44,7 +44,8 @@ enum {
 
 typedef enum {
 	MIK_DISC = 0,
-	MIK_CONN = 2
+	MIK_BARE = 2,
+	MIK_CONN = 3
 } mikstate_t;
 
 typedef enum {

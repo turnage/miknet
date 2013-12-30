@@ -43,6 +43,27 @@ int mikpeer (miknode_t *n)
 	return 0;
 }
 
+/**
+ *  If the peer is on the miknet protocol, strip it to TCP. If it is on the
+ *  TCP protocol, add miknet to it.
+ *
+ *  @p: the peer to switch protocols for
+ *
+ *  @return: 0 on success; an error value less than 0 otherwise
+ */
+int mikpeer_switch_protocol (mikpeer_t *p)
+{
+	if (!p)
+		return ERR_MISSING_PTR;
+
+	if (p->state == MIK_CONN)
+		p->state = MIK_BARE;
+	else if (p->state == MIK_BARE)
+		p->state = MIK_CONN;
+
+	return 0;
+}
+
 int mikpeer_close (mikpeer_t *p)
 {
 	if (!p)
