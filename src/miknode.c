@@ -232,6 +232,7 @@ int miknode_connect(miknode_t *n, const char *a, uint16_t p)
 		n->peers[pos].index = pos;
 		n->peers[pos].state = MIK_CONN;
 		n->peers[pos].tcp = sock;
+		n->peers[pos].flags = n->flags;
 		n->peers[pos].sent = 0;
 		n->peers[pos].recvd = 0;
 		n->fds[1 + pos].fd = sock;
@@ -284,7 +285,7 @@ static int miknode_recv (mikpeer_t *p)
 	if (!p)
 		return ERR_MISSING_PTR;
 	
-	if(miknode_check_flags(p->node, MIK_FLAG_NOPROTO)) {
+	if(mikpeer_check_flags(p, MIK_FLAG_NOPROTO)) {
 		/* No Miknet protocol */
 		char *buffer = calloc(1, MIK_PACK_MAX);
 		int size = recv(p->tcp, buffer, MIK_PACK_MAX, 0);
@@ -385,7 +386,7 @@ int miknode_poll (miknode_t *n, int t)
 
 	i = 0;
 	while (i < n->commands.size) {
-		if(miknode_check_flags(n, MIK_FLAG_NOPROTO)) {
+		if(mikpeer_check_flags(&n->peers[n->commands.data[i].peer], MIK_FLAG_NOPROTO)) {
 			/* No Miknet protocol */
 			int sock = n->peers[n->commands.data[i].peer].tcp;
 			void *data = (void *)n->commands.data[i].data;
