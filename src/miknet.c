@@ -37,9 +37,8 @@ mikmeta_t mik_read_meta (char *meta)
 	if (!meta)
 		return data;
 
-	memcpy(&data.type, meta, MIK_TYPE_SZ);
-	memcpy(&data.channel, meta + MIK_TYPE_SZ, MIK_CHAN_SZ);
-	memcpy(&data.len, meta + MIK_TYPE_SZ + MIK_CHAN_SZ, MIK_LEN_SZ);
+	memcpy(&data.channel, meta, MIK_CHAN_SZ);
+	memcpy(&data.len, meta + MIK_CHAN_SZ, MIK_LEN_SZ);
 
 	data.channel = ntohl(data.channel);
 	data.len = ntohs(data.len);
@@ -63,9 +62,8 @@ int mik_write_meta (mikpack_t data, char *meta)
 	data.channel = htonl(data.channel);
 	data.len = htons(data.len);
 
-	memcpy(meta, &data.type, MIK_TYPE_SZ);
-	memcpy(meta + MIK_TYPE_SZ, &data.channel, MIK_CHAN_SZ);
-	memcpy(meta + MIK_TYPE_SZ + MIK_CHAN_SZ, &data.len, MIK_LEN_SZ);
+	memcpy(meta, &data.channel, MIK_CHAN_SZ);
+	memcpy(meta + MIK_CHAN_SZ, &data.len, MIK_LEN_SZ);
 
 	return 0;
 }

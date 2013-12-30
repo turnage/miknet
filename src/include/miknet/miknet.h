@@ -19,10 +19,9 @@
 #define MIK_PORT_MAX 6
 #define MIK_MEMEXP   100
 
-#define MIK_TYPE_SZ  1
 #define MIK_CHAN_SZ  4
 #define MIK_LEN_SZ   2
-#define MIK_META_SZ  7
+#define MIK_META_SZ  6
 
 struct miknode_t;
 typedef const void ref;
@@ -69,7 +68,6 @@ typedef struct mikpack_t {
 } mikpack_t;
 
 typedef struct mikmeta_t {
-	uint8_t type;
 	uint32_t channel;
 	uint16_t len;
 } mikmeta_t;
