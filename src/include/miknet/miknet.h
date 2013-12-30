@@ -140,6 +140,8 @@ void miknode_close (miknode_t *n);
 
 int mikpeer (miknode_t *n);
 
+int mikpeer_switch_protocol (mikpeer_t *p);
+
 int mikpeer_close (mikpeer_t *p);
 
 #endif /* miknet_h */
