@@ -119,6 +119,52 @@ int miknode (miknode_t *n, mikip_t ip, uint16_t port, uint16_t peers)
 }
 
 /**
+ *  Set flags for a miknode.
+ *  
+ *  @n: the node
+ *  @flags: the flags to set
+ *  
+ *  @return: 0 on success, or an error if less than 0
+**/
+int miknode_set_flags(miknode_t *n, unsigned int flags) {
+	if(!n)
+		return ERR_MISSING_PTR;
+	
+	n->flags |= flags;
+	return 0;
+}
+
+/**
+ *  Unset flags for a miknode.
+ *  
+ *  @n: the node
+ *  @flags: the flags to unset
+ *  
+ *  @return: 0 on success, or an error if less than 0
+**/
+int miknode_unset_flags(miknode_t *n, unsigned int flags) {
+	if(!n)
+		return ERR_MISSING_PTR;
+	
+	n->flags &= ~flags;
+	return 0;
+}
+
+/**
+ *  Check if any of a set of flags are set.
+ *  
+ *  @n: the node
+ *  @flags: the flags to check
+ *  
+ *  @return: non-zero if any of the specified flags are set, 0 otherwise or on error
+**/
+int miknode_check_flags(miknode_t *n, unsigned int flags) {
+	if(!n)
+		return 0;
+	return (n->flags & flags);
+}
+
+/**
  *  Connect to an address.
  *
  *  @n: node
@@ -186,6 +232,7 @@ int miknode_connect(miknode_t *n, const char *a, uint16_t p)
 		n->peers[pos].index = pos;
 		n->peers[pos].state = MIK_CONN;
 		n->peers[pos].tcp = sock;
+		n->peers[pos].flags = n->flags;
 		n->peers[pos].sent = 0;
 		n->peers[pos].recvd = 0;
 		n->fds[1 + pos].fd = sock;
@@ -237,36 +284,69 @@ static int miknode_recv (mikpeer_t *p)
 {
 	if (!p)
 		return ERR_MISSING_PTR;
-
-	mikpack_t pack = {0};
-	int size = recv(p->tcp, &pack, sizeof(mikpack_t), MSG_PEEK);
-
-	if (size < 0)
-		mik_debug(ERR_SOCKET);
-
-	if (!size) {
-		/* peer disconnected */
-		recv(p->tcp, NULL, 0, 0);
-		mikpack_t event = {0};
-		event.peer = p->index;
-		event.type = MIK_QUIT;
-		p->node->packs = mikvec_add(p->node->packs, event);
-		p->node->peerc--;
-		mikpeer_close(p);
+	
+	if(mikpeer_check_flags(p, MIK_FLAG_NOPROTO)) {
+		/* No Miknet protocol */
+		char *buffer = calloc(1, MIK_PACK_MAX);
+		int size = recv(p->tcp, buffer, MIK_PACK_MAX, 0);
+		
+		if(size < 0) {
+			free(buffer);
+			return mik_debug(ERR_SOCKET);
+		}
+		
+		if(!size) {
+			/* peer disconnected */
+			free(buffer);
+			
+			mikpack_t event = {0};
+			event.peer = p->index;
+			event.type = MIK_QUIT;
+			p->node->packs = mikvec_add(p->node->packs, event);
+			p->node->peerc--;
+			mikpeer_close(p);
+		} else {
+			mikpack_t event = {0};
+			event.type = MIK_DATA;
+			event.channel = 0;
+			event.peer = p->index;
+			event.len = size;
+			event.data = buffer;
+			
+			p->node->packs = mikvec_add(p->node->packs, event);
+			p->recvd += size;
+		}
 	} else {
-		if (pack.len > MIK_PACK_MAX)
-			return ERR_WOULD_FAULT;
+		mikpack_t pack = {0};
+		int size = recv(p->tcp, &pack, sizeof(mikpack_t), MSG_PEEK);
 
-		recv(p->tcp, &pack, sizeof(mikpack_t), 0);
-		char *buffer = calloc(1, pack.len);
-		recv(p->tcp, buffer, pack.len, 0);
+		if (size < 0)
+			return mik_debug(ERR_SOCKET);
 
-		mikpack_t event = pack;
-		event.peer = p->index;
-		event.data = (void *)buffer;
+		if (!size) {
+			/* peer disconnected */
+			recv(p->tcp, NULL, 0, 0);
+			mikpack_t event = {0};
+			event.peer = p->index;
+			event.type = MIK_QUIT;
+			p->node->packs = mikvec_add(p->node->packs, event);
+			p->node->peerc--;
+			mikpeer_close(p);
+		} else {
+			if (pack.len > MIK_PACK_MAX)
+				return ERR_WOULD_FAULT;
 
-		p->node->packs = mikvec_add(p->node->packs, event);
-		p->recvd += sizeof(mikpack_t) + pack.len;
+			recv(p->tcp, &pack, sizeof(mikpack_t), 0);
+			char *buffer = calloc(1, pack.len);
+			recv(p->tcp, buffer, pack.len, 0);
+
+			mikpack_t event = pack;
+			event.peer = p->index;
+			event.data = (void *)buffer;
+
+			p->node->packs = mikvec_add(p->node->packs, event);
+			p->recvd += sizeof(mikpack_t) + pack.len;
+		}
 	}
 
 	return 0;
@@ -306,18 +386,28 @@ int miknode_poll (miknode_t *n, int t)
 
 	i = 0;
 	while (i < n->commands.size) {
-		int sock = n->peers[n->commands.data[i].peer].tcp;
-		void *data = (void *)n->commands.data[i].data;
-		int pack_length = n->commands.data[i].len;
-		int length = sizeof(mikpack_t) + pack_length;
-		char buffer[length];
+		if(mikpeer_check_flags(&n->peers[n->commands.data[i].peer], MIK_FLAG_NOPROTO)) {
+			/* No Miknet protocol */
+			int sock = n->peers[n->commands.data[i].peer].tcp;
+			void *data = (void *)n->commands.data[i].data;
+			int length = n->commands.data[i].len;
+			
+			int sent = send(sock, data, length, 0);
+			n->peers[n->commands.data[i].peer].sent += sent;
+		} else {
+			int sock = n->peers[n->commands.data[i].peer].tcp;
+			void *data = (void *)n->commands.data[i].data;
+			int pack_length = n->commands.data[i].len;
+			int length = sizeof(mikpack_t) + pack_length;
+			char buffer[length];
 
-		memset(buffer, 0, length);
-		memcpy(buffer, &n->commands.data[i], sizeof(mikpack_t));
-		memcpy(buffer + sizeof(mikpack_t), data, pack_length);
+			memset(buffer, 0, length);
+			memcpy(buffer, &n->commands.data[i], sizeof(mikpack_t));
+			memcpy(buffer + sizeof(mikpack_t), data, pack_length);
 
-		int sent = send(sock, buffer, length, 0);
-		n->peers[n->commands.data[i].peer].sent += sent;
+			int sent = send(sock, buffer, length, 0);
+			n->peers[n->commands.data[i].peer].sent += sent;
+		}
 
 		i++;
 	}

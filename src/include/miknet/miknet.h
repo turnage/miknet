@@ -22,6 +22,7 @@
 struct miknode_t;
 typedef const void ref;
 
+/* error codes */
 enum {
 	ERR_MISSING_PTR  = -1,
 	ERR_INVALID_MODE = -2,
@@ -35,6 +36,12 @@ enum {
         ERR_MEMORY       = -11,
 	ERR_WOULD_FAULT  = -12,
 	ERR_LISTEN       = -13
+};
+
+/* miknode flags */
+enum {
+	/* do not use Miknet protocol */
+	MIK_FLAG_NOPROTO = 1,
 };
 
 typedef enum {
@@ -75,6 +82,7 @@ typedef struct mikpeer_t {
 	int index;
 	struct miknode_t *node;
 	int tcp;
+	uint32_t flags;
 	void *data;
 	mikstate_t state;
 	uint32_t sent;
@@ -83,6 +91,7 @@ typedef struct mikpeer_t {
 
 typedef struct miknode_t {
 	int tcp;
+	uint32_t flags;
 	mikip_t ip;
 	struct pollfd *fds;
 	mikpeer_t *peers;
@@ -112,6 +121,10 @@ mikvec_t mikvec_clear (mikvec_t vector);
 
 mikvec_t mikvec_close (mikvec_t vector);
 
+int miknode_set_flags(miknode_t *n, unsigned int flags);
+int miknode_unset_flags(miknode_t *n, unsigned int flags);
+int miknode_check_flags(miknode_t *n, unsigned int flags);
+
 int miknode (miknode_t *n, mikip_t ip, uint16_t port, uint16_t peers);
 
 int miknode_connect(miknode_t *n, const char *a, uint16_t p);
@@ -125,5 +138,9 @@ void miknode_close (miknode_t *n);
 int mikpeer (miknode_t *n);
 
 int mikpeer_close (mikpeer_t *p);
+
+int mikpeer_set_flags(mikpeer_t *p, unsigned int flags);
+int mikpeer_unset_flags(mikpeer_t *p, unsigned int flags);
+int mikpeer_check_flags(mikpeer_t *p, unsigned int flags);
 
 #endif /* miknet_h */
