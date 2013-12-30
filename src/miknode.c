@@ -240,7 +240,6 @@ static int miknode_recv (mikpeer_t *p)
 
 	char buffer[MIK_META_SZ] = {0};
 	int size = recv(p->tcp, buffer, MIK_META_SZ, MSG_PEEK);
-	mikmeta_t data = mik_read_meta(buffer);
 
 	if (size < 0) {
 		mik_debug(ERR_SOCKET);
@@ -254,23 +253,38 @@ static int miknode_recv (mikpeer_t *p)
 		p->node->peerc--;
 		mikpeer_close(p);
 	} else {
-		if (data.len > MIK_PACK_MAX)
-			return ERR_WOULD_FAULT;
-
-		recv(p->tcp, buffer, MIK_META_SZ, 0);
-
-		void *tmp = try_alloc(NULL, data.len);
-		recv(p->tcp, tmp, data.len, 0);
-
+		void *tmp = NULL;
 		mikpack_t event = {0};
-		event.type = data.type;
-		event.channel = data.channel;
-		event.len = data.len;
+		mikmeta_t data = mik_read_meta(buffer);
+
+		if (p->state == MIK_CONN) {
+			if (data.len > MIK_PACK_MAX)
+				return ERR_WOULD_FAULT;
+
+			recv(p->tcp, buffer, MIK_META_SZ, 0);
+
+			tmp = try_alloc(NULL, data.len);
+			recv(p->tcp, tmp, data.len, 0);
+
+			p->recvd += MIK_META_SZ + data.len;
+
+			event.channel = data.channel;
+			event.len = data.len;
+		} else if (p->state == MIK_BARE) {
+			char buffer[MIK_PACK_MAX] = {0};
+			int len = recv(p->tcp, buffer, MIK_PACK_MAX, 0);
+
+			tmp = try_alloc(NULL, len);
+			memcpy(tmp, buffer, len);
+
+			event.len = len;
+		}
+
+		event.type = MIK_DATA;
 		event.peer = p->index;
 		event.data = tmp;
 
 		p->node->packs = mikvec_add(p->node->packs, event);
-		p->recvd += MIK_META_SZ + event.len;
 	}
 
 	return 0;
@@ -310,14 +324,21 @@ int miknode_poll (miknode_t *n, int t)
 
 	i = 0;
 	while (i < n->commands.size) {
+		int usemiknet = 0;
+		if (n->peers[n->commands.data[i].peer].state == MIK_CONN) {
+			usemiknet = 1;
+		}
+
+		int prefix = usemiknet ? MIK_META_SZ : 0;
 		int sock = n->peers[n->commands.data[i].peer].tcp;
 		int len = n->commands.data[i].len;
-		char buffer[MIK_META_SZ + len];
+		char buffer[prefix + len];
 
-		mik_write_meta(n->commands.data[i], buffer);
-		memcpy(buffer + MIK_META_SZ, n->commands.data[i].data, len);
+		if (usemiknet)
+			mik_write_meta(n->commands.data[i], buffer);
+		memcpy(buffer + prefix, n->commands.data[i].data, len);
 
-		int sent = send(sock, buffer, MIK_META_SZ + len, 0);
+		int sent = send(sock, buffer, prefix + len, 0);
 		if (sent < 0)
 			mik_debug(ERR_SOCKET);
 
