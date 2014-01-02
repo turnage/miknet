@@ -38,7 +38,7 @@ enum {
 	MIK_ERR_CONNECT      = -8,
 	MIK_ERR_PEER_MAX     = -9,
 	MIK_ERR_POLL         = -10,
-        MIK_ERR_MEMORY       = -11,
+	MIK_ERR_MEMORY       = -11,
 	MIK_ERR_WOULD_FAULT  = -12,
 	MIK_ERR_LISTEN       = -13
 };
