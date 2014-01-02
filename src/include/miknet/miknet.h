@@ -106,7 +106,7 @@ typedef struct miknode_t {
 
 int mik_debug (int err);
 
-void *try_alloc(void *ptr, size_t bytes);
+void *mik_try_alloc(void *ptr, size_t bytes);
 
 void mik_set_readsize (uint32_t size);
 

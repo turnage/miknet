@@ -263,7 +263,7 @@ static int miknode_recv (mikpeer_t *p)
 
 			recv(p->tcp, buffer, MIK_META_SZ, 0);
 
-			tmp = try_alloc(NULL, data.len);
+			tmp = mik_try_alloc(NULL, data.len);
 			recv(p->tcp, tmp, data.len, 0);
 
 			p->recvd += MIK_META_SZ + data.len;
@@ -275,7 +275,7 @@ static int miknode_recv (mikpeer_t *p)
 			memset(buffer, 0, MIK_TCP_MAX);
 			int len = recv(p->tcp, buffer, MIK_TCP_MAX, 0);
 
-			tmp = try_alloc(NULL, len);
+			tmp = mik_try_alloc(NULL, len);
 			memcpy(tmp, buffer, len);
 
 			event.len = len;

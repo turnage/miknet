@@ -8,7 +8,7 @@ mikvec_t mikvec (mikpack_t data)
 	vector.memsize = 1;
 	vector.index = 0;
 	vector.rs_mall = 0;
-	vector.data = try_alloc(vector.data, sizeof(mikpack_t));
+	vector.data = mik_try_alloc(vector.data, sizeof(mikpack_t));
 	memcpy(vector.data, &data, sizeof(mikpack_t));
 
 	return vector;
@@ -22,7 +22,7 @@ mikvec_t mikvec_add (mikvec_t vector, mikpack_t data)
 	if (vector.size >= vector.memsize) {
 		vector.memsize *= 2;
 		size_t byte_size = vector.memsize * sizeof(mikpack_t);
-		vector.data = try_alloc(vector.data, byte_size);
+		vector.data = mik_try_alloc(vector.data, byte_size);
 		vector.rs_mall = 0;
 		vector.total_size = vector.size + 1;
 	}
@@ -50,7 +50,7 @@ mikvec_t mikvec_clear (mikvec_t vector)
 		if (vector.rs_mall > MIK_MEMEXP) {
 			vector.memsize /= 2;
 			size_t byte_size = vector.memsize * sizeof(mikpack_t);
-			vector.data = try_alloc(vector.data, byte_size);
+			vector.data = mik_try_alloc(vector.data, byte_size);
 		}
 	}
 

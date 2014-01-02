@@ -12,7 +12,7 @@ mikpack_t mikpack (miktype_t type, ref *data, uint16_t len, uint32_t channel)
 		pack.len = 0;
 	} else {
 		pack.len = len;
-		pack.data = try_alloc(pack.data, pack.len);
+		pack.data = mik_try_alloc(pack.data, pack.len);
 		memcpy(pack.data, data, pack.len);
 	}
 

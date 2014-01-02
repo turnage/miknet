@@ -15,7 +15,7 @@ int mik_debug (int err)
 	return err;
 }
 
-void *try_alloc(void *ptr, size_t bytes)
+void *mik_try_alloc(void *ptr, size_t bytes)
 {
 	void *ret = realloc(ptr, bytes);
 
