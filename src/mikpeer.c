@@ -3,7 +3,7 @@
 int mikpeer (miknode_t *n)
 {
 	if (!n)
-		return ERR_MISSING_PTR;
+		return MIK_ERR_MISSING_PTR;
 
 	int sock = 0;
 	int i = 0;
@@ -11,11 +11,11 @@ int mikpeer (miknode_t *n)
 
 	sock = accept(n->tcp, NULL, NULL);
 	if (sock < 0)
-		return mik_debug(ERR_SOCKET);
+		return mik_debug(MIK_ERR_SOCKET);
 
 	if (n->peerc >= n->peermax) {
 		close(sock);
-		return ERR_PEER_MAX;
+		return MIK_ERR_PEER_MAX;
 	}
 
 	n->peerc++;
@@ -54,7 +54,7 @@ int mikpeer (miknode_t *n)
 int mikpeer_switch_protocol (mikpeer_t *p)
 {
 	if (!p)
-		return ERR_MISSING_PTR;
+		return MIK_ERR_MISSING_PTR;
 
 	if (p->state == MIK_CONN)
 		p->state = MIK_BARE;
@@ -67,7 +67,7 @@ int mikpeer_switch_protocol (mikpeer_t *p)
 int mikpeer_close (mikpeer_t *p)
 {
 	if (!p)
-		return ERR_MISSING_PTR;
+		return MIK_ERR_MISSING_PTR;
 
 	p->node->fds[1 + p->index].fd = 0;
 

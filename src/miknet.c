@@ -69,7 +69,7 @@ mikmeta_t mik_read_meta (char *meta)
 int mik_write_meta (mikpack_t data, char *meta)
 {
 	if (!meta)
-		return ERR_MISSING_PTR;
+		return MIK_ERR_MISSING_PTR;
 
 	data.channel = htonl(data.channel);
 	data.len = htons(data.len);
@@ -118,57 +118,57 @@ const char *mik_errstr(int err)
 			break;
 		}
 
-		case ERR_MISSING_PTR: {
+		case MIK_ERR_MISSING_PTR: {
 			str = "A passed pointer was NULL.";
 			break;
 		}
 
-		case ERR_SOCKET: {
+		case MIK_ERR_SOCKET: {
 			str = "Failed to create socket.";
 			break;
 		}
 
-		case ERR_ADDRESS: {
+		case MIK_ERR_ADDRESS: {
 			str = "Address invalid or taken.";
 			break;
 		}
 
-		case ERR_SOCK_OPT: {
+		case MIK_ERR_SOCK_OPT: {
 			str = "Failed to set socket options.";
 			break;
 		}
 
-		case ERR_BIND: {
+		case MIK_ERR_BIND: {
 			str = "Failed to bind socket.";
 			break;
 		}
 
-		case ERR_CONNECT: {
+		case MIK_ERR_CONNECT: {
 			str = "Failed to connect socket.";
 			break;
 		}
 
-		case ERR_PEER_MAX: {
+		case MIK_ERR_PEER_MAX: {
 			str = "Argument exceeds peer maximum.";
 			break;
 		}
 
-		case ERR_POLL: {
+		case MIK_ERR_POLL: {
 			str = "The poll call failed.";
 			break;
 		}
 
-		case ERR_MEMORY: {
+		case MIK_ERR_MEMORY: {
 			str = "Memory allocation failed.";
 			break;
 		}
 
-		case ERR_WOULD_FAULT: {
+		case MIK_ERR_WOULD_FAULT: {
 			str = "This operation would have segfaulted.";
 			break;
 		}
 
-		case ERR_LISTEN: {
+		case MIK_ERR_LISTEN: {
 			str = "Configuring the SOCK_STREAM backlog failed.";
 			break;
 		}

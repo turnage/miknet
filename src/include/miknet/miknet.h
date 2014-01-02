@@ -29,18 +29,18 @@ struct miknode_t;
 typedef const void ref;
 
 enum {
-	ERR_MISSING_PTR  = -1,
-	ERR_INVALID_MODE = -2,
-	ERR_SOCKET       = -4,
-	ERR_ADDRESS      = -5,
-	ERR_SOCK_OPT     = -6,
-	ERR_BIND         = -7,
-	ERR_CONNECT      = -8,
-	ERR_PEER_MAX     = -9,
-	ERR_POLL         = -10,
-        ERR_MEMORY       = -11,
-	ERR_WOULD_FAULT  = -12,
-	ERR_LISTEN       = -13
+	MIK_ERR_MISSING_PTR  = -1,
+	MIK_ERR_INVALID_MODE = -2,
+	MIK_ERR_SOCKET       = -4,
+	MIK_ERR_ADDRESS      = -5,
+	MIK_ERR_SOCK_OPT     = -6,
+	MIK_ERR_BIND         = -7,
+	MIK_ERR_CONNECT      = -8,
+	MIK_ERR_PEER_MAX     = -9,
+	MIK_ERR_POLL         = -10,
+        MIK_ERR_MEMORY       = -11,
+	MIK_ERR_WOULD_FAULT  = -12,
+	MIK_ERR_LISTEN       = -13
 };
 
 typedef enum {

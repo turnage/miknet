@@ -7,11 +7,11 @@ static int mik_sock (int *t, struct addrinfo *h)
 
 	*t = socket(h->ai_family, SOCK_STREAM, 0);
 	if (*t < 0)
-		return mik_debug(ERR_SOCKET);
+		return mik_debug(MIK_ERR_SOCKET);
 
 	err = setsockopt(*t, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
 	if (err < 0)
-		return mik_debug(ERR_SOCK_OPT);
+		return mik_debug(MIK_ERR_SOCK_OPT);
 
 	return 0;
 }
@@ -27,7 +27,7 @@ static int mik_testbind (int s, struct addrinfo *h, const char *p)
 	err = getaddrinfo(NULL, p, &c, &li);
 	
 	if (err < 0)
-		return mik_debug(ERR_ADDRESS);
+		return mik_debug(MIK_ERR_ADDRESS);
 	
 	for (i = li; i; i = i->ai_next) {
 		err = bind(s, i->ai_addr, i->ai_addrlen);
@@ -65,7 +65,7 @@ static int mik_bind (int *t, struct addrinfo h, uint16_t p)
 static int miknode_config (miknode_t *n, uint16_t peers)
 {
         if (!n)
-                return ERR_MISSING_PTR;
+                return MIK_ERR_MISSING_PTR;
 
         n->peermax = peers;
         n->peerc = 0;
@@ -73,7 +73,7 @@ static int miknode_config (miknode_t *n, uint16_t peers)
         n->peers = calloc(n->peermax, sizeof(mikpeer_t));
         n->fds = calloc(n->peermax + 1, sizeof(mikpeer_t));
         if (!n->peers || !n->fds)
-                return mik_debug(ERR_MEMORY);
+                return mik_debug(MIK_ERR_MEMORY);
 
         n->fds[0].fd = n->tcp;
         n->fds[0].events = POLLIN;
@@ -97,7 +97,7 @@ static int miknode_config (miknode_t *n, uint16_t peers)
 int miknode (miknode_t *n, mikip_t ip, uint16_t port, uint16_t peers)
 {
 	if (!n)
-		return ERR_MISSING_PTR;
+		return MIK_ERR_MISSING_PTR;
 
 	struct addrinfo hint = {0};
 
@@ -130,10 +130,10 @@ int miknode (miknode_t *n, mikip_t ip, uint16_t port, uint16_t peers)
 int miknode_connect(miknode_t *n, const char *a, uint16_t p)
 {
 	if (!n)
-		return ERR_MISSING_PTR;
+		return MIK_ERR_MISSING_PTR;
 
 	if (n->peerc >= n->peermax)
-		return ERR_WOULD_FAULT;
+		return MIK_ERR_WOULD_FAULT;
 
 	int err = 0;
 	int sock = 0;
@@ -161,7 +161,7 @@ int miknode_connect(miknode_t *n, const char *a, uint16_t p)
 
 	err = getaddrinfo(a, portstr, &hint, &li);
 	if (err < 0)
-		return mik_debug(ERR_ADDRESS);
+		return mik_debug(MIK_ERR_ADDRESS);
 
 	for (i = li; i; i = i->ai_next) {
 		err = connect(sock, i->ai_addr, i->ai_addrlen);
@@ -172,7 +172,7 @@ int miknode_connect(miknode_t *n, const char *a, uint16_t p)
 	freeaddrinfo(li);
 
 	if (err)
-		return mik_debug(ERR_CONNECT);
+		return mik_debug(MIK_ERR_CONNECT);
 
 	for (j = 0; j < n->peermax; ++j) {
 		if (n->peers[j].state == MIK_DISC) {
@@ -210,13 +210,13 @@ int miknode_connect(miknode_t *n, const char *a, uint16_t p)
 int miknode_send (mikpeer_t *p, ref *d, size_t len, uint32_t channel)
 {
 	if (!p || !d)
-		return ERR_MISSING_PTR;
+		return MIK_ERR_MISSING_PTR;
 
 	if (len > MIK_PACK_MAX)
-		return ERR_WOULD_FAULT;
+		return MIK_ERR_WOULD_FAULT;
 
 	if (p->state == MIK_DISC)
-		return ERR_CONNECT;
+		return MIK_ERR_CONNECT;
 
 	mikpack_t command = mikpack(MIK_DATA, d, len, channel);
 	command.peer = p->index;
@@ -236,13 +236,13 @@ int miknode_send (mikpeer_t *p, ref *d, size_t len, uint32_t channel)
 static int miknode_recv (mikpeer_t *p)
 {
 	if (!p)
-		return ERR_MISSING_PTR;
+		return MIK_ERR_MISSING_PTR;
 
 	char buffer[MIK_META_SZ] = {0};
 	int size = recv(p->tcp, buffer, MIK_META_SZ, MSG_PEEK);
 
 	if (size < 0) {
-		mik_debug(ERR_SOCKET);
+		mik_debug(MIK_ERR_SOCKET);
 	} else if (!size) {
 		/* peer disconnected */
 		recv(p->tcp, NULL, 0, 0);
@@ -259,7 +259,7 @@ static int miknode_recv (mikpeer_t *p)
 
 		if (p->state == MIK_CONN) {
 			if (data.len > MIK_PACK_MAX)
-				return ERR_WOULD_FAULT;
+				return MIK_ERR_WOULD_FAULT;
 
 			recv(p->tcp, buffer, MIK_META_SZ, 0);
 
@@ -302,7 +302,7 @@ static int miknode_recv (mikpeer_t *p)
 int miknode_poll (miknode_t *n, int t)
 {
 	if (!n)
-		return ERR_MISSING_PTR;
+		return MIK_ERR_MISSING_PTR;
 
 	int i = 0;
 	int events = 0;
@@ -341,7 +341,7 @@ int miknode_poll (miknode_t *n, int t)
 
 		int sent = send(sock, buffer, prefix + len, 0);
 		if (sent < 0)
-			mik_debug(ERR_SOCKET);
+			mik_debug(MIK_ERR_SOCKET);
 
 		n->peers[n->commands.data[i].peer].sent += sent;
 
