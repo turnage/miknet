@@ -1,4 +1,4 @@
-![Miknet](http://i.imgur.com/Usa3XYe.png)
+![Miknet](http://i.imgur.com/ZZ88kVK.png)
 ================================================================================
 
 Never fill a sockaddr_in struct by hand again! Miknet is a TCP networking
