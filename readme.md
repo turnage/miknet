@@ -16,8 +16,8 @@ to use to categorize your packets!
 
 #### Installing and using Miknet.
 
-For up-to-date information whether you should use, and how you can use Miknet,
-visit [the wiki](https://github.com/PaytonTurnage/Miknet/wiki).
+For up-to-date information about whether you should use, and how you can use
+Miknet, visit [the wiki](https://github.com/PaytonTurnage/Miknet/wiki).
 
 To install, clone the repo and
 
