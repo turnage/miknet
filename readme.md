@@ -5,6 +5,17 @@ Never fill a sockaddr_in struct by hand again! Miknet is a TCP networking
 library. It's fairly simple to use; no networking knowledge is required. It is
 also IPV6 friendly!
 
+#### Why use Miknet?
+
+It's simple and you can be lazy about it! There is no need to initialize it, it
+is thread-safe, and to get a fully working networking loop with Miknet you only
+need to make 4 function calls.
+
+The header on the Miknet protocol is only 6 octets, and 4 of those are for you
+to use to categorize your packets!
+
+#### Installing and using Miknet.
+
 For up-to-date information whether you should use, and how you can use Miknet,
 visit [the wiki](https://github.com/PaytonTurnage/Miknet/wiki).
 
