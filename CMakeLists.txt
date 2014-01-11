@@ -4,13 +4,13 @@ PROJECT(Miknet)
 OPTION(MIK_DEBUG off)
 OPTION(TESTS off)
 
-if (MIK_DEBUG)
+IF(MIK_DEBUG)
 	ADD_DEFINITIONS(-DMIK_DEBUG=1)
 	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
-else()
+ELSE()
 	ADD_DEFINITIONS(-DMIK_DEBUG=0)
 	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
-endif()
+ENDIF()
 
 INCLUDE_DIRECTORIES(src/include)
 
@@ -18,7 +18,7 @@ FILE(GLOB SRC_MIKNET src/*.c)
 
 ADD_LIBRARY(miknet ${SRC_MIKNET})
 
-if (TESTS)
+IF(TESTS)
 	ADD_EXECUTABLE(servtest servtest.c)
 	ADD_EXECUTABLE(clitest clitest.c)
 
@@ -27,7 +27,7 @@ if (TESTS)
 
 	TARGET_LINK_LIBRARIES(servtest miknet)
 	TARGET_LINK_LIBRARIES(clitest miknet)
-endif()
+ENDIF()
 
 INSTALL(FILES src/include/miknet/miknet.h DESTINATION include/miknet)
 INSTALL(TARGETS miknet ARCHIVE DESTINATION lib)
