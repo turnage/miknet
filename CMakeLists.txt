@@ -2,6 +2,7 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 PROJECT(Miknet)
 
 OPTION(MIK_DEBUG off)
+OPTION(TESTS off)
 
 if (MIK_DEBUG)
 	ADD_DEFINITIONS(-DMIK_DEBUG=1)
@@ -17,14 +18,16 @@ FILE(GLOB SRC_MIKNET src/*.c)
 
 ADD_LIBRARY(miknet ${SRC_MIKNET})
 
-ADD_EXECUTABLE(servtest servtest.c)
-ADD_EXECUTABLE(clitest clitest.c)
+if (TESTS)
+	ADD_EXECUTABLE(servtest servtest.c)
+	ADD_EXECUTABLE(clitest clitest.c)
 
-ADD_DEPENDENCIES(servtest miknet)
-ADD_DEPENDENCIES(clitest miknet)
+	ADD_DEPENDENCIES(servtest miknet)
+	ADD_DEPENDENCIES(clitest miknet)
 
-TARGET_LINK_LIBRARIES(servtest miknet)
-TARGET_LINK_LIBRARIES(clitest miknet)
+	TARGET_LINK_LIBRARIES(servtest miknet)
+	TARGET_LINK_LIBRARIES(clitest miknet)
+endif()
 
 INSTALL(FILES src/include/miknet/miknet.h DESTINATION include/miknet)
 INSTALL(TARGETS miknet ARCHIVE DESTINATION lib)
