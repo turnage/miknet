@@ -39,7 +39,15 @@ START_TEST(logging_levels)
 	char empty[1024] = {0};
 	char buffer[1024] = {0};
 
+	mik_log_set_level(MIK_LOG_NONE);
+	mik_log_core(MIK_LOG_FATAL, buffer, "Anyone home?");
+	ck_assert(memcmp(buffer, empty, 1024) == 0);
+
 	mik_log_set_level(MIK_LOG_FATAL);
+	mik_log_core(MIK_LOG_ERROR, buffer, "Anyone home?");
+	ck_assert(memcmp(buffer, empty, 1024) == 0);
+
+	mik_log_set_level(MIK_LOG_ERROR);
 	mik_log_core(MIK_LOG_VERBOSE, buffer, "Anyone home?");
 	ck_assert(memcmp(buffer, empty, 1024) == 0);
 
