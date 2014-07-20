@@ -7,7 +7,12 @@ include_directories(${CHECK_INCLUDE_DIRS})
 set(TEST_LIBS ${LIBS} ${CHECK_LIBRARIES})
 include_directories(../src/include)
 
+# miklogger
 add_executable(miklogger_test miklogger_test.c)
 target_link_libraries(miklogger_test ${TEST_LIBS} miklogger)
 add_test(miklogger_test ${CMAKE_CURRENT_BINARY_DIR}/miklogger_test)
 
+# mikmemapi
+add_executable(mikmemapi_test mikmemapi_test.c)
+target_link_libraries(mikmemapi_test ${TEST_LIBS} mikmemapi)
+add_test(mikmemapi_test ${CMAKE_CURRENT_BINARY_DIR}/mikmemapi_test)
