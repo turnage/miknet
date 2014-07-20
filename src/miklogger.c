@@ -4,13 +4,13 @@
 
 #include "miknet/miklogger.h"
 
-static const char *MIK_LOG_PREFIXES[] = {"INFO: ", "TRIPPING: ", "FATAL: "};
-static const int MIK_LOG_PREFIX_LENGTHS[] = {6, 10, 7};
-static miklogstate_t logstate = MIK_LOG_ON;
+static const char *MIK_LOG_PREFIXES[] = {"FATAL: ", "ERROR: ", "INFO: "};
+static const int MIK_LOG_PREFIX_LENGTHS[] = {7, 7, 6};
+static mikloglevel_t loglevel = MIK_LOG_VERBOSE;
 
-void mik_log_toggle(miklogstate_t new_logstate)
+void mik_log_set_level(mikloglevel_t new_level)
 {
-	logstate = new_logstate;
+	loglevel = new_level;
 }
 
 void mik_log(mikloglevel_t level, const char *text, ...)
@@ -23,11 +23,11 @@ void mik_log(mikloglevel_t level, const char *text, ...)
 
 void mik_log_core(mikloglevel_t level, char *dest, const char *text, ...)
 {
-	if (logstate == MIK_LOG_OFF)
+	if (loglevel < level)
 		return;
 
 	if (text == NULL) {
-		mik_log_core(MIK_LOG_TRIP, dest, "Attempted to log NULL.\n");
+		mik_log_core(MIK_LOG_ERROR, dest, "Attempted to log NULL.\n");
 		return;
 	}
 

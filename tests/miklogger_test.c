@@ -11,12 +11,12 @@ START_TEST(normal_calls)
 	char expected_char = 'k';
 	uint16_t expected_unsigned = 450;
 
-	mik_log_core(MIK_LOG_INFO, buffer, "test %d.", expected_int);
+	mik_log_core(MIK_LOG_VERBOSE, buffer, "test %d.", expected_int);
 	ck_assert_str_eq(buffer, "INFO: test 5.");
 	memset(buffer, 0, sizeof(buffer));
 
-	mik_log_core(MIK_LOG_TRIP, buffer, "test %c.", expected_char);
-	ck_assert_str_eq(buffer, "TRIPPING: test k.");
+	mik_log_core(MIK_LOG_ERROR, buffer, "test %c.", expected_char);
+	ck_assert_str_eq(buffer, "ERROR: test k.");
 	memset(buffer, 0, sizeof(buffer));
 
 	mik_log_core(MIK_LOG_FATAL, buffer, "test %u.", expected_unsigned);
@@ -29,22 +29,22 @@ START_TEST(logging_null)
 {
 	char buffer[1024] = {0};
 
-	mik_log_core(MIK_LOG_INFO, buffer, NULL);
-	ck_assert_str_eq(buffer, "TRIPPING: Attempted to log NULL.\n");
+	mik_log_core(MIK_LOG_VERBOSE, buffer, NULL);
+	ck_assert_str_eq(buffer, "ERROR: Attempted to log NULL.\n");
 }
 END_TEST
 
-START_TEST(logging_off)
+START_TEST(logging_levels)
 {
 	char empty[1024] = {0};
 	char buffer[1024] = {0};
 
-	mik_log_toggle(MIK_LOG_OFF);
-	mik_log_core(MIK_LOG_INFO, buffer, "Anyone home?");
+	mik_log_set_level(MIK_LOG_FATAL);
+	mik_log_core(MIK_LOG_VERBOSE, buffer, "Anyone home?");
 	ck_assert(memcmp(buffer, empty, 1024) == 0);
 
-	mik_log_toggle(MIK_LOG_ON);
-	mik_log_core(MIK_LOG_INFO, buffer, "Anyone home?");
+	mik_log_set_level(MIK_LOG_VERBOSE);
+	mik_log_core(MIK_LOG_VERBOSE, buffer, "Anyone home?");
 	ck_assert_str_eq(buffer, "INFO: Anyone home?");
 }
 END_TEST
@@ -57,7 +57,7 @@ Suite *miklogger_suite()
 
 	tcase_add_test(standard_use, normal_calls);
 	tcase_add_test(incorrect_use, logging_null);
-	tcase_add_test(incorrect_use, logging_off);
+	tcase_add_test(incorrect_use, logging_levels);
 	suite_add_tcase(suite, standard_use);
 	suite_add_tcase(suite, incorrect_use);
 

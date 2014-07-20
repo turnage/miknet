@@ -2,22 +2,19 @@
 #define MIKLOGGER_H_
 
 typedef enum {
-	MIK_LOG_INFO = 0,
-	MIK_LOG_TRIP = 1,
-	MIK_LOG_FATAL = 2
+	MIK_LOG_NONE = -1,
+	MIK_LOG_FATAL = 0,
+	MIK_LOG_ERROR = 1,
+	MIK_LOG_VERBOSE = 2
 } mikloglevel_t;
-
-typedef enum {
-	MIK_LOG_ON = 0,
-	MIK_LOG_OFF = 1
-} miklogstate_t;
 
 /**
  *  Space: User space.
  *
- *  Toggles the state of miklogger, on and off. See miklogstate_t.
+ *  Toggles the log level of miklogger. Whatever the level, all messages of
+ *  that level and below will be logged.
  */
-void mik_log_toggle(miklogstate_t new_logstate);
+void mik_log_set_level(mikloglevel_t new_level);
 
 /**
  *  Space: Internal only.
