@@ -4,7 +4,7 @@
 
 #include "miknet/miklogger.h"
 
-START_TEST(standard_use)
+START_TEST(normal_calls)
 {
 	char buffer[1024] = {0};
 	int expected_int = 5;
@@ -52,12 +52,14 @@ END_TEST
 Suite *miklogger_suite()
 {
 	Suite *suite = suite_create("miklogger_suite");
-	TCase *tcase = tcase_create("mik_log");
+	TCase *standard_use = tcase_create("mik_log");
+	TCase *incorrect_use = tcase_create("mik_log_incorrect");
 
-	tcase_add_test(tcase, standard_use);
-	tcase_add_test(tcase, logging_null);
-	tcase_add_test(tcase, logging_off);
-	suite_add_tcase(suite, tcase);
+	tcase_add_test(standard_use, normal_calls);
+	tcase_add_test(incorrect_use, logging_null);
+	tcase_add_test(incorrect_use, logging_off);
+	suite_add_tcase(suite, standard_use);
+	suite_add_tcase(suite, incorrect_use);
 
 	return suite;
 }
