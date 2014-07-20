@@ -21,3 +21,9 @@ add_test(mikmemapi_test ${CMAKE_CURRENT_BINARY_DIR}/mikmemapi_test)
 add_executable(mikmemmock_test mikmemmock_test.c)
 target_link_libraries(mikmemmock_test ${TEST_LIBS} mikmemmock)
 add_test(mikmemmock_test ${CMAKE_CURRENT_BINARY_DIR}/mikmemmock_test)
+
+# mikmemshield
+add_executable(mikmemshield_test mikmemshield_test.c)
+target_link_libraries(mikmemshield_test ${TEST_LIBS} mikmemshield mikmemmock)
+add_test(mikmemshield_test ${CMAKE_CURRENT_BINARY_DIR}/mikmemshield_test)
+
