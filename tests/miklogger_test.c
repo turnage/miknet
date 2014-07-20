@@ -4,7 +4,7 @@
 
 #include "miknet/miklogger.h"
 
-START_TEST (standard_use)
+START_TEST(standard_use)
 {
 	char buffer[1024] = {0};
 	int expected_int = 5;
@@ -25,12 +25,27 @@ START_TEST (standard_use)
 }
 END_TEST
 
-START_TEST (logging_null)
+START_TEST(logging_null)
 {
 	char buffer[1024] = {0};
 
 	mik_log_core(MIK_LOG_INFO, buffer, NULL);
 	ck_assert_str_eq(buffer, "TRIPPING: Attempted to log NULL.\n");
+}
+END_TEST
+
+START_TEST(logging_off)
+{
+	char empty[1024] = {0};
+	char buffer[1024] = {0};
+
+	mik_log_toggle(MIK_LOG_OFF);
+	mik_log_core(MIK_LOG_INFO, buffer, "Anyone home?");
+	ck_assert(memcmp(buffer, empty, 1024) == 0);
+
+	mik_log_toggle(MIK_LOG_ON);
+	mik_log_core(MIK_LOG_INFO, buffer, "Anyone home?");
+	ck_assert_str_eq(buffer, "INFO: Anyone home?");
 }
 END_TEST
 
@@ -41,6 +56,7 @@ Suite *miklogger_suite()
 
 	tcase_add_test(tcase, standard_use);
 	tcase_add_test(tcase, logging_null);
+	tcase_add_test(tcase, logging_off);
 	suite_add_tcase(suite, tcase);
 
 	return suite;
