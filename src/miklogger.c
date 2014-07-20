@@ -23,6 +23,8 @@ void mik_log(mikloglevel_t level, const char *text, ...)
 
 void mik_log_core(mikloglevel_t level, char *dest, const char *text, ...)
 {
+	va_list list;
+
 	if (loglevel < level)
 		return;
 
@@ -31,16 +33,12 @@ void mik_log_core(mikloglevel_t level, char *dest, const char *text, ...)
 		return;
 	}
 
-	const char *prefix = MIK_LOG_PREFIXES[level];
-	int prefix_offset = MIK_LOG_PREFIX_LENGTHS[level];
-	va_list list;
-
 	va_start(list, text);
 	if (dest != NULL) {
-		sprintf(dest, prefix);
-		vsprintf(dest + prefix_offset, text, list);
+		sprintf(dest, MIK_LOG_PREFIXES[level]);
+		vsprintf(dest + MIK_LOG_PREFIX_LENGTHS[level], text, list);
 	} else {
-		fprintf(stderr, prefix);
+		fprintf(stderr, MIK_LOG_PREFIXES[level]);
 		vfprintf(stderr, text, list);
 	}
 }
