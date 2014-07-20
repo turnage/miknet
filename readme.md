@@ -102,15 +102,13 @@ To install miknet, you need
 * A C89 compiler.
 * A POSIX compliant machine.
 * cmake
-* check (````pacman -S check````, ````aptitute install check````, etc)
 
-Then, just
+Then, just ````sh install.sh```` or install manually using:
 
 ````
 mkdir build && cd build
-cmake ..
+cmake -DCMAKE_BUILD_TYPE=Release ..
 make
-ctest
 make install
 ````
 
