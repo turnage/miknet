@@ -17,8 +17,8 @@ to be one.
 
 ````
 miknode_t *node = miknode_create(MIK_IPV4,  /* IPV4 and IPV6 are supported. */
-				 1234,      /* The port to bind to. */
-				 100);      /* Maximum amount of peers. */
+                                 1234,      /* The port to bind to. */
+                                 100);      /* Maximum amount of peers. */
 ````
 
 Congratulations; you're someone. Now, you have two ways of making friends.
@@ -27,7 +27,7 @@ people:
 
 ````
 int friend = miknode_greet("www.friend.com" /* IP or domain name. */
-			   1234);           /* Destination port. */
+                           1234);           /* Destination port. */
 
 /* Associate data with friends using their data field. */
 node->friends[friend].data = "This is www.friend.com";
@@ -56,7 +56,7 @@ must service.
 
 ````
 miknode_service(node,  /* Provide the node. */
-		1000); /* Provide a maximum blocking time in ms. */
+                1000); /* Provide a maximum blocking time in ms. */
 ````
 
 This sends out the mail in your mailbox, and fills yours up with any mail
@@ -66,17 +66,17 @@ example:
 ````
 mikmail_t *mail;
 while (mail = miknode_get_mail(node)) {
-	if (mail->type == MIK_GREETING) {
-		/* New friend! */
-		int author = mail->author;
-		node.friends[author].data = "New friend!";
-	} else if (mail->type == MIK_LETTER) {
-		/* New data from friend. */
-		do_something(mail->author, mail->content, mail->length);
-	} else if (mail->type == MIK_LEAVE) {
-		/* Lost a friend. Their data field has been cleared. */
-		cry_about_it(mail->author);
-	}
+        if (mail->type == MIK_GREETING) {
+                /* New friend! */
+                int author = mail->author;
+                node.friends[author].data = "New friend!";
+        } else if (mail->type == MIK_LETTER) {
+                /* New data from friend. */
+                do_something(mail->author, mail->content, mail->length);
+        } else if (mail->type == MIK_LEAVE) {
+                /* Lost a friend. Their data field has been cleared. */
+                cry_about_it(mail->author);
+        }
 };
 ````
 
