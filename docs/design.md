@@ -37,19 +37,19 @@ not including universal dependencies like logging or nested dependencies.
 Below is a sketch of the modules in miknet and their relationship:
 
 ````
-mikmemapi mikmemmock* mikwebapi mikwebmock*
-       |   |                |   |
-       |   |                |   |
-       |   |                |   |
-      \ / \ /              \ / \ /
-    mikmemshield        mikwebshield
-             |          |
-mikpacket    |          |
+                      mikwebapi mikwebmock*
+                            |   |
+                            |   |
+                            |   |
+                           \ / \ /
+                        mikwebshield
+                        |
+mikpacket  mikdata      |
         |    |          |
         |    |          |
         |    |          |
        \ /  \ /         |
-        mikdata         |
+         mikdb          |
               |         |
               |         |
               |         |

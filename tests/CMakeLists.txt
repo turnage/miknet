@@ -12,18 +12,3 @@ add_executable(miklogger_test miklogger_test.c)
 target_link_libraries(miklogger_test ${TEST_LIBS} miklogger)
 add_test(miklogger_test ${CMAKE_CURRENT_BINARY_DIR}/miklogger_test)
 
-# mikmemapi
-add_executable(mikmemapi_test mikmemapi_test.c)
-target_link_libraries(mikmemapi_test ${TEST_LIBS} mikmemapi)
-add_test(mikmemapi_test ${CMAKE_CURRENT_BINARY_DIR}/mikmemapi_test)
-
-# mikmemmock
-add_executable(mikmemmock_test mikmemmock_test.c)
-target_link_libraries(mikmemmock_test ${TEST_LIBS} mikmemmock)
-add_test(mikmemmock_test ${CMAKE_CURRENT_BINARY_DIR}/mikmemmock_test)
-
-# mikmemshield
-add_executable(mikmemshield_test mikmemshield_test.c)
-target_link_libraries(mikmemshield_test ${TEST_LIBS} mikmemshield mikmemmock)
-add_test(mikmemshield_test ${CMAKE_CURRENT_BINARY_DIR}/mikmemshield_test)
-
