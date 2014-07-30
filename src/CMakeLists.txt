@@ -1,4 +1,4 @@
 include_directories(include)
 
 # miknet logging
-add_library(miklogger miklogger.c)
+add_library(miklog miklog.c)

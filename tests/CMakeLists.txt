@@ -7,8 +7,8 @@ include_directories(${CHECK_INCLUDE_DIRS})
 set(TEST_LIBS ${LIBS} ${CHECK_LIBRARIES})
 include_directories(../src/include)
 
-# miklogger
-add_executable(miklogger_test miklogger_test.c)
-target_link_libraries(miklogger_test ${TEST_LIBS} miklogger)
-add_test(miklogger_test ${CMAKE_CURRENT_BINARY_DIR}/miklogger_test)
+# miklog
+add_executable(miklog_test miklog_test.c)
+target_link_libraries(miklog_test ${TEST_LIBS} miklog)
+add_test(miklog_test ${CMAKE_CURRENT_BINARY_DIR}/miklog_test)
 

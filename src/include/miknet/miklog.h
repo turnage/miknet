@@ -2,10 +2,10 @@
 #define MIKLOGGER_H_
 
 typedef enum {
-	MIK_LOG_NONE = -1,
-	MIK_LOG_FATAL = 0,
-	MIK_LOG_ERROR = 1,
-	MIK_LOG_VERBOSE = 2
+	MIKLOG_NONE = -1,
+	MIKLOG_FATAL = 0,
+	MIKLOG_ERROR = 1,
+	MIKLOG_VERBOSE = 2
 } mikloglevel_t;
 
 /**
@@ -14,7 +14,7 @@ typedef enum {
  *  Toggles the log level of miklogger. Whatever the level, all messages of
  *  that level and below will be logged.
  */
-void mik_log_set_level(mikloglevel_t new_level);
+void miklog_set_level(mikloglevel_t new_level);
 
 /**
  *  Space: Internal only.
@@ -22,7 +22,7 @@ void mik_log_set_level(mikloglevel_t new_level);
  *  Logs some debug information to stderr.
  *  This takes format strings, just like printf.
  */
-void mik_log(mikloglevel_t level, const char *text, ...);
+void miklog(mikloglevel_t level, const char *text, ...);
 
 /**
  *  Space: Internal only.
@@ -30,6 +30,6 @@ void mik_log(mikloglevel_t level, const char *text, ...);
  *  Log some debug information to the provided destination in memory, or stderr
  *  if that is NULL. This takes format strings, just like printf.
  */
-void mik_log_core(mikloglevel_t level, char *dest, const char *text, ...);
+void miklog_core(mikloglevel_t level, char *dest, const char *text, ...);
 
 #endif  /* MIKLOGGER_H_ */
