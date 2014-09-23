@@ -1,5 +1,5 @@
-#ifndef MIKLOGGER_H_
-#define MIKLOGGER_H_
+#ifndef MIKLOG_H_
+#define MIKLOG_H_
 
 typedef enum {
 	MIKLOG_NONE = -1,
@@ -32,4 +32,4 @@ void miklog(mikloglevel_t level, const char *text, ...);
  */
 void miklog_core(mikloglevel_t level, char *dest, const char *text, ...);
 
-#endif  /* MIKLOGGER_H_ */
+#endif  /* MIKLOG_H_ */
