@@ -11,3 +11,8 @@ include_directories(../src/include)
 add_executable(mikid_test mikid_test.c)
 target_link_libraries(mikid_test ${TEST_LIBS} mikid)
 add_test(mikid_test ${CMAKE_CURRENT_BINARY_DIR}/mikid_test)
+
+# mikmeta
+add_executable(mikmeta_test mikmeta_test.c)
+target_link_libraries(mikmeta_test ${TEST_LIBS} mikmeta)
+add_test(mikmeta_test ${CMAKE_CURRENT_BINARY_DIR}/mikmeta_test)
