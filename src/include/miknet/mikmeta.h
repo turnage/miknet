@@ -1,5 +1,5 @@
-#ifndef MIKMETA_H_
-#define MIKMETA_H_
+#ifndef MIKNET_MIKMETA_H_
+#define MIKNET_MIKMETA_H_
 
 #include <stdint.h>
 #include <stddef.h>
@@ -34,4 +34,4 @@ int mikmeta_serialize(const mikmeta_t *metadata, uint8_t *destination);
  */
 mikmeta_t mikmeta_deserialize(const uint8_t *serialized);
 
-#endif /* MIKMETA_H_  */
+#endif /* MIKNET_MIKMETA_H_  */
