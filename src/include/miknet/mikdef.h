@@ -6,4 +6,9 @@ typedef enum {
 	MIK_TRUE = 1
 } mikbool_t;
 
+typedef enum {
+	MIK_IPV4 = 0,
+	MIK_IPV6 = 1
+} mikip_t;
+
 #endif /* MIKNET_MIKDEF_H_ */
