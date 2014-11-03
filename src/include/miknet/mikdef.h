@@ -7,8 +7,12 @@ typedef enum {
 } mikbool_t;
 
 typedef enum {
-	MIK_IPV4 = 0,
-	MIK_IPV6 = 1
-} mikip_t;
+	MIKERR_NONE = 0,
+	MIKERR_BAD_PTR = -1,
+	MIKERR_LOOKUP = -2,
+	MIKERR_CONNECT = -3,
+	MIKERR_BAD_ADDR = -4,
+	MIKERR_SOCKET = -5
+} mikerr_t;
 
 #endif /* MIKNET_MIKDEF_H_ */

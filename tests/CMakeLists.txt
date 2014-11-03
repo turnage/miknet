@@ -19,3 +19,8 @@ add_test(mikid_test ${CMAKE_CURRENT_BINARY_DIR}/mikid_test)
 add_executable(mikmeta_test mikmeta_test.c)
 target_link_libraries(mikmeta_test ${TEST_LIBS} mikmeta)
 add_test(mikmeta_test ${CMAKE_CURRENT_BINARY_DIR}/mikmeta_test)
+
+# mikaddr
+add_executable(mikaddr_test mikaddr_test.c)
+target_link_libraries(mikaddr_test ${TEST_LIBS} mikaddr miksysmock)
+add_test(mikaddr_test ${CMAKE_CURRENT_BINARY_DIR}/mikaddr_test)

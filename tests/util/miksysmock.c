@@ -3,6 +3,13 @@
 static int mock_return = 0;
 static uint64_t mock_arg = 0;
 
+static int mikconnect_mock(	int sockfd,
+				const struct sockaddr *addr,
+				socklen_t addrlen)
+{
+	return mock_return;
+}
+
 static void mikfreeaddrinfo_mock(struct addrinfo *res) {}
 
 static int mikgetaddrinfo_mock(	const char *node,
@@ -32,6 +39,7 @@ posix_t mikposixmock()
 {
 	posix_t mock;
 
+	mock.connect = mikconnect_mock;
 	mock.freeaddrinfo = mikfreeaddrinfo_mock;
 	mock.getaddrinfo = mikgetaddrinfo_mock;
 	mock.setsockopt = miksetsockopt_mock;

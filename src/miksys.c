@@ -2,7 +2,8 @@
 
 posix_t mikposix()
 {
-	posix_t posix = {	freeaddrinfo,
+	posix_t posix = {	connect,
+				freeaddrinfo,
 				getaddrinfo,
 				setsockopt,
 				socket};
