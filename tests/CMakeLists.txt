@@ -5,7 +5,6 @@ set(CMAKE_MODULE_PATH "../CMakeModules/")
 find_package(Check REQUIRED)
 include_directories(${CHECK_INCLUDE_DIRS})
 set(TEST_LIBS ${LIBS} ${CHECK_LIBRARIES})
-include_directories(../src/include)
 
 # mikid
 add_executable(mikid_test mikid_test.c)
