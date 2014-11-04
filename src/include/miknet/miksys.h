@@ -6,12 +6,14 @@
 #include <netdb.h>
 
 /**
- *  miksys provides call guards for the posix calls the miknet library makes. By
- *  default, they simply forward to the posix function. Using miksys_remap, they
- *  they can be set to call other functions for testing or extra safety.
+ *  miksys provides wrappers for functions provided by the kernel or C language
+ *  that parts of miknet might otherwise call directly.
+ *
+ *  This layer of misdirection allows the functions to be easily switched out
+ *  with other dependencies at runtime, for testing.
  */
 
-typedef struct syswrapper_t {
+typedef struct posix_t {
 	void (*freeaddrinfo)(struct addrinfo *);
 	int (*getaddrinfo)(	const char *,
 				const char *,
@@ -19,27 +21,11 @@ typedef struct syswrapper_t {
 				struct addrinfo **);
 	int (*setsockopt)(int, int, int, const void *, socklen_t);
 	int (*socket)(int, int, int);
-} syswrapper_t;
+} posix_t;
 
 /**
- *  Remaps miksys with the function definitions it needs. If this is not
- *  called, the defaults are used.
+ *  Returns the default posix wrapper.
  */
-void miksys_remap(syswrapper_t wrapper);
-
-void mikfreeaddrinfo(struct addrinfo *res);
-
-int mikgetaddrinfo(	const char *node,
-			const char *service,
-			const struct addrinfo *hints,
-			struct addrinfo **res);
-
-int miksetsockopt(	int sockfd,
-			int level,
-			int optname,
-			const void *optval,
-			socklen_t optlen);
-
-int miksocket(int domain, int type, int protocol);
+posix_t mikposix();
 
 #endif /* MIKNET_MIKSYS_H_ */

@@ -4,10 +4,10 @@
 #include "miknet/miksys.h"
 
 /**
- *  Initializes miksysmock. After calling this, calls to the miksys functions
- *  will instead call the mock functions.
+ *  Returns a posix function wrapper which directs to the mock functions,
+ *  instead of the actual ones.
  */
-void miksysmock_init();
+posix_t mikposixmock();
 
 /**
  *  Sets the value that mock functions will return when called, if a mock

@@ -28,16 +28,16 @@ static int miksocket_mock(int domain, int type, int protocol)
 	return mock_return;
 }
 
-void miksysmock_init()
+posix_t mikposixmock()
 {
-	syswrapper_t wrapper;
+	posix_t mock;
 
-	wrapper.freeaddrinfo = mikfreeaddrinfo_mock;
-	wrapper.getaddrinfo = mikgetaddrinfo_mock;
-	wrapper.setsockopt = miksetsockopt_mock;
-	wrapper.socket = miksocket_mock;
+	mock.freeaddrinfo = mikfreeaddrinfo_mock;
+	mock.getaddrinfo = mikgetaddrinfo_mock;
+	mock.setsockopt = miksetsockopt_mock;
+	mock.socket = miksocket_mock;
 
-	miksys_remap(wrapper);
+	return mock;
 }
 
 void miksysmock_set_return(int value) { mock_return = value; }
