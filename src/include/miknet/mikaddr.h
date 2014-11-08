@@ -19,14 +19,6 @@ typedef struct mikaddr_t {
 int mikaddr(mikaddr_t *mikaddr, posix_t *pos, const char *addr, uint16_t port);
 
 /**
-*  Attempts to connect to the mikaddr. If it succeeds, the socket fd will be
-*  returned.
-*
-*  A value less than 0 indicates an error.
-*/
-int mikaddr_connect(const mikaddr_t *mikaddr, posix_t *pos);
-
-/**
 * Cleans up resources used by a mikaddr instance.
 */
 void mikaddr_close(mikaddr_t *mikaddr, posix_t *pos);

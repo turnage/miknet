@@ -14,14 +14,19 @@
  */
 
 typedef struct posix_t {
-	int (*connect)(int, const struct sockaddr *, socklen_t);
-	void (*freeaddrinfo)(struct addrinfo *);
-	int (*getaddrinfo)(	const char *,
+	void (*freeaddrinfo)(struct posix_t *, struct addrinfo *);
+	int (*getaddrinfo)(	struct posix_t *,
+				const char *,
 				const char *,
 				const struct addrinfo *,
 				struct addrinfo **);
-	int (*setsockopt)(int, int, int, const void *, socklen_t);
-	int (*socket)(int, int, int);
+	int (*setsockopt)(	struct posix_t *,
+				int,
+				int,
+				int,
+				const void *,
+				socklen_t);
+	int (*socket)(struct posix_t *, int, int, int);
 } posix_t;
 
 /**
