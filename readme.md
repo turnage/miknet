@@ -2,4 +2,4 @@
 ===============================================================================
 
 miknet is in the process of reconstruction. For the old, complete version, see
-the branch "master", or the release "mercury".
+the branch "mercury", or the release "mercury".
