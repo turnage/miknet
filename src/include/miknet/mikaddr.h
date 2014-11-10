@@ -6,9 +6,13 @@
 
 #include "miknet/miksys.h"
 
+/**
+ *  mikaddr is a passive structure containing the information necessary to
+ *  communicate with a peer.
+ */
 typedef struct mikaddr_t {
-	struct addrinfo hint;
-	struct addrinfo *candidates;
+	struct sockaddr addr;
+	socklen_t addrlen;
 } mikaddr_t;
 
 /**
@@ -17,10 +21,5 @@ typedef struct mikaddr_t {
 *  If the mikaddr's connectable flag is not true, creating the address failed.
 */
 int mikaddr(mikaddr_t *mikaddr, posix_t *pos, const char *addr, uint16_t port);
-
-/**
-* Cleans up resources used by a mikaddr instance.
-*/
-void mikaddr_close(mikaddr_t *mikaddr, posix_t *pos);
 
 #endif /* MIKNET_MIKADDR_H_ */

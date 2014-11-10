@@ -8,28 +8,47 @@
 START_TEST(test_create)
 {
 	mikaddr_t addr;
-	struct addrinfo *expected_arg_val = (struct addrinfo *)700;
+	struct addrinfo expected_addr;
+	struct sockaddr expected_sockaddr;
+	struct sockaddr_in *expected;
+	struct sockaddr_in *actual;
 	posix_mock_t mock;
 	int status;
 
+	expected_addr.ai_addr = &expected_sockaddr;
+	expected = (struct sockaddr_in *)expected_addr.ai_addr;
+
 	mock.posix = mikposixmock();
 	mock.getaddrinfo_return = MIKERR_NONE;
-	mock.getaddrinfo_arg_set = expected_arg_val;
+	mock.getaddrinfo_arg_set = &expected_addr;
 	status = mikaddr(&addr, (posix_t *)&mock, "127.0.0.1", 80);
+	actual = (struct sockaddr_in *)&addr.addr;
 
 	ck_assert_int_eq(status, MIKERR_NONE);
-	ck_assert_int_eq(addr.candidates, expected_arg_val);
+	ck_assert_int_eq(addr.addrlen, expected_addr.ai_addrlen);
+	ck_assert_int_eq(expected->sin_port, actual->sin_port);
+	ck_assert_int_eq(expected->sin_addr.s_addr, actual->sin_addr.s_addr);
 }
 END_TEST
 
 START_TEST(test_create_sys_fails)
 {
 	mikaddr_t addr;
+	struct addrinfo expected_addr;
 	posix_mock_t mock;
 	int status;
 
+	/* Failure by report. */
 	mock.posix = mikposixmock();
 	mock.getaddrinfo_return = MIKERR_LOOKUP;
+	mock.getaddrinfo_arg_set = &expected_addr;
+	status = mikaddr(&addr, (posix_t *)&mock, "127.0.0.1", 80);
+
+	ck_assert_int_eq(status, MIKERR_LOOKUP);
+
+	/* Failure by no results. */
+	mock.getaddrinfo_return = MIKERR_NONE;
+	mock.getaddrinfo_arg_set = NULL;
 	status = mikaddr(&addr, (posix_t *)&mock, "127.0.0.1", 80);
 
 	ck_assert_int_eq(status, MIKERR_LOOKUP);
