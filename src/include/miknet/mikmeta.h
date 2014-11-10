@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define MIKMETA_SERIALIZED_OCTETS 3
+#define MIKMETA_SERIALIZED_OCTETS 7
 
 typedef enum {
 	MIK_NONE = 0,
@@ -14,6 +14,8 @@ typedef enum {
 } mikflag_t;
 
 typedef struct mikmeta_t {
+	uint16_t id;
+	uint16_t part;
 	mikflag_t type;
 	uint16_t size;
 } mikmeta_t;

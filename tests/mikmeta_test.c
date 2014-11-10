@@ -9,14 +9,21 @@ START_TEST(serialize)
 	mikmeta_t metadata = {0};
 	int status;
 
+	metadata.id = 0xaabb;
+	metadata.part = 0xccdd;
 	metadata.type = MIK_JOIN;
-	metadata.size = 0xaabb;
+	metadata.size = 0xeeff;
 	status = mikmeta_serialize(&metadata, serialized);
 
 	ck_assert_int_eq(status, 0);
-	ck_assert_int_eq(serialized[0], MIK_JOIN);
-	ck_assert_int_eq(serialized[1], 0xaa);
-	ck_assert_int_eq(serialized[2], 0xbb);
+	ck_assert_int_eq(serialized[0], 0xaa);
+	ck_assert_int_eq(serialized[1], 0xbb);
+	ck_assert_int_eq(serialized[2], 0xcc);
+	ck_assert_int_eq(serialized[3], 0xdd);
+	ck_assert_int_eq(serialized[4], MIK_JOIN);
+	ck_assert_int_eq(serialized[5], 0xee);
+	ck_assert_int_eq(serialized[6], 0xff);
+
 }
 END_TEST
 
@@ -36,15 +43,20 @@ START_TEST(deserialize)
 	uint8_t serialized[3] = {0};
 	mikmeta_t deserialized = {0};
 
-	serialized[0] = MIK_DATA;
-	serialized[1] = 0xaa;
-	serialized[2] = 0xbb;
+	serialized[0] = 0xaa;
+	serialized[1] = 0xbb;
+	serialized[2] = 0xcc;
+	serialized[3] = 0xdd;
+	serialized[4] = MIK_DATA;
+	serialized[5] = 0xee;
+	serialized[6] = 0xff;
 
 	deserialized = mikmeta_deserialize(serialized);
 
-	ck_assert(deserialized.type == MIK_DATA);
-	ck_assert_int_eq(deserialized.size >> 8, 0xaa);
-	ck_assert_int_eq(deserialized.size & 0xff, 0xbb);
+	ck_assert_int_eq(deserialized.type, MIK_DATA);
+	ck_assert_int_eq(deserialized.id, 0xaabb);
+	ck_assert_int_eq(deserialized.part, 0xccdd);
+	ck_assert_int_eq(deserialized.size, 0xeeff);
 }
 END_TEST
 
