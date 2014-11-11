@@ -8,7 +8,7 @@ static uint8_t get_mso(const uint16_t octets) { return octets >> 8; }
 /**
  *  Fetches the least significant octet in a 16 bit integer.
  */
-static uint8_t get_lso(const uint16_t octets) { return octets >> 8; }
+static uint8_t get_lso(const uint16_t octets) { return octets & 0xff; }
 
 static uint16_t combine(const uint8_t mso, const uint8_t lso)
 {
@@ -25,13 +25,13 @@ int mikmeta_serialize(const mikmeta_t *metadata, uint8_t *destination)
 		return -1;
 	}
 
-	destination[0] = metadata->id >> 8;
-	destination[1] = metadata->id & 0xff;
-	destination[2] = metadata->part >> 8;
-	destination[3] = metadata->part & 0xff;
+	destination[0] = get_mso(metadata->id);
+	destination[1] = get_lso(metadata->id);
+	destination[2] = get_mso(metadata->part);
+	destination[3] = get_lso(metadata->part);
 	destination[4] = metadata->type;
-	destination[5] = metadata->size >> 8;
-	destination[6] = metadata->size & 0xff;
+	destination[5] = get_mso(metadata->size);
+	destination[6] = get_lso(metadata->size);
 
 	return 0;
 }
