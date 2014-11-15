@@ -1,3 +1,8 @@
+#include <string.h>
+
+#include "miknet/mikdef.h"
+#include "miknet/mikid.h"
+#include "miknet/mikmeta.h"
 #include "miknet/mikpack.h"
 
 /**
@@ -41,4 +46,37 @@ size_t mikpack_mem_est(size_t len)
 		mem_est += semi_fragment_data_size(remainder);
 
 	return mem_est;
+}
+
+int mikpack(mikpack_t *pack, const uint8_t *src, size_t len, uint8_t *dest)
+{
+	uint16_t frags;
+	mikmeta_t metadata;
+	uint32_t offset;
+	size_t remainder;
+
+	if (!pack || !src || !len || !dest)
+		return MIKERR_BAD_PTR;
+
+	pack->ref_count = 0;
+	pack->data = dest;
+
+	metadata.id = mikid();
+	metadata.type = MIK_DATA;
+	frags = fragments(len, &remainder);
+
+	for (metadata.part = 0; metadata.part < frags; ++metadata.part) {
+		offset = metadata.part * MIKPACK_REAL_FRAG_SIZE;
+		if (metadata.part == frags - 1 && remainder)
+			metadata.size = remainder;
+		else
+			metadata.size = MIKPACK_FRAG_SIZE;
+
+		mikmeta_serialize(&metadata, pack->data + offset);
+		memcpy(	pack->data + offset + MIKMETA_SERIALIZED_OCTETS,
+			src + metadata.part * MIKPACK_FRAG_SIZE,
+			metadata.size);
+	}
+
+	return MIKERR_NONE;
 }
