@@ -1,9 +1,8 @@
 #include "miknet/mikid.h"
 
-static uint64_t id = 0;
-
-uint64_t mikid()
+uint16_t mikid()
 {
+	static uint16_t id = 0;
 	return id++;
 }
 

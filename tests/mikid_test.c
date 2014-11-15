@@ -5,8 +5,8 @@
 
 START_TEST(generate_ids)
 {
-	uint64_t a = mikid();
-	uint64_t b = mikid();
+	uint16_t a = mikid();
+	uint16_t b = mikid();
 
 	ck_assert(a != b);
 }
