@@ -8,8 +8,9 @@
 #define MIKPACK_FRAG_SIZE (MIKPACK_REAL_FRAG_SIZE - MIKMETA_SERIALIZED_OCTETS)
 
 typedef struct mikpack_t {
-	uint16_t ref_count;
 	uint8_t *data;
+	uint16_t frags;
+	uint16_t ref_count;
 } mikpack_t;
 
 /**
@@ -25,5 +26,16 @@ size_t mikpack_mem_est(size_t len);
  *  mikpack_mem_est() on the size of the data to be sent.
  */
 int mikpack(mikpack_t *pack, const uint8_t *src, size_t len, uint8_t *dest);
+
+/**
+ *  Returns a pointer to the beginning of a specific fragment in the mikpack.
+ */
+int mikpack_frag(const mikpack_t *pack, uint16_t fragment, mikmeta_t *metadata);
+
+/**
+ *  Returns a pointer to the beginning of a specific fragment's data in the
+ *  mikpack.
+ */
+uint8_t *mikpack_frag_data(const mikpack_t *pack, uint16_t fragment);
 
 #endif /* MIKNET_MIKPACK_H_ */
