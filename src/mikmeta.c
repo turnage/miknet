@@ -1,3 +1,4 @@
+#include "miknet/mikdef.h"
 #include "miknet/mikmeta.h"
 
 /**
@@ -36,19 +37,15 @@ int mikmeta_serialize(const mikmeta_t *metadata, uint8_t *destination)
 	return 0;
 }
 
-mikmeta_t mikmeta_deserialize(const uint8_t *serialized)
+int mikmeta_deserialize(mikmeta_t *metadata, const uint8_t *serialized)
 {
-	mikmeta_t metadata;
+	if (!metadata || !serialized)
+		return MIKERR_BAD_PTR;
 
-	if (!serialized) {
-		metadata.type = MIK_NONE;
-		return metadata;
-	}
+	metadata->id = combine(serialized[0], serialized[1]);
+	metadata->part = combine(serialized[2], serialized[3]);
+	metadata->type = serialized[4];
+	metadata->size = combine(serialized[5], serialized[6]);
 
-	metadata.id = combine(serialized[0], serialized[1]);
-	metadata.part = combine(serialized[2], serialized[3]);
-	metadata.type = serialized[4];
-	metadata.size = combine(serialized[5], serialized[6]);
-
-	return metadata;
+	return MIKERR_NONE;;
 }

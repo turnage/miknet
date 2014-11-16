@@ -32,8 +32,8 @@ int mikmeta_serialize(const mikmeta_t *metadata, uint8_t *destination);
  *  Deserializes data that represents Miknet metadata. The data should be
  *  MIKMETA_SERIALIZED_OCTETS long.
  *
- *  Returns a constructed metadata object.
+ *  Returns 0 on success.
  */
-mikmeta_t mikmeta_deserialize(const uint8_t *serialized);
+int mikmeta_deserialize(mikmeta_t *metadata, const uint8_t *serialized);
 
 #endif /* MIKNET_MIKMETA_H_  */

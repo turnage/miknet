@@ -1,6 +1,7 @@
 #include <check.h>
 #include <stdint.h>
 
+#include "miknet/mikdef.h"
 #include "miknet/mikmeta.h"
 
 START_TEST(serialize)
@@ -42,6 +43,7 @@ START_TEST(deserialize)
 {
 	uint8_t serialized[3] = {0};
 	mikmeta_t deserialized = {0};
+	int status;
 
 	serialized[0] = 0xaa;
 	serialized[1] = 0xbb;
@@ -51,8 +53,9 @@ START_TEST(deserialize)
 	serialized[5] = 0xee;
 	serialized[6] = 0xff;
 
-	deserialized = mikmeta_deserialize(serialized);
+	status = mikmeta_deserialize(&deserialized, serialized);
 
+	ck_assert_int_eq(status, MIKERR_NONE);
 	ck_assert_int_eq(deserialized.type, MIK_DATA);
 	ck_assert_int_eq(deserialized.id, 0xaabb);
 	ck_assert_int_eq(deserialized.part, 0xccdd);
@@ -63,10 +66,14 @@ END_TEST
 START_TEST(deserialize_bad_ptr)
 {
 	mikmeta_t deserialized;
+	uint8_t buffer[MIKMETA_SERIALIZED_OCTETS];
+	int status;
 
-	deserialized = mikmeta_deserialize(NULL);
+	status = mikmeta_deserialize(&deserialized, NULL);
+	ck_assert_int_eq(status, MIKERR_BAD_PTR);
 
-	ck_assert_int_eq(deserialized.type, MIK_NONE);
+	status = mikmeta_deserialize(NULL, buffer);
+	ck_assert_int_eq(status, MIKERR_BAD_PTR);
 }
 END_TEST
 
