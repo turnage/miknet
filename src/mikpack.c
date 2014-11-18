@@ -53,7 +53,11 @@ size_t mikpack_mem_est(size_t len)
 	return mem_est;
 }
 
-int mikpack(mikpack_t *pack, const uint8_t *src, size_t len, uint8_t *dest)
+int mikpack(	mikpack_t *pack,
+		mikflag_t flags,
+		const uint8_t *src,
+		size_t len,
+		uint8_t *dest)
 {
 	uint16_t frags;
 	mikmeta_t metadata;
@@ -67,6 +71,7 @@ int mikpack(mikpack_t *pack, const uint8_t *src, size_t len, uint8_t *dest)
 
 	metadata.id = mikid();
 	metadata.type = MIK_DATA;
+	metadata.flags = flags;
 	frags = fragments(len, &remainder);
 
 	for (metadata.part = 0; metadata.part < frags; ++metadata.part) {

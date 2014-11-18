@@ -33,7 +33,7 @@ START_TEST(make_short_packet)
 	int status;
 
 	dest = calloc(1, mikpack_mem_est(length));
-	status = mikpack(&pack, (uint8_t *)data, length, dest);
+	status = mikpack(&pack, 0, (uint8_t *)data, length, dest);
 	ck_assert_int_eq(status, MIKERR_NONE);
 
 	status = mikpack_frag(&pack, 0, &metadata);
@@ -60,7 +60,7 @@ START_TEST(make_long_packet)
 	int status;
 
 	dest = calloc(1, mikpack_mem_est(length));
-	status = mikpack(&pack, (uint8_t *)data, length, dest);
+	status = mikpack(&pack, 0, (uint8_t *)data, length, dest);
 	ck_assert_int_eq(status, MIKERR_NONE);
 
 	status = mikpack_frag(&pack, 1, &metadata);
@@ -82,16 +82,16 @@ START_TEST(make_packet_bad_ptr)
 	mikpack_t pack;
 	int status;
 
-	status = mikpack(NULL, &num, 1, &num);
+	status = mikpack(NULL, 0, &num, 1, &num);
 	ck_assert_int_eq(status, MIKERR_BAD_PTR);
 
-	status = mikpack(&pack, NULL, 1, &num);
+	status = mikpack(&pack, 0, NULL, 1, &num);
 	ck_assert_int_eq(status, MIKERR_BAD_PTR);
 
-	status = mikpack(&pack, &num, 0, &num);
+	status = mikpack(&pack, 0, &num, 0, &num);
 	ck_assert_int_eq(status, MIKERR_BAD_PTR);
 
-	status = mikpack(&pack, &num, 1, NULL);
+	status = mikpack(&pack, 0, &num, 1, NULL);
 	ck_assert_int_eq(status, MIKERR_BAD_PTR);
 }
 END_TEST

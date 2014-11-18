@@ -25,7 +25,11 @@ size_t mikpack_mem_est(size_t len);
  *  must be enough to hold the packet. Find out how much is needed by calling
  *  mikpack_mem_est() on the size of the data to be sent.
  */
-int mikpack(mikpack_t *pack, const uint8_t *src, size_t len, uint8_t *dest);
+int mikpack(	mikpack_t *pack,
+		mikflag_t flags,
+		const uint8_t *src,
+		size_t len,
+		uint8_t *dest);
 
 /**
  *  Returns a pointer to the beginning of a specific fragment in the mikpack.
