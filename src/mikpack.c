@@ -59,23 +59,22 @@ int mikpack(	mikpack_t *pack,
 		size_t len,
 		uint8_t *dest)
 {
-	uint16_t frags;
 	mikmeta_t metadata;
 	size_t remainder;
 
 	if (!pack || !src || !len || !dest)
 		return MIKERR_BAD_PTR;
 
+	pack->flags = flags;
+	pack->frags = fragments(len, &remainder);
 	pack->ref_count = 0;
 	pack->data = dest;
 
 	metadata.id = mikid();
 	metadata.type = MIK_DATA;
-	metadata.flags = flags;
-	frags = fragments(len, &remainder);
 
-	for (metadata.part = 0; metadata.part < frags; ++metadata.part) {
-		if (metadata.part == frags - 1 && remainder)
+	for (metadata.part = 0; metadata.part < pack->frags; ++metadata.part) {
+		if (metadata.part == pack->frags - 1 && remainder)
 			metadata.size = remainder;
 		else
 			metadata.size = MIKPACK_FRAG_SIZE;

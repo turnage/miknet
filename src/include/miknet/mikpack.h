@@ -7,8 +7,11 @@
 #define MIKPACK_REAL_FRAG_SIZE 512
 #define MIKPACK_FRAG_SIZE (MIKPACK_REAL_FRAG_SIZE - MIKMETA_SERIALIZED_OCTETS)
 
+typedef uint16_t mikflag_t;
+
 typedef struct mikpack_t {
 	uint8_t *data;
+	mikflag_t flags;
 	uint16_t frags;
 	uint16_t ref_count;
 } mikpack_t;

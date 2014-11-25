@@ -42,6 +42,8 @@ START_TEST(make_short_packet)
 	ck_assert_int_eq(metadata.size, length);
 	ck_assert_int_eq(metadata.part, 0);
 	ck_assert_int_eq(metadata.type, MIK_DATA);
+	ck_assert_int_eq(pack.flags, 0);
+	ck_assert_int_eq(pack.frags, 1);
 	ck_assert_int_eq(pack.ref_count, 0);
 	ck_assert_int_eq(pack.data, dest);
 	ck_assert_int_eq(memcmp(mikpack_frag_data(&pack, 0), "Hello", 6), 0);
@@ -69,6 +71,7 @@ START_TEST(make_long_packet)
 	ck_assert_int_eq(metadata.size, MIKPACK_FRAG_SIZE - 100);
 	ck_assert_int_eq(metadata.part, 1);
 	ck_assert_int_eq(metadata.type, MIK_DATA);
+	ck_assert_int_eq(pack.frags, 2);
 	ck_assert_int_eq(pack.ref_count, 0);
 	ck_assert_int_eq(pack.data, dest);
 
