@@ -11,9 +11,9 @@ START_TEST(serialize)
 	int status;
 
 	metadata.id = 0xaabb;
-	metadata.flags = 0xccdd;
-	metadata.part = 0xeeff;
+	metadata.part = 0xccdd;
 	metadata.type = MIK_JOIN;
+	metadata.channel = 0xee;
 	metadata.size = 0x1122;
 	status = mikmeta_serialize(&metadata, serialized);
 
@@ -22,11 +22,10 @@ START_TEST(serialize)
 	ck_assert_int_eq(serialized[1], 0xbb);
 	ck_assert_int_eq(serialized[2], 0xcc);
 	ck_assert_int_eq(serialized[3], 0xdd);
-	ck_assert_int_eq(serialized[4], 0xee);
-	ck_assert_int_eq(serialized[5], 0xff);
-	ck_assert_int_eq(serialized[6], MIK_JOIN);
-	ck_assert_int_eq(serialized[7], 0x11);
-	ck_assert_int_eq(serialized[8], 0x22);
+	ck_assert_int_eq(serialized[4], MIK_JOIN);
+	ck_assert_int_eq(serialized[5], 0xee);
+	ck_assert_int_eq(serialized[6], 0x11);
+	ck_assert_int_eq(serialized[7], 0x22);
 
 }
 END_TEST
@@ -52,19 +51,18 @@ START_TEST(deserialize)
 	serialized[1] = 0xbb;
 	serialized[2] = 0xcc;
 	serialized[3] = 0xdd;
-	serialized[4] = 0xee;
-	serialized[5] = 0xff;
-	serialized[6] = MIK_DATA;
-	serialized[7] = 0x11;
-	serialized[8] = 0x22;
+	serialized[4] = MIK_DATA;
+	serialized[5] = 0xee;
+	serialized[6] = 0x11;
+	serialized[7] = 0x22;
 
 	status = mikmeta_deserialize(&deserialized, serialized);
 
 	ck_assert_int_eq(status, MIKERR_NONE);
 	ck_assert_int_eq(deserialized.type, MIK_DATA);
 	ck_assert_int_eq(deserialized.id, 0xaabb);
-	ck_assert_int_eq(deserialized.flags, 0xccdd);
-	ck_assert_int_eq(deserialized.part, 0xeeff);
+	ck_assert_int_eq(deserialized.part, 0xccdd);
+	ck_assert_int_eq(deserialized.channel, 0xee);
 	ck_assert_int_eq(deserialized.size, 0x1122);
 }
 END_TEST

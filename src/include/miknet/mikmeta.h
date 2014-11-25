@@ -6,7 +6,7 @@
 
 #define MIKMETA_SERIALIZED_OCTETS 9
 
-typedef uint16_t mikflag_t;
+typedef uint8_t mikchan_t;
 
 typedef enum {
 	MIK_NONE = 0,
@@ -17,9 +17,9 @@ typedef enum {
 
 typedef struct mikmeta_t {
 	uint16_t id;
-	mikflag_t flags;
 	uint16_t part;
 	miktype_t type;
+	mikchan_t channel;
 	uint16_t size;
 } mikmeta_t;
 
