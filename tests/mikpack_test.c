@@ -33,7 +33,7 @@ START_TEST(make_short_packet)
 	int status;
 
 	dest = calloc(1, mikpack_mem_est(length));
-	status = mikpack(&pack, 0, (uint8_t *)data, length, dest);
+	status = mikpack(&pack, MIK_SAFE, (uint8_t *)data, length, dest);
 	ck_assert_int_eq(status, MIKERR_NONE);
 
 	status = mikpack_frag(&pack, 0, &metadata);
@@ -41,8 +41,7 @@ START_TEST(make_short_packet)
 
 	ck_assert_int_eq(metadata.size, length);
 	ck_assert_int_eq(metadata.part, 0);
-	ck_assert_int_eq(metadata.type, MIK_DATA);
-	ck_assert_int_eq(pack.flags, 0);
+	ck_assert_int_eq(metadata.type, MIK_SAFE);
 	ck_assert_int_eq(pack.frags, 1);
 	ck_assert_int_eq(pack.ref_count, 0);
 	ck_assert_int_eq(pack.data, dest);
@@ -62,7 +61,7 @@ START_TEST(make_long_packet)
 	int status;
 
 	dest = calloc(1, mikpack_mem_est(length));
-	status = mikpack(&pack, 0, (uint8_t *)data, length, dest);
+	status = mikpack(&pack, MIK_UNSAFE, (uint8_t *)data, length, dest);
 	ck_assert_int_eq(status, MIKERR_NONE);
 
 	status = mikpack_frag(&pack, 1, &metadata);
@@ -70,7 +69,7 @@ START_TEST(make_long_packet)
 
 	ck_assert_int_eq(metadata.size, MIKPACK_FRAG_SIZE - 100);
 	ck_assert_int_eq(metadata.part, 1);
-	ck_assert_int_eq(metadata.type, MIK_DATA);
+	ck_assert_int_eq(metadata.type, MIK_UNSAFE);
 	ck_assert_int_eq(pack.frags, 2);
 	ck_assert_int_eq(pack.ref_count, 0);
 	ck_assert_int_eq(pack.data, dest);
@@ -85,16 +84,16 @@ START_TEST(make_packet_bad_ptr)
 	mikpack_t pack;
 	int status;
 
-	status = mikpack(NULL, 0, &num, 1, &num);
+	status = mikpack(NULL, MIK_SAFE, &num, 1, &num);
 	ck_assert_int_eq(status, MIKERR_BAD_PTR);
 
-	status = mikpack(&pack, 0, NULL, 1, &num);
+	status = mikpack(&pack, MIK_SAFE, NULL, 1, &num);
 	ck_assert_int_eq(status, MIKERR_BAD_PTR);
 
-	status = mikpack(&pack, 0, &num, 0, &num);
+	status = mikpack(&pack, MIK_SAFE, &num, 0, &num);
 	ck_assert_int_eq(status, MIKERR_BAD_PTR);
 
-	status = mikpack(&pack, 0, &num, 1, NULL);
+	status = mikpack(&pack, MIK_SAFE, &num, 1, NULL);
 	ck_assert_int_eq(status, MIKERR_BAD_PTR);
 }
 END_TEST

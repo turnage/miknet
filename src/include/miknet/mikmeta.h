@@ -9,11 +9,12 @@
 typedef uint8_t mikchan_t;
 
 typedef enum {
-	MIK_NONE = 0,
-	MIK_JOIN = 1,
-	MIK_QUIT = 2,
-	MIK_DATA = 3,
-	MIK_ACKN = 4
+	MIK_NONE   = 0,
+	MIK_JOIN   = 1,
+	MIK_QUIT   = 2,
+	MIK_ACKN   = 3,
+	MIK_SAFE   = 4,
+	MIK_UNSAFE = 5
 } miktype_t;
 
 typedef struct mikmeta_t {

@@ -51,7 +51,7 @@ START_TEST(deserialize)
 	serialized[1] = 0xbb;
 	serialized[2] = 0xcc;
 	serialized[3] = 0xdd;
-	serialized[4] = MIK_DATA;
+	serialized[4] = MIK_SAFE;
 	serialized[5] = 0xee;
 	serialized[6] = 0x11;
 	serialized[7] = 0x22;
@@ -59,7 +59,7 @@ START_TEST(deserialize)
 	status = mikmeta_deserialize(&deserialized, serialized);
 
 	ck_assert_int_eq(status, MIKERR_NONE);
-	ck_assert_int_eq(deserialized.type, MIK_DATA);
+	ck_assert_int_eq(deserialized.type, MIK_SAFE);
 	ck_assert_int_eq(deserialized.id, 0xaabb);
 	ck_assert_int_eq(deserialized.part, 0xccdd);
 	ck_assert_int_eq(deserialized.channel, 0xee);

@@ -54,7 +54,7 @@ size_t mikpack_mem_est(size_t len)
 }
 
 int mikpack(	mikpack_t *pack,
-		mikflag_t flags,
+		miktype_t type,
 		const uint8_t *src,
 		size_t len,
 		uint8_t *dest)
@@ -65,13 +65,12 @@ int mikpack(	mikpack_t *pack,
 	if (!pack || !src || !len || !dest)
 		return MIKERR_BAD_PTR;
 
-	pack->flags = flags;
 	pack->frags = fragments(len, &remainder);
 	pack->ref_count = 0;
 	pack->data = dest;
 
 	metadata.id = mikid();
-	metadata.type = MIK_DATA;
+	metadata.type = type;
 
 	for (metadata.part = 0; metadata.part < pack->frags; ++metadata.part) {
 		if (metadata.part == pack->frags - 1 && remainder)
