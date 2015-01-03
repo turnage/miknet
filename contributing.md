@@ -24,7 +24,7 @@ Your machine will need
 
 This command will take care of everything on a machine with apt:
 
-````apt-get install check cmake build-essential git````
+````apt-get install check cmake build-essential git pkg-config````
 
 If you have never used git before, look up git configure and set up
 your user.
