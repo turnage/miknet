@@ -32,7 +32,7 @@ int mikpack(	mikpack_t *pack,
 		uint8_t *dest);
 
 /**
- *  Returns a pointer to the beginning of a specific fragment in the mikpack.
+ *  Deserializes the data in the requested fragment into the passed mikmeta_t.
  */
 int mikpack_frag(const mikpack_t *pack, uint16_t fragment, mikmeta_t *metadata);
 
