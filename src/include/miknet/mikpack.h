@@ -14,22 +14,12 @@ typedef struct mikpack_t {
 } mikpack_t;
 
 /**
- *  Returns an estimate of the memory required for a packet carrying the
- *  inquired amount of octets.
- */
-size_t mikpack_mem_est(size_t len);
-
-/**
- *  Creates a mikpack from the provided data. The provided destination pointer
- *  **must** point to memory that mikpack can write to. The size of that memory
- *  must be enough to hold the packet. Find out how much is needed by calling
- *  mikpack_mem_est() on the size of the data to be sent.
+ *  Creates a mikpack from the provided data.
  */
 int mikpack(	mikpack_t *pack,
 		miktype_t type,
 		const uint8_t *src,
-		size_t len,
-		uint8_t *dest);
+		size_t len);
 
 /**
  *  Deserializes the data in the requested fragment into the passed mikmeta_t.
@@ -41,5 +31,10 @@ int mikpack_frag(const mikpack_t *pack, uint16_t fragment, mikmeta_t *metadata);
  *  mikpack.
  */
 uint8_t *mikpack_frag_data(const mikpack_t *pack, uint16_t fragment);
+
+/**
+ *  Frees the resources used by a mikpack_t.
+ */
+void mikpack_close(mikpack_t *pack);
 
 #endif /* MIKNET_MIKPACK_H_ */

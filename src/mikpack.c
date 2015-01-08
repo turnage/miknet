@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <string.h>
 
 #include "miknet/mikdef.h"
@@ -19,6 +20,9 @@ static uint16_t fragments(size_t len, size_t *remainder)
 	return frags;
 }
 
+/**
+ *  Returns a pointer to the start of a fragment's data.
+ */
 static uint8_t *fragment_start(const mikpack_t *pack, uint16_t fragment)
 {
 	return pack->data + (fragment * MIKPACK_REAL_FRAG_SIZE);
@@ -42,7 +46,10 @@ static size_t semi_fragment_data_size(size_t len)
 	return len + MIKFRAG_HEADER_SIZE;
 }
 
-size_t mikpack_mem_est(size_t len)
+/**
+ *  Estimates the memory required to hold a packet's data.
+ */
+static size_t mikpack_mem_est(size_t len)
 {
 	size_t remainder;
 	size_t mem_est = fragment_data_size(fragments(len, &remainder));
@@ -56,18 +63,20 @@ size_t mikpack_mem_est(size_t len)
 int mikpack(	mikpack_t *pack,
 		miktype_t type,
 		const uint8_t *src,
-		size_t len,
-		uint8_t *dest)
+		size_t len)
 {
 	mikmeta_t metadata;
 	size_t remainder;
 
-	if (!pack || !src || !len || !dest)
+	if (!pack || !src || !len)
 		return MIKERR_BAD_PTR;
 
 	pack->frags = fragments(len, &remainder);
 	pack->ref_count = 0;
-	pack->data = dest;
+	pack->data = malloc(mikpack_mem_est(len));
+
+	if (!pack->data)
+		return MIKERR_BAD_MEM;
 
 	metadata.id = mikid();
 	metadata.type = type;
@@ -108,4 +117,9 @@ uint8_t *mikpack_frag_data(const mikpack_t *pack, uint16_t fragment)
 		return NULL;
 
 	return fragment_start(pack, fragment) + MIKMETA_SERIALIZED_OCTETS;
+}
+
+void mikpack_close(mikpack_t *pack)
+{
+	free(pack->data);
 }

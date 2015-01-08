@@ -13,7 +13,8 @@ typedef enum {
 	MIKERR_CONNECT = -3,
 	MIKERR_BAD_ADDR = -4,
 	MIKERR_SOCKET = -5,
-	MIKERR_NO_SUCH_FRAG = -6
+	MIKERR_NO_SUCH_FRAG = -6,
+	MIKERR_BAD_MEM = -7
 } mikerr_t;
 
 #endif /* MIKNET_MIKDEF_H_ */
