@@ -65,7 +65,7 @@ int mikpack(	mikpack_t **pack,
 		const uint8_t *src,
 		size_t len)
 {
-	mikmeta_t metadata;
+	mikmeta_t meta;
 	size_t remainder;
 
 	if (!pack || !src || !len)
@@ -80,20 +80,20 @@ int mikpack(	mikpack_t **pack,
 	(*pack)->ref_count = 0;
 	(*pack)->data = (uint8_t *)*pack + sizeof(mikpack_t);
 
-	metadata.id = mikid();
-	metadata.type = type;
+	meta.id = mikid();
+	meta.type = type;
 
-	for (metadata.part = 0; metadata.part < (*pack)->frags; ++metadata.part) {
-		if (metadata.part == (*pack)->frags - 1 && remainder)
-			metadata.size = remainder;
+	for (meta.part = 0; meta.part < (*pack)->frags; ++meta.part) {
+		if (meta.part == (*pack)->frags - 1 && remainder)
+			meta.size = remainder;
 		else
-			metadata.size = MIKPACK_FRAG_SIZE;
+			meta.size = MIKPACK_FRAG_SIZE;
 
-		mikmeta_serialize(	&metadata,
-					fragment_start((*pack), metadata.part));
-		memcpy(	mikpack_frag_data((*pack), metadata.part),
-			src + (metadata.part * MIKPACK_FRAG_SIZE),
-			metadata.size);
+		mikmeta_serialize(	&meta,
+					fragment_start((*pack), meta.part));
+		memcpy(	mikpack_frag_data((*pack), meta.part),
+			src + (meta.part * MIKPACK_FRAG_SIZE),
+			meta.size);
 	}
 
 	return MIKERR_NONE;
