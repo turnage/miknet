@@ -114,15 +114,15 @@ int mikpack_set_id(mikpack_t *pack, uint16_t id)
 	return MIKERR_NONE;
 }
 
-int mikpack_frag(const mikpack_t *pack, uint16_t fragment, mikmeta_t *metadata)
+int mikpack_frag(const mikpack_t *pack, uint16_t fragment, mikmeta_t *meta)
 {
-	if (!pack || !metadata)
+	if (!pack || !meta)
 		return MIKERR_BAD_PTR;
 
 	if (fragment > pack->frags - 1)
 		return MIKERR_NO_SUCH_FRAG;;
 
-	return mikmeta_deserialize(metadata, fragment_start(pack, fragment));
+	return mikmeta_deserialize(meta, fragment_start(pack, fragment));
 }
 
 uint8_t *mikpack_frag_data(const mikpack_t *pack, uint16_t frag)

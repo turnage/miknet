@@ -11,19 +11,19 @@ START_TEST(make_short_packet)
 {
 	char data[6] = "Hello";
 	const size_t length = 6;
-	mikmeta_t metadata;
+	mikmeta_t meta;
 	mikpack_t *pack;
 	int status;
 
 	status = mikpack(&pack, MIK_SAFE, (uint8_t *)data, length);
 	ck_assert_int_eq(status, MIKERR_NONE);
 
-	status = mikpack_frag(pack, 0, &metadata);
+	status = mikpack_frag(pack, 0, &meta);
 	ck_assert_int_eq(status, MIKERR_NONE);
 
-	ck_assert_int_eq(metadata.size, length);
-	ck_assert_int_eq(metadata.part, 0);
-	ck_assert_int_eq(metadata.type, MIK_SAFE);
+	ck_assert_int_eq(meta.size, length);
+	ck_assert_int_eq(meta.part, 0);
+	ck_assert_int_eq(meta.type, MIK_SAFE);
 	ck_assert_int_eq(pack->frags, 1);
 	ck_assert_int_eq(pack->ref_count, 0);
 	ck_assert_int_eq(memcmp(mikpack_frag_data(pack, 0), "Hello", 6), 0);
@@ -36,19 +36,19 @@ START_TEST(make_long_packet)
 {
 	uint8_t data[(MIKPACK_FRAG_SIZE * 2) - 100] = {0};
 	const size_t length = (MIKPACK_FRAG_SIZE * 2) - 100;
-	mikmeta_t metadata;
+	mikmeta_t meta;
 	mikpack_t *pack;
 	int status;
 
 	status = mikpack(&pack, MIK_UNSAFE, data, length);
 	ck_assert_int_eq(status, MIKERR_NONE);
 
-	status = mikpack_frag(pack, 1, &metadata);
+	status = mikpack_frag(pack, 1, &meta);
 	ck_assert_int_eq(status, MIKERR_NONE);
 
-	ck_assert_int_eq(metadata.size, MIKPACK_FRAG_SIZE - 100);
-	ck_assert_int_eq(metadata.part, 1);
-	ck_assert_int_eq(metadata.type, MIK_UNSAFE);
+	ck_assert_int_eq(meta.size, MIKPACK_FRAG_SIZE - 100);
+	ck_assert_int_eq(meta.part, 1);
+	ck_assert_int_eq(meta.type, MIK_UNSAFE);
 	ck_assert_int_eq(pack->frags, 2);
 	ck_assert_int_eq(pack->ref_count, 0);
 
@@ -99,13 +99,13 @@ START_TEST(mikpack_frag_bad_ptr)
 {
 	mikpack_t stackpack;
 	mikpack_t *pack = &stackpack;
-	mikmeta_t metadata;
+	mikmeta_t meta;
 	int status;
 
 	status = mikpack_frag(pack, 0, NULL);
 	ck_assert_int_eq(status, MIKERR_BAD_PTR);
 	
-	status = mikpack_frag(NULL, 0, &metadata);
+	status = mikpack_frag(NULL, 0, &meta);
 	ck_assert_int_eq(status, MIKERR_BAD_PTR);
 }
 END_TEST
@@ -113,11 +113,11 @@ END_TEST
 START_TEST(mikpack_frag_bad_arg)
 {
 	mikpack_t pack;
-	mikmeta_t metadata;
+	mikmeta_t meta;
 	int status;
 
 	pack.frags = 3;
-	status = mikpack_frag(&pack, 4, &metadata);
+	status = mikpack_frag(&pack, 4, &meta);
 	ck_assert_int_eq(status, MIKERR_NO_SUCH_FRAG);
 }
 END_TEST

@@ -26,19 +26,19 @@ typedef struct mikmeta_t {
 } mikmeta_t;
 
 /**
- *  Serializes the information in a Miknet metadata object to be sent over
+ *  Serializes the information in a Miknet meta object to be sent over
  *  the network.
  *
  *  Returns 0 on success.
  */
-int mikmeta_serialize(const mikmeta_t *metadata, uint8_t *destination);
+int mikmeta_serialize(const mikmeta_t *meta, uint8_t *destination);
 
 /**
- *  Deserializes data that represents Miknet metadata. The data should be
+ *  Deserializes data that represents Miknet meta. The data should be
  *  MIKMETA_SERIALIZED_OCTETS long.
  *
  *  Returns 0 on success.
  */
-int mikmeta_deserialize(mikmeta_t *metadata, const uint8_t *serialized);
+int mikmeta_deserialize(mikmeta_t *meta, const uint8_t *serialized);
 
 #endif /* MIKNET_MIKMETA_H_  */
