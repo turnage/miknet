@@ -1,6 +1,3 @@
-# miknet id and signature generation
-add_library(mikid mikid.c)
-
 # miknet serialization tools
 add_library(mikmeta mikmeta.c)
 
@@ -13,4 +10,4 @@ target_link_libraries(mikaddr miksys)
 
 # miknet packet handling
 add_library(mikpack mikpack.c)
-target_link_libraries(mikpack mikmeta mikid)
+target_link_libraries(mikpack mikmeta)

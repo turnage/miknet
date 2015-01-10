@@ -34,13 +34,13 @@ END_TEST
 
 START_TEST(make_long_packet)
 {
-	char data[(MIKPACK_FRAG_SIZE * 2) - 100] = {0};
+	uint8_t data[(MIKPACK_FRAG_SIZE * 2) - 100] = {0};
 	const size_t length = (MIKPACK_FRAG_SIZE * 2) - 100;
 	mikmeta_t metadata;
 	mikpack_t *pack;
 	int status;
 
-	status = mikpack(&pack, MIK_UNSAFE, (uint8_t *)data, length);
+	status = mikpack(&pack, MIK_UNSAFE, data, length);
 	ck_assert_int_eq(status, MIKERR_NONE);
 
 	status = mikpack_frag(pack, 1, &metadata);
@@ -53,6 +53,28 @@ START_TEST(make_long_packet)
 	ck_assert_int_eq(pack->ref_count, 0);
 
 	mikpack_close(pack);
+}
+END_TEST
+
+START_TEST(set_packet_id)
+{
+	uint8_t data[MIKPACK_FRAG_SIZE * 7] = {0};
+	int i;
+	mikpack_t *pack;
+	int status;
+
+	status = mikpack(&pack, MIK_UNSAFE, data, MIKPACK_FRAG_SIZE * 7);
+	ck_assert_int_eq(status, MIKERR_NONE);
+
+
+	status = mikpack_set_id(pack, 74);
+	ck_assert_int_eq(status, MIKERR_NONE);
+
+	for (i = 0; i < 7; ++i) {
+		mikmeta_t meta;
+		mikpack_frag(pack, i, &meta);
+		ck_assert_int_eq(meta.id, 74);
+	}
 }
 END_TEST
 
@@ -128,6 +150,7 @@ Suite *mikpack_suite()
 
 	tcase_add_test(standard_use, make_short_packet);
 	tcase_add_test(standard_use, make_long_packet);
+	tcase_add_test(standard_use, set_packet_id);
 
 	tcase_add_test(incorrect_use, make_packet_bad_ptr);
 	tcase_add_test(incorrect_use, mikpack_frag_bad_ptr);

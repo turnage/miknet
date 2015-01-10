@@ -2,7 +2,6 @@
 #include <string.h>
 
 #include "miknet/mikdef.h"
-#include "miknet/mikid.h"
 #include "miknet/mikmeta.h"
 #include "miknet/mikpack.h"
 
@@ -80,7 +79,6 @@ int mikpack(	mikpack_t **pack,
 	(*pack)->ref_count = 0;
 	(*pack)->data = (uint8_t *)*pack + sizeof(mikpack_t);
 
-	meta.id = mikid();
 	meta.type = type;
 
 	for (meta.part = 0; meta.part < (*pack)->frags; ++meta.part) {
@@ -99,6 +97,23 @@ int mikpack(	mikpack_t **pack,
 	return MIKERR_NONE;
 }
 
+int mikpack_set_id(mikpack_t *pack, uint16_t id)
+{
+	int i;
+
+	if (!pack)
+		return MIKERR_BAD_PTR;
+
+	for (i = 0; i < pack->frags; ++i) {
+		uint8_t *meta_start = mikpack_frag_raw_data(pack, i);
+		mikmeta_t meta = *((mikmeta_t *)meta_start);
+		meta.id = id;
+		mikmeta_serialize(&meta, meta_start);
+	}
+
+	return MIKERR_NONE;
+}
+
 int mikpack_frag(const mikpack_t *pack, uint16_t fragment, mikmeta_t *metadata)
 {
 	if (!pack || !metadata)
@@ -110,15 +125,22 @@ int mikpack_frag(const mikpack_t *pack, uint16_t fragment, mikmeta_t *metadata)
 	return mikmeta_deserialize(metadata, fragment_start(pack, fragment));
 }
 
-uint8_t *mikpack_frag_data(const mikpack_t *pack, uint16_t fragment)
+uint8_t *mikpack_frag_data(const mikpack_t *pack, uint16_t frag)
+{
+	uint8_t *frag_start = mikpack_frag_raw_data(pack, frag);
+
+	return frag_start ? frag_start + MIKMETA_SERIALIZED_OCTETS : NULL;
+}
+
+uint8_t *mikpack_frag_raw_data(const mikpack_t *pack, uint16_t frag)
 {
 	if (!pack)
 		return NULL;
 
-	if (fragment > pack->frags - 1)
+	if (frag > pack->frags - 1)
 		return NULL;
 
-	return fragment_start(pack, fragment) + MIKMETA_SERIALIZED_OCTETS;
+	return fragment_start(pack, frag);
 }
 
 void mikpack_close(mikpack_t *pack)

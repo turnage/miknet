@@ -28,10 +28,16 @@ int mikpack(	mikpack_t **pack,
 int mikpack_frag(const mikpack_t *pack, uint16_t fragment, mikmeta_t *metadata);
 
 /**
+ *  Sets the packet id in the metadata for all fragments.
+ */
+int mikpack_set_id(mikpack_t *pack, uint16_t id);
+
+/**
  *  Returns a pointer to the beginning of a specific fragment's data in the
- *  mikpack.
+ *  mikpack. Raw fragment data includes the protocol header.
  */
 uint8_t *mikpack_frag_data(const mikpack_t *pack, uint16_t fragment);
+uint8_t *mikpack_frag_raw_data(const mikpack_t *pack, uint16_t fragment);
 
 /**
  *  Frees the resources used by a mikpack_t.
