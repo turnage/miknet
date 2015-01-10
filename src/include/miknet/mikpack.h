@@ -14,9 +14,10 @@ typedef struct mikpack_t {
 } mikpack_t;
 
 /**
- *  Creates a mikpack from the provided data.
+ *  Creates a mikpack from the provided data. Points the passed pointer at the
+ *  created mikpack_t.
  */
-int mikpack(	mikpack_t *pack,
+int mikpack(	mikpack_t **pack,
 		miktype_t type,
 		const uint8_t *src,
 		size_t len);

@@ -12,23 +12,23 @@ START_TEST(make_short_packet)
 	char data[6] = "Hello";
 	const size_t length = 6;
 	mikmeta_t metadata;
-	mikpack_t pack;
+	mikpack_t *pack;
 	int status;
 
 	status = mikpack(&pack, MIK_SAFE, (uint8_t *)data, length);
 	ck_assert_int_eq(status, MIKERR_NONE);
 
-	status = mikpack_frag(&pack, 0, &metadata);
+	status = mikpack_frag(pack, 0, &metadata);
 	ck_assert_int_eq(status, MIKERR_NONE);
 
 	ck_assert_int_eq(metadata.size, length);
 	ck_assert_int_eq(metadata.part, 0);
 	ck_assert_int_eq(metadata.type, MIK_SAFE);
-	ck_assert_int_eq(pack.frags, 1);
-	ck_assert_int_eq(pack.ref_count, 0);
-	ck_assert_int_eq(memcmp(mikpack_frag_data(&pack, 0), "Hello", 6), 0);
+	ck_assert_int_eq(pack->frags, 1);
+	ck_assert_int_eq(pack->ref_count, 0);
+	ck_assert_int_eq(memcmp(mikpack_frag_data(pack, 0), "Hello", 6), 0);
 
-	mikpack_close(&pack);
+	mikpack_close(pack);
 }
 END_TEST
 
@@ -37,29 +37,29 @@ START_TEST(make_long_packet)
 	char data[(MIKPACK_FRAG_SIZE * 2) - 100] = {0};
 	const size_t length = (MIKPACK_FRAG_SIZE * 2) - 100;
 	mikmeta_t metadata;
-	mikpack_t pack;
+	mikpack_t *pack;
 	int status;
 
 	status = mikpack(&pack, MIK_UNSAFE, (uint8_t *)data, length);
 	ck_assert_int_eq(status, MIKERR_NONE);
 
-	status = mikpack_frag(&pack, 1, &metadata);
+	status = mikpack_frag(pack, 1, &metadata);
 	ck_assert_int_eq(status, MIKERR_NONE);
 
 	ck_assert_int_eq(metadata.size, MIKPACK_FRAG_SIZE - 100);
 	ck_assert_int_eq(metadata.part, 1);
 	ck_assert_int_eq(metadata.type, MIK_UNSAFE);
-	ck_assert_int_eq(pack.frags, 2);
-	ck_assert_int_eq(pack.ref_count, 0);
+	ck_assert_int_eq(pack->frags, 2);
+	ck_assert_int_eq(pack->ref_count, 0);
 
-	mikpack_close(&pack);
+	mikpack_close(pack);
 }
 END_TEST
 
 START_TEST(make_packet_bad_ptr)
 {
 	uint8_t num;
-	mikpack_t pack;
+	mikpack_t *pack;
 	int status;
 
 	status = mikpack(NULL, MIK_SAFE, &num, 1);
@@ -75,11 +75,12 @@ END_TEST
 
 START_TEST(mikpack_frag_bad_ptr)
 {
-	mikpack_t pack;
+	mikpack_t stackpack;
+	mikpack_t *pack = &stackpack;
 	mikmeta_t metadata;
 	int status;
 
-	status = mikpack_frag(&pack, 0, NULL);
+	status = mikpack_frag(pack, 0, NULL);
 	ck_assert_int_eq(status, MIKERR_BAD_PTR);
 	
 	status = mikpack_frag(NULL, 0, &metadata);

@@ -60,7 +60,7 @@ static size_t mikpack_mem_est(size_t len)
 	return mem_est;
 }
 
-int mikpack(	mikpack_t *pack,
+int mikpack(	mikpack_t **pack,
 		miktype_t type,
 		const uint8_t *src,
 		size_t len)
@@ -71,25 +71,27 @@ int mikpack(	mikpack_t *pack,
 	if (!pack || !src || !len)
 		return MIKERR_BAD_PTR;
 
-	pack->frags = fragments(len, &remainder);
-	pack->ref_count = 0;
-	pack->data = malloc(mikpack_mem_est(len));
+	*pack = malloc(mikpack_mem_est(len) + sizeof(mikpack_t));
 
-	if (!pack->data)
+	if (!(*pack))
 		return MIKERR_BAD_MEM;
+
+	(*pack)->frags = fragments(len, &remainder);
+	(*pack)->ref_count = 0;
+	(*pack)->data = (uint8_t *)*pack + sizeof(mikpack_t);
 
 	metadata.id = mikid();
 	metadata.type = type;
 
-	for (metadata.part = 0; metadata.part < pack->frags; ++metadata.part) {
-		if (metadata.part == pack->frags - 1 && remainder)
+	for (metadata.part = 0; metadata.part < (*pack)->frags; ++metadata.part) {
+		if (metadata.part == (*pack)->frags - 1 && remainder)
 			metadata.size = remainder;
 		else
 			metadata.size = MIKPACK_FRAG_SIZE;
 
 		mikmeta_serialize(	&metadata,
-					fragment_start(pack, metadata.part));
-		memcpy(	mikpack_frag_data(pack, metadata.part),
+					fragment_start((*pack), metadata.part));
+		memcpy(	mikpack_frag_data((*pack), metadata.part),
 			src + (metadata.part * MIKPACK_FRAG_SIZE),
 			metadata.size);
 	}
@@ -121,5 +123,5 @@ uint8_t *mikpack_frag_data(const mikpack_t *pack, uint16_t fragment)
 
 void mikpack_close(mikpack_t *pack)
 {
-	free(pack->data);
+	free(pack);
 }
