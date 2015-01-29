@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.6)
 project(miknet)
 
 # Release build.
-include_directories(src/include)
+include_directories(include)
 add_subdirectory(src)
 
 # Testing/Debug build.
