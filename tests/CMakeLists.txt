@@ -24,3 +24,8 @@ add_test(mikaddr_test ${CMAKE_CURRENT_BINARY_DIR}/mikaddr_test)
 add_executable(mikpack_test mikpack_test.c)
 target_link_libraries(mikpack_test ${TEST_LIBS} mikpack mikmeta)
 add_test(mikpack_test ${CMAKE_CURRENT_BINARY_DIR}/mikpack_test)
+
+# miklist
+add_executable(miklist_test miklist_test.c)
+target_link_libraries(miklist_test ${TEST_LIBS} miklist)
+add_test(miklist_test ${CMAKE_CURRENT_BINARY_DIR}/miklist_test)

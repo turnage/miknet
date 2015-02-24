@@ -11,3 +11,6 @@ target_link_libraries(mikaddr miksys)
 # miknet packet handling
 add_library(mikpack mikpack.c)
 target_link_libraries(mikpack mikmeta)
+
+# miknet queue
+add_library(miklist miklist.c)
