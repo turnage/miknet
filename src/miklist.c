@@ -11,7 +11,7 @@ static void append(miklist_t *list, miklist_t *node)
 	nav->next = node;
 }
 
-miklist_t *miklist_enqueue(miklist_t *list, void *payload)
+miklist_t *miklist_enqueue(miklist_t *list, mikpack_t *payload)
 {
 	miklist_t *new_node;
 
@@ -28,6 +28,14 @@ miklist_t *miklist_enqueue(miklist_t *list, void *payload)
 		append(list, new_node);
 
 	return list;
+}
+
+const mikpack_t *miklist_peek(const miklist_t *list)
+{
+	if (list == NULL)
+		return NULL;
+
+	return list->payload;
 }
 
 miklist_t *miklist_dequeue(miklist_t *list)

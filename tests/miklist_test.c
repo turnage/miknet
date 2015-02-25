@@ -9,7 +9,7 @@ START_TEST(miklist_create)
 	int data = 18;
 	miklist_t *list;
 
-	list = miklist_enqueue(NULL, &data);
+	list = miklist_enqueue(NULL, (mikpack_t *)&data);
 
 	ck_assert(list != NULL);
 	ck_assert_int_eq(*(int *)list->payload, 18);
@@ -26,28 +26,22 @@ START_TEST(miklist_create_bad)
 }
 END_TEST
 
-START_TEST(miklist_add)
+START_TEST(miklist_add_remove)
 {
-	int data = 18;
+	int *a = malloc(sizeof(int));
+	int *b = malloc(sizeof(int));
 	miklist_t *list;
 
-	list = miklist_enqueue(NULL, &data);
-	list = miklist_enqueue(list, &data);
+	*a = 1;
+	*b = 2;
+	list = miklist_enqueue(NULL, (mikpack_t *)a);
+	list = miklist_enqueue(list, (mikpack_t *)b);
 
-	ck_assert_int_eq(*(int *)list->next->payload, 18);
-}
-END_TEST
-
-START_TEST(miklist_remove)
-{
-	miklist_t *list;
-
-	list = miklist_enqueue(NULL, malloc(sizeof(int)));
-	list = miklist_enqueue(list, malloc(sizeof(int)));
-
+	ck_assert_int_eq(*((const int *)miklist_peek(list)), 1);
 	list = miklist_dequeue(list);
 	ck_assert(list->next == NULL);
 
+	ck_assert_int_eq(*((const int *)miklist_peek(list)), 2);
 	list = miklist_dequeue(list);
 	ck_assert(list == NULL);
 }
@@ -60,8 +54,7 @@ Suite *miklist_suite()
 	TCase *incorrect_use = tcase_create("miklist_incorrect");
 
 	tcase_add_test(standard_use, miklist_create);
-	tcase_add_test(standard_use, miklist_add);
-	tcase_add_test(standard_use, miklist_remove);
+	tcase_add_test(standard_use, miklist_add_remove);
 
 	tcase_add_test(incorrect_use, miklist_create_bad);
 

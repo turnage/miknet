@@ -1,9 +1,11 @@
 #ifndef MIKNET_MIKLIST_H_
 #define MIKNET_MIKLIST_H_
 
+#include <miknet/mikpack.h>
+
 typedef struct miklist_t {
 	struct miklist_t *next;
-	void *payload;
+	mikpack_t *payload;
 } miklist_t;
 
 /**
@@ -14,7 +16,12 @@ typedef struct miklist_t {
  *  Passing a NULL list returns a new list. Otherwise it will return the passed
  *  list.
  */
-miklist_t *miklist_enqueue(miklist_t *list, void *payload);
+miklist_t *miklist_enqueue(miklist_t *list, mikpack_t *payload);
+
+/**
+ *  Returns a pointer to the packet next-in-queue.
+ */
+const mikpack_t *miklist_peek(const miklist_t *list);
 
 /**
  *  Removes the first element from the miklist and frees the resources it used
