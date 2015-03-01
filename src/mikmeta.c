@@ -26,14 +26,13 @@ int mikmeta_serialize(const mikmeta_t *meta, uint8_t *destination)
 		return -1;
 	}
 
-	destination[0] = get_mso(meta->id);
-	destination[1] = get_lso(meta->id);
-	destination[2] = get_mso(meta->part);
-	destination[3] = get_lso(meta->part);
-	destination[4] = meta->type;
-	destination[5] = meta->channel;
-	destination[6] = get_mso(meta->size);
-	destination[7] = get_lso(meta->size);
+	destination[0] = meta->type;
+	destination[1] = get_mso(meta->id);
+	destination[2] = get_lso(meta->id);
+	destination[3] = get_mso(meta->part);
+	destination[4] = get_lso(meta->part);
+	destination[5] = get_mso(meta->size);
+	destination[6] = get_lso(meta->size);
 
 	return 0;
 }
@@ -43,11 +42,10 @@ int mikmeta_deserialize(mikmeta_t *meta, const uint8_t *serialized)
 	if (!meta || !serialized)
 		return MIKERR_BAD_PTR;
 
-	meta->id = combine(serialized[0], serialized[1]);
-	meta->part = combine(serialized[2], serialized[3]);
-	meta->type = serialized[4];
-	meta->channel = serialized[5];
-	meta->size = combine(serialized[6], serialized[7]);
+	meta->type = serialized[0];
+	meta->id = combine(serialized[1], serialized[2]);
+	meta->part = combine(serialized[3], serialized[4]);
+	meta->size = combine(serialized[5], serialized[6]);
 
 	return MIKERR_NONE;;
 }

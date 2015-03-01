@@ -4,24 +4,22 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define MIKMETA_SERIALIZED_OCTETS 9
-
-typedef uint8_t mikchan_t;
+#define MIKMETA_OCTETS	7
 
 typedef enum {
-	MIK_NONE   = 0,
-	MIK_JOIN   = 1,
-	MIK_QUIT   = 2,
-	MIK_ACKN   = 3,
-	MIK_SAFE   = 4,
-	MIK_UNSAFE = 5
+	MIK_NONE	= 0,
+	MIK_JOIN	= 1,
+	MIK_QUIT	= 2,
+	MIK_ACKN	= 3,
+	MIK_SAFE	= 4,
+	MIK_UNSAFE	= 5,
+	MIK_SENT	= 6
 } miktype_t;
 
 typedef struct mikmeta_t {
+	miktype_t type;
 	uint16_t id;
 	uint16_t part;
-	miktype_t type;
-	mikchan_t channel;
 	uint16_t size;
 } mikmeta_t;
 

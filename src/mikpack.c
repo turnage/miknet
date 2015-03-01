@@ -129,7 +129,7 @@ uint8_t *mikpack_frag_data(const mikpack_t *pack, uint16_t frag)
 {
 	uint8_t *frag_start = mikpack_frag_raw_data(pack, frag);
 
-	return frag_start ? frag_start + MIKMETA_SERIALIZED_OCTETS : NULL;
+	return frag_start ? frag_start + MIKMETA_OCTETS : NULL;
 }
 
 uint8_t *mikpack_frag_raw_data(const mikpack_t *pack, uint16_t frag)
