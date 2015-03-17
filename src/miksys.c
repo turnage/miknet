@@ -1,5 +1,13 @@
 #include "miknet/miksys.h"
 
+static void mikbind(	posix_t *pos,
+			int sockfd,
+			const struct sockaddr *addr,
+			socklen_t addrlen)
+{
+	return bind(sockfd, addr, addrlen);
+}
+
 static void mikfreeaddrinfo(posix_t *pos, struct addrinfo *res)
 {
 	freeaddrinfo(res);
@@ -31,7 +39,8 @@ static int miksocket(posix_t *pos, int domain, int type, int protocol)
 
 posix_t mikposix()
 {
-	posix_t posix = {	mikfreeaddrinfo,
+	posix_t posix = {	mikbind,
+				mikfreeaddrinfo,
 				mikgetaddrinfo,
 				miksetsockopt,
 				miksocket};

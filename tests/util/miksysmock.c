@@ -1,5 +1,13 @@
 #include "testing/miksysmock.h"
 
+static int mikbind_mock(	posix_t *posmock,
+				int sockfd,
+				const struct sockaddr *addr,
+				socklen_t addrlen)
+{
+	return ((posix_mock_t *)posmock)->bind_return;
+}
+
 static void mikfreeaddrinfo_mock(posix_t *posmock, struct addrinfo *res) {}
 
 static int mikgetaddrinfo_mock( posix_t *posmock,
@@ -29,12 +37,11 @@ static int miksocket_mock(posix_t *posmock, int domain, int type, int protocol)
 
 posix_t mikposixmock()
 {
-	posix_t mock;
-
-	mock.freeaddrinfo = mikfreeaddrinfo_mock;
-	mock.getaddrinfo = mikgetaddrinfo_mock;
-	mock.setsockopt = miksetsockopt_mock;
-	mock.socket = miksocket_mock;
+	posix_t mock = {	mikbind_mock,
+				mikfreeaddrinfo_mock,
+				mikgetaddrinfo_mock,
+				miksetsockopt_mock,
+				miksocket_mock};
 
 	return mock;
 }

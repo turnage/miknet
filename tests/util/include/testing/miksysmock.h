@@ -13,6 +13,7 @@
  */
 typedef struct posix_mock_t {
 	posix_t posix;
+	int bind_return;
 	int getaddrinfo_return;
 	struct addrinfo *getaddrinfo_arg_set;
 	int setsockopt_return;

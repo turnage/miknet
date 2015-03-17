@@ -14,6 +14,10 @@
  */
 
 typedef struct posix_t {
+	int (*bind)(	struct posix_t *posix,
+			int,
+			const struct sockaddr *,
+			socklen_t);
 	void (*freeaddrinfo)(struct posix_t *, struct addrinfo *);
 	int (*getaddrinfo)(	struct posix_t *,
 				const char *,
