@@ -28,6 +28,12 @@ START_TEST(test_create)
 	ck_assert_int_eq(addr.addrlen, expected_addr.ai_addrlen);
 	ck_assert_int_eq(expected->sin_port, actual->sin_port);
 	ck_assert_int_eq(expected->sin_addr.s_addr, actual->sin_addr.s_addr);
+
+	/* NULL address should request INADDR_ANY */
+	status = mikaddr(&addr, (posix_t *)&mock, NULL, 80);
+	actual = (struct sockaddr_in *)&addr.addr;
+	ck_assert_int_eq(status, MIKERR_NONE);
+	ck_assert_int_eq(actual->sin_addr.s_addr, INADDR_ANY);
 }
 END_TEST
 
@@ -62,9 +68,6 @@ START_TEST(test_create_bad_ptr)
 	int status;
 
 	mock.getaddrinfo_return = MIKERR_NONE;
-
-	status = mikaddr(&addr, (posix_t *)&mock, NULL, 80);
-	ck_assert_int_eq(status, MIKERR_BAD_PTR);
 
 	status = mikaddr(&addr, NULL, "127.0.0.1", 80);
 	ck_assert_int_eq(status, MIKERR_BAD_PTR);

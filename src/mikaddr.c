@@ -18,6 +18,10 @@ static struct addrinfo *mikaddr_get_candidate(	posix_t *pos,
 	hint.ai_protocol = udp->p_proto;
 	endprotoent();
 
+	/* Request INADDR_ANY if no address specified. */
+	if (!addr)
+		hint.ai_flags = AI_PASSIVE;
+
 	hint.ai_family = AF_INET;
 	hint.ai_socktype = SOCK_DGRAM;
 
@@ -33,7 +37,7 @@ int mikaddr(mikaddr_t *mikaddr, posix_t *pos, const char *addr, uint16_t port)
 {
 	struct addrinfo *candidate;
 
-	if (!mikaddr || !addr || !pos)
+	if (!mikaddr || !pos)
 		return MIKERR_BAD_PTR;
 
 	candidate = mikaddr_get_candidate(pos, addr, port);
