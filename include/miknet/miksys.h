@@ -14,25 +14,25 @@
  */
 
 typedef struct posix_t {
-	int (*bind)(	struct posix_t *posix,
+	int (*bind)(	const struct posix_t *,
 			int,
 			const struct sockaddr *,
 			socklen_t);
-	void (*freeaddrinfo)(struct posix_t *, struct addrinfo *);
-	int (*getaddrinfo)(	struct posix_t *,
+	void (*freeaddrinfo)(const struct posix_t *, struct addrinfo *);
+	int (*getaddrinfo)(	const struct posix_t *,
 				const char *,
 				const char *,
 				const struct addrinfo *,
 				struct addrinfo **);
-	ssize_t (*send)(struct posix_t *, int, const void *, size_t, int);
-	int (*setsockopt)(	struct posix_t *,
+	ssize_t (*send)(const struct posix_t *, int, const void *, size_t, int);
+	int (*setsockopt)(	const struct posix_t *,
 				int,
 				int,
 				int,
 				const void *,
 				socklen_t);
-	int (*socket)(struct posix_t *, int, int, int);
-	ssize_t (*recv)(struct posix_t *, int, void *, size_t, int);
+	int (*socket)(const struct posix_t *, int, int, int);
+	ssize_t (*recv)(const struct posix_t *, int, void *, size_t, int);
 } posix_t;
 
 /**
