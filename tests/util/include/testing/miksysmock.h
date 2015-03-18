@@ -16,8 +16,10 @@ typedef struct posix_mock_t {
 	int bind_return;
 	int getaddrinfo_return;
 	struct addrinfo *getaddrinfo_arg_set;
+	ssize_t send_return;
 	int setsockopt_return;
 	int socket_return;
+	ssize_t recv_return;
 } posix_mock_t;
 
 

@@ -24,6 +24,7 @@ typedef struct posix_t {
 				const char *,
 				const struct addrinfo *,
 				struct addrinfo **);
+	ssize_t (*send)(struct posix_t *, int, const void *, size_t, int);
 	int (*setsockopt)(	struct posix_t *,
 				int,
 				int,
@@ -31,6 +32,7 @@ typedef struct posix_t {
 				const void *,
 				socklen_t);
 	int (*socket)(struct posix_t *, int, int, int);
+	ssize_t (*recv)(struct posix_t *, int, void *, size_t, int);
 } posix_t;
 
 /**

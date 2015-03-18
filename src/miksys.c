@@ -22,6 +22,15 @@ static int mikgetaddrinfo(	posix_t *pos,
 	return getaddrinfo(node, service, hints, res);
 }
 
+static int miksend(	posix_t *pos,
+			int sockfd,
+			const void *buf,
+			size_t len,
+			int flags)
+{
+	return send(sockfd, buf, len, flags);
+}
+
 static int miksetsockopt(	posix_t *pos,
 				int sockfd,
 				int level,
@@ -37,13 +46,24 @@ static int miksocket(posix_t *pos, int domain, int type, int protocol)
 	return socket(domain, type, protocol);
 }
 
+static ssize_t mikrecv(	posix_t *pos,
+			int sockfd,
+			void *buf,
+			size_t len,
+			int flags)
+{
+	return recv(sockfd, buf, len, flags);
+}
+
 posix_t mikposix()
 {
 	posix_t posix = {	mikbind,
 				mikfreeaddrinfo,
 				mikgetaddrinfo,
+				miksend,
 				miksetsockopt,
-				miksocket};
+				miksocket,
+				mikrecv};
 
 	return posix;
 }
