@@ -17,38 +17,23 @@ START_TEST(test_create)
 	mock.bind_return = 0;
 	mock.socket_return = expected_socket;
 
+	/* Proper use. */
 	node = miknode_create(&mock.posix, &addr, 1024, expected_max_peers);
 	ck_assert(node != NULL);
 	ck_assert(node->peers != NULL);
 	ck_assert_int_eq(node->max_peers, expected_max_peers);
 	ck_assert_int_eq(node->sockfd, expected_socket);
-}
-END_TEST
 
-START_TEST(test_create_sys_fails)
-{
-	mikaddr_t addr;
-	miknode_t *node;
-	posix_mock_t mock;
-
-	mock.posix = mikposixmock();
+	/* System failures. */
 	mock.socket_return = 10;
 	mock.bind_return = 1;
-	node = miknode_create(&mock.posix, &addr, 10, 10);
-	ck_assert(node == NULL);
+	ck_assert(miknode_create(&mock.posix, &addr, 10, 10) == NULL);
 
 	mock.socket_return = -1;
 	mock.bind_return = 0;
-	node = miknode_create(&mock.posix, &addr, 10, 10);
-	ck_assert(node == NULL);
-}
-END_TEST
+	ck_assert(miknode_create(&mock.posix, &addr, 10, 10) == NULL);
 
-START_TEST(test_create_bad_ptr)
-{
-	mikaddr_t addr;
-	miknode_t *node;
-
+	/* Bad inputs. */
 	node = miknode_create(NULL, &addr, 10, 10);
 	ck_assert(node == NULL);
 }
@@ -57,14 +42,10 @@ END_TEST
 Suite *miknode_suite()
 {
 	Suite *suite = suite_create("miknode_suite");
-	TCase *standard_use = tcase_create("miknode_standard_use");
-	TCase *incorrect_use = tcase_create("miknode_incorrect_use");
+	TCase *miknode_units = tcase_create("miknode_units");
 
-	tcase_add_test(standard_use, test_create);
-	tcase_add_test(standard_use, test_create_sys_fails);
-	tcase_add_test(incorrect_use, test_create_bad_ptr);
-	suite_add_tcase(suite, standard_use);
-	suite_add_tcase(suite, incorrect_use);
+	tcase_add_test(miknode_units, test_create);
+	suite_add_tcase(suite, miknode_units);
 
 	return suite;
 }
