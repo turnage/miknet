@@ -19,7 +19,7 @@ static struct addrinfo *mikaddr_get_candidate(	posix_t *pos,
 	endprotoent();
 
 	/* Request INADDR_ANY if no address specified. */
-	if (!addr)
+	if (addr == NULL)
 		hint.ai_flags = AI_PASSIVE;
 
 	hint.ai_family = AF_INET;
@@ -37,12 +37,12 @@ int mikaddr(mikaddr_t *mikaddr, posix_t *pos, const char *addr, uint16_t port)
 {
 	struct addrinfo *candidate;
 
-	if (!mikaddr || !pos)
+	if (mikaddr == NULL || pos == NULL)
 		return MIKERR_BAD_PTR;
 
 	candidate = mikaddr_get_candidate(pos, addr, port);
 
-	if (!candidate)
+	if (candidate == NULL)
 		return MIKERR_LOOKUP;
 
 	mikaddr->addr = *candidate->ai_addr;
