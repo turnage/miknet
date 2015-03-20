@@ -1,6 +1,6 @@
 #include "miknet/miksys.h"
 
-static void mikbind(	const posix_t *pos,
+static int mikbind(	const posix_t *pos,
 			int sockfd,
 			const struct sockaddr *addr,
 			socklen_t addrlen)
@@ -22,7 +22,7 @@ static int mikgetaddrinfo(	const posix_t *pos,
 	return getaddrinfo(node, service, hints, res);
 }
 
-static int miksend(	const posix_t *pos,
+static ssize_t miksend(	const posix_t *pos,
 			int sockfd,
 			const void *buf,
 			size_t len,
