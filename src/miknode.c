@@ -4,7 +4,7 @@
 #include "miknet/miknode.h"
 #include "miknet/mikdef.h"
 
-miknode_t *miknode_create(	posix_t *posix,
+miknode_t *miknode_create(	const posix_t *posix,
 				const mikaddr_t *addr,
 				uint16_t port,
 				uint8_t max_peers)
