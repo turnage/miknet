@@ -50,6 +50,6 @@ typedef struct posix_t {
 /**
  *  Returns the default posix wrapper.
  */
-posix_t mikposix();
+posix_t *mikposix();
 
 #endif /* MIKNET_MIKSYS_H_ */

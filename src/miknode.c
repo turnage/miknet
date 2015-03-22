@@ -30,6 +30,7 @@ miknode_t *miknode_create(	const posix_t *posix,
 	if (posix->bind(posix, sockfd, &addr->addr, addr->addrlen) != 0)
 		return NULL;
 
+
 	node = malloc(sizeof(miknode_t) + sizeof(mikpeer_t) * max_peers);
 	if (node == NULL)
 		return NULL;
@@ -44,13 +45,13 @@ miknode_t *miknode_create(	const posix_t *posix,
 
 miknode_t *miknode(uint16_t port, uint8_t max_peers)
 {
-	posix_t posix = mikposix();
+	posix_t *posix = mikposix();
 	mikaddr_t addr;
 
-	if (mikaddr(&addr, &posix, NULL, port) != MIKERR_NONE)
+	if (mikaddr(&addr, posix, NULL, port) != MIKERR_NONE)
 		return NULL;
 
-	return miknode_create(&posix, &addr, port, max_peers);
+	return miknode_create(posix, &addr, port, max_peers);
 }
 
 void miknode_close(miknode_t *node)

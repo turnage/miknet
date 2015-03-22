@@ -59,9 +59,7 @@ static ssize_t mikrecvfrom(	const posix_t *pos,
 	return recvfrom(sockfd, buf, len, flags, src_addr, addrlen);
 }
 
-posix_t mikposix()
-{
-	posix_t posix = {	mikbind,
+static const posix_t posix = {	mikbind,
 				mikfreeaddrinfo,
 				mikgetaddrinfo,
 				miksendto,
@@ -69,5 +67,7 @@ posix_t mikposix()
 				miksocket,
 				mikrecvfrom};
 
-	return posix;
+posix_t *mikposix()
+{
+	return &posix;
 }
