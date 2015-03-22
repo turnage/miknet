@@ -4,6 +4,7 @@ project(miknet)
 # Release build.
 include_directories(include)
 add_subdirectory(src)
+add_subdirectory(examples)
 
 # Testing/Debug build.
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
