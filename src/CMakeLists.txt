@@ -8,5 +8,6 @@ target_link_libraries(mikaddr miksys)
 # miknet datagrams
 add_library(mikgram mikgram.c)
 
+# miknet node/user interface
 add_library(miknode miknode.c)
 target_link_libraries(miknode mikaddr miksys)
