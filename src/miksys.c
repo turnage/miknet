@@ -22,13 +22,15 @@ static int mikgetaddrinfo(	const posix_t *pos,
 	return getaddrinfo(node, service, hints, res);
 }
 
-static ssize_t miksend(	const posix_t *pos,
-			int sockfd,
-			const void *buf,
-			size_t len,
-			int flags)
+static ssize_t miksendto(	const posix_t *pos,
+				int sockfd,
+				const void *buf,
+				size_t len,
+				int flags,
+				const struct sockaddr *dest_addr,
+				socklen_t addrlen)
 {
-	return send(sockfd, buf, len, flags);
+	return sendto(sockfd, buf, len, flags, dest_addr, addrlen);
 }
 
 static int miksetsockopt(	const posix_t *pos,
@@ -46,13 +48,15 @@ static int miksocket(const posix_t *pos, int domain, int type, int protocol)
 	return socket(domain, type, protocol);
 }
 
-static ssize_t mikrecv(	const posix_t *pos,
-			int sockfd,
-			void *buf,
-			size_t len,
-			int flags)
+static ssize_t mikrecvfrom(	const posix_t *pos,
+				int sockfd,
+				void *buf,
+				size_t len,
+				int flags,
+				struct sockaddr *src_addr,
+				socklen_t *addrlen)
 {
-	return recv(sockfd, buf, len, flags);
+	return recvfrom(sockfd, buf, len, flags, src_addr, addrlen);
 }
 
 posix_t mikposix()
@@ -60,10 +64,10 @@ posix_t mikposix()
 	posix_t posix = {	mikbind,
 				mikfreeaddrinfo,
 				mikgetaddrinfo,
-				miksend,
+				miksendto,
 				miksetsockopt,
 				miksocket,
-				mikrecv};
+				mikrecvfrom};
 
 	return posix;
 }

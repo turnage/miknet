@@ -21,13 +21,15 @@ static int mikgetaddrinfo_mock( const posix_t *mock,
 	return ((const posix_mock_t *)mock)->getaddrinfo_return;
 }
 
-static ssize_t miksend_mock(	const posix_t *mock,
+static ssize_t miksendto_mock(	const posix_t *mock,
 				int sockfd,
 				const void *buf,
 				size_t len,
-				int flags)
+				int flags,
+				const struct sockaddr *dest_addr,
+				socklen_t addrlen)
 {
-	return ((const posix_mock_t *)mock)->send_return;
+	return ((const posix_mock_t *)mock)->sendto_return;
 }
 
 static int miksetsockopt_mock(	const posix_t *mock,
@@ -48,13 +50,15 @@ static int miksocket_mock(	const posix_t *mock,
 	return ((const posix_mock_t *)mock)->socket_return;
 }
 
-static ssize_t mikrecv_mock(	const posix_t *mock,
-				int sockfd,
-				void *buf,
-				size_t len,
-				int flags)
+static ssize_t mikrecvfrom_mock(	const posix_t *mock,
+					int sockfd,
+					void *buf,
+					size_t len,
+					int flags,
+					struct sockaddr *src_addr,
+					socklen_t *addrlen)
 {
-	return ((const posix_mock_t *)mock)->recv_return;
+	return ((const posix_mock_t *)mock)->recvfrom_return;
 }
 
 posix_t mikposixmock()
@@ -62,10 +66,10 @@ posix_t mikposixmock()
 	posix_t mock = {	mikbind_mock,
 				mikfreeaddrinfo_mock,
 				mikgetaddrinfo_mock,
-				miksend_mock,
+				miksendto_mock,
 				miksetsockopt_mock,
 				miksocket_mock,
-				mikrecv_mock};
+				mikrecvfrom_mock};
 
 	return mock;
 }
