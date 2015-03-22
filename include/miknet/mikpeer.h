@@ -4,6 +4,7 @@
 #include "miknet/mikaddr.h"
 
 typedef struct mikpeer_t {
+	uint8_t exists;
 	mikaddr_t address;
 	void *data;
 } mikpeer_t;

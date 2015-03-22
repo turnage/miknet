@@ -16,7 +16,9 @@ typedef enum {
 	MIKERR_NO_SUCH_FRAG = -6,
 	MIKERR_BAD_MEM = -7,
 	MIKERR_GRAM_SIZE = -8,
-	MIKERR_BAD_LENGTH = -9
+	MIKERR_BAD_LENGTH = -9,
+	MIKERR_BAD_SEND = -10,
+	MIKERR_BAD_PEER = -11
 } mikerr_t;
 
 #endif /* MIKNET_MIKDEF_H_ */
