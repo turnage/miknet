@@ -36,32 +36,39 @@ int mikgram(mikgram_t *gram, const void *data, size_t len)
 	return MIKERR_NONE;
 }
 
-ssize_t mikgram_check(const void *data, size_t len)
+ssize_t mikgram_check(const mikgram_t *gram)
 {
 	ssize_t payload_len;
 
-	if (data == NULL)
+	if (gram == NULL)
 		return MIKERR_BAD_PTR;
 
-	payload_len = ((uint8_t *)data)[0] ^ (((uint8_t *)data)[1] << 8);
+	if (gram->data == NULL)
+		return MIKERR_BAD_PTR;
 
-	if (len < payload_len + MIKNET_METADATA_SIZE)
+	payload_len =	((uint8_t *)gram->data)[0]
+			^ (((uint8_t *)gram->data)[1] << 8);
+
+	if (gram->len < payload_len + MIKNET_METADATA_SIZE)
 		return MIKERR_BAD_LENGTH;
 
 	return payload_len;
 }
 
-int mikgram_extract(const void *data, size_t datalen, void *buf, size_t len)
+int mikgram_extract(const mikgram_t *gram, void *buf, size_t len)
 {
-	if (data == NULL || buf == NULL)
+	if (gram == NULL)
 		return MIKERR_BAD_PTR;
 
-	if (datalen == 0 || len < datalen - MIKNET_METADATA_SIZE)
+	if (gram->data == NULL || buf == NULL)
+		return MIKERR_BAD_PTR;
+
+	if (gram->len == 0 || len < gram->len - MIKNET_METADATA_SIZE)
 		return MIKERR_BAD_LENGTH;
 
 	memcpy(	buf,
-		data + MIKNET_METADATA_SIZE,
-		datalen - MIKNET_METADATA_SIZE);
+		gram->data + MIKNET_METADATA_SIZE,
+		gram->len - MIKNET_METADATA_SIZE);
 
 	return MIKERR_NONE;
 }

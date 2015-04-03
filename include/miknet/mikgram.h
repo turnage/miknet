@@ -26,12 +26,12 @@ int mikgram(mikgram_t *gram, const void *data, size_t len);
  *  Returns zero if the data is not a mikgram, or if the mikgram is incomplete,
  *  or a negative value on error.
  */
-ssize_t mikgram_check(const void *data, size_t len);
+ssize_t mikgram_check(const mikgram_t *gram);
 
 /**
  *  Extracts the data from a packed/serialized mikgram into a buffer.
  */
-int mikgram_extract(const void *data, size_t datalen, void *buf, size_t len);
+int mikgram_extract(const mikgram_t *gram, void *buf, size_t len);
 
 /**
  *  Frees the resources used by a mikgram.
