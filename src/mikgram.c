@@ -5,9 +5,6 @@
 #include "miknet/mikdef.h"
 #include "miknet/mikgram.h"
 
-#define MIKNET_GRAM_MAX_SIZE	512
-#define MIKNET_METADATA_SIZE	4
-
 int mikgram(mikgram_t *gram, const void *data, size_t len)
 {
 	if (gram == NULL || data == NULL)
