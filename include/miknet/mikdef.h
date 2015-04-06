@@ -1,6 +1,8 @@
 #ifndef MIKNET_MIKDEF_H_
 #define MIKNET_MIKDEF_H_
 
+#include <limits.h>
+
 typedef enum {
 	MIK_FALSE = 0,
 	MIK_TRUE = 1
@@ -8,17 +10,20 @@ typedef enum {
 
 typedef enum {
 	MIKERR_NONE = 0,
-	MIKERR_BAD_PTR = -1,
-	MIKERR_LOOKUP = -2,
-	MIKERR_CONNECT = -3,
-	MIKERR_BAD_ADDR = -4,
-	MIKERR_SOCKET = -5,
-	MIKERR_NO_SUCH_FRAG = -6,
-	MIKERR_BAD_MEM = -7,
-	MIKERR_GRAM_SIZE = -8,
-	MIKERR_BAD_LENGTH = -9,
-	MIKERR_BAD_SEND = -10,
-	MIKERR_BAD_PEER = -11
+	MIKERR_VALUE_BOUND = INT_MIN,
+
+	/* Errors beneath miknet. */
+	MIKERR_BAD_MEM,
+	MIKERR_BAD_PTR,
+	MIKERR_NET_FAIL,
+	MIKERR_SYS_FAIL,
+
+	/* Argument errors. */
+	MIKERR_BAD_VALUE,
+
+	/* Protocol errors. */
+	MIKERR_NO_MSG,
+	MIKERR_NONCONFORM
 } mikerr_t;
 
 #endif /* MIKNET_MIKDEF_H_ */

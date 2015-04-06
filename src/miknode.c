@@ -1,3 +1,4 @@
+#include <fcntl.h>
 #include <stdlib.h>
 #include <sys/socket.h>
 
@@ -47,11 +48,15 @@ miknode_t *miknode(uint16_t port, uint8_t max_peers)
 {
 	posix_t *posix = mikposix();
 	mikaddr_t addr;
+	miknode_t *node;
 
 	if (mikaddr(&addr, posix, NULL, port) != MIKERR_NONE)
 		return NULL;
 
-	return miknode_create(posix, &addr, port, max_peers);
+	node = miknode_create(posix, &addr, port, max_peers);
+	fcntl(node->sockfd, F_SETFL, fcntl(node->sockfd, F_GETFL) |O_NONBLOCK);
+
+	return node;
 }
 
 int miknode_insert_peer(miknode_t *node, const mikaddr_t *addr)
