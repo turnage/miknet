@@ -57,40 +57,6 @@ START_TEST(test_insert_peer)
 }
 END_TEST
 
-START_TEST(test_send)
-{
-	miknode_t node;
-	mikgram_t gram;
-	posix_mock_t mock;
-	mikpeer_t peer;
-
-	mock.posix = mikposixmock();
-	node.posix = &mock.posix;
-	node.peers = &peer;
-	peer.exists = MIK_TRUE;
-
-	mock.sendto_return = 10;
-	gram.len = 10;
-	gram.data = (void *)1;
-
-	/* Proper use. */
-	ck_assert_int_eq(miknode_send(&node, 0, &gram), MIKERR_NONE);
-
-	/* System failures. */
-	mock.sendto_return = 9;
-	ck_assert_int_eq(miknode_send(&node, 0, &gram), MIKERR_BAD_SEND);
-
-	/* Bad inputs. */
-	peer.exists = MIK_FALSE;
-	ck_assert_int_eq(miknode_send(&node, 0, &gram), MIKERR_BAD_PEER);
-	ck_assert_int_eq(miknode_send(NULL, 0, &gram), MIKERR_BAD_PTR);
-	ck_assert_int_eq(miknode_send(&node, 0, NULL), MIKERR_BAD_PTR);
-	gram.data = NULL;
-	ck_assert_int_eq(miknode_send(&node, 0, &gram), MIKERR_BAD_PTR);
-
-}
-END_TEST
-
 Suite *miknode_suite()
 {
 	Suite *suite = suite_create("miknode_suite");
@@ -98,7 +64,6 @@ Suite *miknode_suite()
 
 	tcase_add_test(miknode_units, test_create);
 	tcase_add_test(miknode_units, test_insert_peer);
-	tcase_add_test(miknode_units, test_send);
 	suite_add_tcase(suite, miknode_units);
 
 	return suite;
