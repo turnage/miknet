@@ -10,11 +10,8 @@ int mikgram(mikgram_t *gram, const void *data, size_t len)
 	if (gram == NULL || data == NULL)
 		return MIKERR_BAD_PTR;
 
-	if (len == 0)
-		return MIKERR_BAD_LENGTH;
-
-	if (len > MIKNET_GRAM_MAX_SIZE)
-		return MIKERR_GRAM_SIZE;
+	if (len == 0 || len > MIKNET_GRAM_MAX_SIZE)
+		return MIKERR_BAD_VALUE;
 
 	gram->len = MIKNET_METADATA_SIZE + len;
 	gram->data = malloc(gram->len);
@@ -47,7 +44,7 @@ ssize_t mikgram_check(const mikgram_t *gram)
 			^ (((uint8_t *)gram->data)[1] << 8);
 
 	if (gram->len < payload_len + MIKNET_METADATA_SIZE)
-		return MIKERR_BAD_LENGTH;
+		return MIKERR_BAD_VALUE;
 
 	return payload_len;
 }
@@ -61,7 +58,7 @@ int mikgram_extract(const mikgram_t *gram, void *buf, size_t len)
 		return MIKERR_BAD_PTR;
 
 	if (gram->len == 0 || len < gram->len - MIKNET_METADATA_SIZE)
-		return MIKERR_BAD_LENGTH;
+		return MIKERR_BAD_VALUE;
 
 	memcpy(	buf,
 		gram->data + MIKNET_METADATA_SIZE,

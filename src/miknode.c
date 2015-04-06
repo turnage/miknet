@@ -83,7 +83,7 @@ int miknode_new_peer(miknode_t *node, const char *address, uint16_t port)
 		return MIKERR_BAD_PTR;
 
 	if (mikaddr(&addr, node->posix, address, port) != MIKERR_NONE)
-		return MIKERR_LOOKUP;
+		return MIKERR_NET_FAIL;
 
 	return miknode_insert_peer(node, &addr);
 }
@@ -98,11 +98,8 @@ int miknode_send(miknode_t *node, int peer, const mikgram_t *gram)
 	if (gram->data == NULL)
 		return MIKERR_BAD_PTR;
 
-	if (gram->len == 0)
-		return MIKERR_BAD_LENGTH;
-
-	if (node->peers[peer].exists == MIK_FALSE)
-		return MIKERR_BAD_PEER;
+	if (gram->len == 0 || node->peers[peer].exists == MIK_FALSE)
+		return MIKERR_BAD_VALUE;
 
 	sent = node->posix->sendto(	node->posix,
 					node->sockfd,
@@ -113,7 +110,7 @@ int miknode_send(miknode_t *node, int peer, const mikgram_t *gram)
 					node->peers[peer].address.addrlen);
 
 	if (sent != gram->len)
-		return MIKERR_BAD_SEND;
+		return MIKERR_NET_FAIL;
 
 	return 0;
 }

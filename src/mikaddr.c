@@ -46,7 +46,7 @@ int mikaddr(	mikaddr_t *mikaddr,
 	candidate = mikaddr_get_candidate(pos, addr, port);
 
 	if (candidate == NULL)
-		return MIKERR_LOOKUP;
+		return MIKERR_NET_FAIL;
 
 	mikaddr->addr = *candidate->ai_addr;
 	mikaddr->addrlen = candidate->ai_addrlen;

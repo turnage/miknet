@@ -36,15 +36,15 @@ START_TEST(test_create)
 
 	/* Failure by report. */
 	mock.posix = mikposixmock();
-	mock.getaddrinfo_return = MIKERR_LOOKUP;
+	mock.getaddrinfo_return = -1;
 	ck_assert_int_eq(	mikaddr(&addr, (posix_t *)&mock, "0.0.0.0", 80),
-				MIKERR_LOOKUP);
+				MIKERR_NET_FAIL);
 
 	/* Failure by no results. */
 	mock.getaddrinfo_return = MIKERR_NONE;
 	mock.getaddrinfo_arg_set = NULL;
 	ck_assert_int_eq(	mikaddr(&addr, (posix_t *)&mock, "0.0.0.0", 80),
-				MIKERR_LOOKUP);
+				MIKERR_NET_FAIL);
 
 	/* Bad inputs. */
 	mock.getaddrinfo_return = MIKERR_NONE;
