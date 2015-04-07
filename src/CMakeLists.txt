@@ -14,4 +14,4 @@ target_link_libraries(mikstation mikgram miksys)
 
 # miknet node/user interface
 add_library(miknode miknode.c)
-target_link_libraries(miknode mikaddr miksys)
+target_link_libraries(miknode mikaddr mikgram miksys)

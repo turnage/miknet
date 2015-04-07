@@ -1,9 +1,23 @@
 #include <fcntl.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
 
 #include "miknet/miknode.h"
+
 #include "miknet/mikdef.h"
+
+/**
+ *  Free all mikpacks in queue.
+ */
+static void miknode_free_grams(mikgram_t *gram)
+{
+	if (gram == NULL)
+		return;
+
+	miknode_free_grams(gram->next);
+	free(gram);
+}
 
 miknode_t *miknode_create(	const posix_t *posix,
 				const mikaddr_t *addr,
@@ -88,34 +102,38 @@ int miknode_new_peer(miknode_t *node, const char *address, uint16_t port)
 	return miknode_insert_peer(node, &addr);
 }
 
-int miknode_send(miknode_t *node, int peer, const mikgram_t *gram)
+int miknode_send(miknode_t *node, int peer, const void *data, size_t len)
 {
-	ssize_t sent;
+	mikgram_t *gram;
 
-	if (node == NULL || gram == NULL)
+	if (node == NULL || data == NULL)
 		return MIKERR_BAD_PTR;
 
-	if (gram->data == NULL)
-		return MIKERR_BAD_PTR;
-
-	if (gram->len == 0 || node->peers[peer].exists == MIK_FALSE)
+	if (peer >= node->max_peers)
 		return MIKERR_BAD_VALUE;
 
-	sent = node->posix->sendto(	node->posix,
-					node->sockfd,
-					gram->data,
-					gram->len,
-					0,
-					&node->peers[peer].address.addr,
-					node->peers[peer].address.addrlen);
+	gram = malloc(sizeof(mikgram_t));
+	if (gram == NULL)
+		return MIKERR_BAD_MEM;
 
-	if (sent != gram->len)
-		return MIKERR_NET_FAIL;
+	if (mikgram(gram, data, len) != MIKERR_NONE)
+		return MIKERR_BAD_VALUE;
+
+	if (node->outgoing == NULL)
+		node->outgoing = gram;
+	else {
+		mikgram_t *nav;
+		for (nav = node->outgoing; nav->next != NULL; nav = nav->next);
+		nav->next = gram;
+	}
 
 	return 0;
 }
 
 void miknode_close(miknode_t *node)
 {
+	if (node->outgoing != NULL)
+		miknode_free_grams(node->outgoing);
+
 	free(node);
 }

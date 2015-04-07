@@ -1,5 +1,6 @@
 #include <check.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #include "miknet/miknode.h"
 #include "miknet/mikdef.h"
@@ -57,6 +58,42 @@ START_TEST(test_insert_peer)
 }
 END_TEST
 
+START_TEST(test_miknode_send)
+{
+	miknode_t node = {0};
+	miknode_t *disposal_node;
+	mikpeer_t peer;
+	mikgram_t *gram;
+	uint8_t gram_index;
+
+	node.peers = &peer;
+	node.max_peers = 1;
+	gram_index = 0;
+
+	/* Proper use. */
+	ck_assert_int_eq(miknode_send(&node, 0, "Hello", 6), 0);
+	ck_assert_int_eq(miknode_send(&node, 0, "Hello", 6), 0);
+	ck_assert_int_eq(miknode_send(&node, 0, "Hello.", 7), 0);
+	for (gram = node.outgoing; gram->next != NULL; gram = gram->next)
+		++gram_index;
+
+	ck_assert_int_eq(gram_index, 2);
+
+	ck_assert_int_gt(gram->len, 7);
+	ck_assert_int_eq(gram->peer, 0);
+
+	/* Bad inputs. */
+	ck_assert_int_eq(miknode_send(&node, 2, "Hello", 6), MIKERR_BAD_VALUE);
+	ck_assert_int_eq(miknode_send(NULL, 0, "Hello", 6), MIKERR_BAD_PTR);
+	ck_assert_int_eq(miknode_send(&node, 0, NULL, 6), MIKERR_BAD_PTR);
+
+	/* Tests deallocation of packet queue; productions assumes heap node. */
+	disposal_node = malloc(sizeof(miknode_t));
+	disposal_node->outgoing = node.outgoing;
+	miknode_close(disposal_node);
+}
+END_TEST
+
 Suite *miknode_suite()
 {
 	Suite *suite = suite_create("miknode_suite");
@@ -64,6 +101,7 @@ Suite *miknode_suite()
 
 	tcase_add_test(miknode_units, test_create);
 	tcase_add_test(miknode_units, test_insert_peer);
+	tcase_add_test(miknode_units, test_miknode_send);
 	suite_add_tcase(suite, miknode_units);
 
 	return suite;

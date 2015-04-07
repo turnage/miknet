@@ -3,6 +3,7 @@
 
 #include "miknet/mikaddr.h"
 #include "miknet/mikgram.h"
+#include "miknet/mikpack.h"
 #include "miknet/mikpeer.h"
 #include "miknet/miksys.h"
 
@@ -11,6 +12,8 @@ typedef struct miknode_t {
 	const posix_t *posix;
 	mikpeer_t *peers;
 	uint8_t max_peers;
+	mikgram_t *outgoing;
+	mikpack_t *incoming;
 } miknode_t;
 
 /**
@@ -31,15 +34,21 @@ miknode_t *miknode(uint16_t port, uint8_t max_peers);
 /**
  *  Inserts a foreign node to the local node's contact list. A new one can be
  *  created from a string address and port combination if an exact address is
- *  not known.
+ *  not known. Returns the index of the new peer.
  */
 int miknode_insert_peer(miknode_t *node, const mikaddr_t *addr);
 int miknode_new_peer(miknode_t *node, const char *address, uint16_t port);
 
 /**
- *  Sends a mikgram to a foreign miknode.
+ *  Sends data to a foreign miknode. Returns 0 on success.
  */
-int miknode_send(miknode_t *node, int peer, const mikgram_t *gram);
+int miknode_send(miknode_t *node, int peer, const void *data, size_t len);
+
+/**
+ *  Dequeues pending operations and updates the state of peers. Returns 0 on
+ *  success.
+ */
+int miknode_service(miknode_t *node);
 
 /**
  *  Frees the resources used by a miknode.
