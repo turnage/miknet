@@ -109,7 +109,7 @@ int miknode_send(miknode_t *node, int peer, const void *data, size_t len)
 	if (node == NULL || data == NULL)
 		return MIKERR_BAD_PTR;
 
-	if (peer >= node->max_peers)
+	if (peer >= node->max_peers || len > MIKNET_MAX_PAYLOAD_SIZE)
 		return MIKERR_BAD_VALUE;
 
 	gram = malloc(sizeof(mikgram_t));
