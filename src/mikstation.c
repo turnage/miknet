@@ -50,7 +50,7 @@ ssize_t mikstation_poll(const int sockfd, const posix_t *posix)
 
 int mikstation_receive(	const int sockfd,
 			const posix_t *posix,
-			mikgram_t *gram,
+			mikgram_t **gram,
 			mikaddr_t *addr)
 {
 	ssize_t error;
@@ -65,21 +65,22 @@ int mikstation_receive(	const int sockfd,
 	if (error < 0)
 		return error;
 
-	gram->len = error;
-	gram->data = malloc(gram->len);
-	if (gram->data == NULL)
+	*gram = malloc(sizeof(mikgram_t) + error);
+	if (*gram == NULL)
 		return MIKERR_BAD_MEM;
+	(*gram)->len = error;
+	(*gram)->data = (void *)(*gram) + sizeof(mikgram_t);
 
 	error = mikstation_parse_error(posix->recvfrom(	posix,
 							sockfd,
-							gram->data,
-							gram->len,
+							(*gram)->data,
+							(*gram)->len,
 							0,
 							&addr->addr,
 							&addr->addrlen));
 
-	if (error < 0 || error < gram->len) {
-		free(gram->data);
+	if (error < 0 || error < (*gram)->len) {
+		mikgram_close(*gram);
 		return error;
 	}
 

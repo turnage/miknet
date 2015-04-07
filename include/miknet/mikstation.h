@@ -28,7 +28,7 @@ ssize_t mikstation_poll(const int sockfd, const posix_t *posix);
  */
 int mikstation_receive(	const int sockfd,
 			const posix_t *posix,
-			mikgram_t *gram,
+			mikgram_t **gram,
 			mikaddr_t *addr);
 
 /**

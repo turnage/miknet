@@ -55,7 +55,7 @@ END_TEST
 START_TEST(test_mikstation_receive)
 {
 	mikaddr_t addr;
-	mikgram_t gram;
+	mikgram_t *gram;
 	posix_mock_t mock;
 	int sockfd;
 
