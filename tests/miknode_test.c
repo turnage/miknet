@@ -62,7 +62,6 @@ END_TEST
 START_TEST(test_miknode_send)
 {
 	miknode_t node = {0};
-	miknode_t *disposal_node;
 	mikpeer_t peer;
 	mikgram_t *gram;
 	uint8_t gram_index;
@@ -79,7 +78,6 @@ START_TEST(test_miknode_send)
 		++gram_index;
 
 	ck_assert_int_eq(gram_index, 2);
-
 	ck_assert_int_gt(gram->len, 7);
 	ck_assert_int_eq(gram->peer, 0);
 
@@ -89,11 +87,6 @@ START_TEST(test_miknode_send)
 	ck_assert_int_eq(miknode_send(&node, 2, "Hello", 6), MIKERR_BAD_VALUE);
 	ck_assert_int_eq(miknode_send(NULL, 0, "Hello", 6), MIKERR_BAD_PTR);
 	ck_assert_int_eq(miknode_send(&node, 0, NULL, 6), MIKERR_BAD_PTR);
-
-	/* Tests deallocation of packet queue; productions assumes heap node. */
-	disposal_node = malloc(sizeof(miknode_t));
-	disposal_node->outgoing = node.outgoing;
-	miknode_close(disposal_node);
 }
 END_TEST
 
