@@ -118,6 +118,7 @@ int miknode_send(miknode_t *node, int peer, const void *data, size_t len)
 
 	if (mikgram(gram, data, len) != MIKERR_NONE)
 		return MIKERR_BAD_VALUE;
+	gram->peer = peer;
 
 	if (node->outgoing == NULL)
 		node->outgoing = gram;
