@@ -10,14 +10,13 @@
 int main(int argc, char **argv)
 {
 	miknode_t *node;
-	mikgram_t gram;
 
 	if (argc != 3)
 		printf("Usage: ./simple_send [address] [port]\n");
 
 	fprintf(stderr, "Sending mikgram to %s:%s.\n", argv[1], argv[2]);
 
-	node = miknode(0, 1);
+	node = miknode(1234, 1);
 	if (node == NULL) {
 		FAIL("Failed to initialize miknet.\n");
 	} else {
@@ -36,7 +35,8 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Data queued to send.\n");
 	}
 
-	mikgram_close(&gram);
+	miknode_service(node);
+
 	miknode_close(node);
 
 	return 0;

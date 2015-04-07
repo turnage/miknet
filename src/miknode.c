@@ -133,6 +133,29 @@ int miknode_send(miknode_t *node, int peer, const void *data, size_t len)
 	return 0;
 }
 
+int miknode_service(miknode_t *node)
+{
+	mikgram_t *gram;
+	int err;
+
+	if (node == NULL)
+		return MIKERR_BAD_PTR;
+
+	for (gram = node->outgoing; gram != NULL; gram = gram->next) {
+		err = mikstation_send(	node->sockfd,
+					node->posix,
+					gram,
+					&node->peers[gram->peer].address);
+		if (err != MIKERR_NONE)
+			break;
+	}
+
+	miknode_free_grams(node->outgoing);
+	node->outgoing = NULL;
+
+	return err;
+}
+
 void miknode_close(miknode_t *node)
 {
 	if (node->outgoing != NULL)
