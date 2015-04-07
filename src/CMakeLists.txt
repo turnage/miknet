@@ -1,6 +1,9 @@
 # miknet posix wrapper utility
 add_library(miksys miksys.c)
 
+# miknet time utility
+add_library(miktime miktime.c)
+
 # miknet address storage
 add_library(mikaddr mikaddr.c)
 target_link_libraries(mikaddr miksys)
@@ -14,4 +17,4 @@ target_link_libraries(mikstation mikgram miksys)
 
 # miknet node/user interface
 add_library(miknode miknode.c)
-target_link_libraries(miknode mikaddr mikgram mikstation miksys)
+target_link_libraries(miknode mikaddr mikgram mikstation miksys miktime)

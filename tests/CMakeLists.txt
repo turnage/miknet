@@ -10,6 +10,12 @@ target_link_libraries(mikaddr_test ${CHECK_LIBRARIES} mikaddr miksysmock)
 set_target_properties(mikaddr_test PROPERTIES LINK_FLAGS ${CHECK_CFLAGS})
 add_test(mikaddr_test ${CMAKE_CURRENT_BINARY_DIR}/mikaddr_test)
 
+# miktime
+add_executable(miktime_test miktime_test.c)
+target_link_libraries(miktime_test ${CHECK_LIBRARIES} miktime)
+set_target_properties(miktime_test PROPERTIES LINK_FLAGS ${CHECK_CFLAGS})
+add_test(miktime_test ${CMAKE_CURRENT_BINARY_DIR}/miktime_test)
+
 # mikgram
 add_executable(mikgram_test mikgram_test.c)
 target_link_libraries(mikgram_test ${CHECK_LIBRARIES} mikgram)
