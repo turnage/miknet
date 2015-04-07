@@ -16,7 +16,7 @@ static void miknode_free_grams(mikgram_t *gram)
 		return;
 
 	miknode_free_grams(gram->next);
-	free(gram);
+	mikgram_close(gram);
 }
 
 miknode_t *miknode_create(	const posix_t *posix,
@@ -114,11 +114,8 @@ int miknode_send(miknode_t *node, int peer, const void *data, size_t len)
 	if (peer >= node->max_peers || len > MIKNET_MAX_PAYLOAD_SIZE)
 		return MIKERR_BAD_VALUE;
 
-	gram = malloc(sizeof(mikgram_t));
+	gram = mikgram(data, len);
 	if (gram == NULL)
-		return MIKERR_BAD_MEM;
-
-	if (mikgram(gram, data, len) != MIKERR_NONE)
 		return MIKERR_BAD_VALUE;
 	gram->peer = peer;
 

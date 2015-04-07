@@ -5,18 +5,19 @@
 #include "miknet/mikdef.h"
 #include "miknet/mikgram.h"
 
-int mikgram(mikgram_t *gram, const void *data, size_t len)
+mikgram_t *mikgram(const void *data, size_t len)
 {
-	if (gram == NULL || data == NULL)
-		return MIKERR_BAD_PTR;
+	mikgram_t *gram;
 
-	if (len == 0 || len > MIKNET_GRAM_MAX_SIZE)
-		return MIKERR_BAD_VALUE;
+	if (data == NULL || len > MIKNET_GRAM_MAX_SIZE)
+		return NULL;
 
+	gram = malloc(sizeof(mikgram_t) + MIKNET_METADATA_SIZE + len);
+	if (gram == NULL)
+		return NULL;
+	
 	gram->len = MIKNET_METADATA_SIZE + len;
-	gram->data = malloc(gram->len);
-	if (gram->data == NULL)
-		return MIKERR_BAD_MEM;
+	gram->data = (void *)gram + sizeof(mikgram_t);
 
 	((uint8_t *)gram->data)[0] = len & 0xff;
 	((uint8_t *)gram->data)[1] = (len >> 8) & 0xff;
@@ -27,7 +28,7 @@ int mikgram(mikgram_t *gram, const void *data, size_t len)
 
 	memcpy(gram->data + MIKNET_METADATA_SIZE, data, len);
 
-	return MIKERR_NONE;
+	return gram;
 }
 
 ssize_t mikgram_check(const mikgram_t *gram)
@@ -69,5 +70,5 @@ int mikgram_extract(const mikgram_t *gram, void *buf, size_t len)
 
 void mikgram_close(mikgram_t *gram)
 {
-	free(gram->data);
+	free(gram);
 }

@@ -26,7 +26,7 @@ typedef struct mikgram_t {
  *
  *  mikgrams must be disposed of with mikgram_close.
  */
-int mikgram(mikgram_t *gram, const void *data, size_t len);
+mikgram_t *mikgram(const void *data, size_t len);
 
 /**
  *  If the data is a complete mikgram, returns the number of octets needed to

@@ -7,43 +7,44 @@
 START_TEST(test_create)
 {
 	char hello[] = "Hello";
-	mikgram_t gram;
+	mikgram_t *gram;
 
 	/* Proper use. */
-	ck_assert_int_eq(mikgram(&gram, hello, 6), MIKERR_NONE);
-	ck_assert(gram.data != NULL);
-	ck_assert(gram.len > 6);
-	ck_assert_int_eq(((uint8_t *)gram.data)[0], 6);
-	ck_assert_int_eq(((uint8_t *)gram.data)[1], 0);
+	gram = mikgram(hello, 6);
+	ck_assert(gram->data != NULL);
+	ck_assert(gram->len > 6);
+	ck_assert_int_eq(((uint8_t *)gram->data)[0], 6);
+	ck_assert_int_eq(((uint8_t *)gram->data)[1], 0);
 
 	/* Bad inputs. */
-	ck_assert_int_eq(mikgram(&gram, NULL, 6), MIKERR_BAD_PTR);
-	ck_assert_int_eq(mikgram(NULL, hello, 6), MIKERR_BAD_PTR);
-	ck_assert_int_eq(mikgram(&gram, hello, 0), MIKERR_BAD_VALUE);
-	ck_assert_int_eq(mikgram(&gram, hello, SIZE_MAX), MIKERR_BAD_VALUE);
+	ck_assert_int_eq(mikgram(NULL, 6), NULL);
+	ck_assert_int_eq(mikgram(hello, SIZE_MAX), NULL);
 
-	mikgram_close(&gram);
+	mikgram_close(gram);
 }
 END_TEST
 
 START_TEST(test_gram_detection)
 {
 	char hello[] = "Hello";
-	mikgram_t gram;
+	mikgram_t *gram;
+	mikgram_t nodata_gram;
 
-	mikgram(&gram, hello, 6);
+	gram = mikgram(hello, 6);
+	ck_assert(gram != NULL);
 
 	/* Proper use. */
-	gram.len = 1024;
-	ck_assert_int_eq(mikgram_check(&gram), 6);
-	gram.len = 3;
-	ck_assert_int_eq(mikgram_check(&gram), MIKERR_BAD_VALUE);
+	gram->len = 1024;
+	ck_assert_int_eq(mikgram_check(gram), 6);
+	gram->len = 3;
+	ck_assert_int_eq(mikgram_check(gram), MIKERR_BAD_VALUE);
 
 	/* Bad inputs. */
 	ck_assert_int_eq(mikgram_check(NULL), MIKERR_BAD_PTR);
-	mikgram_close(&gram);
-	gram.data = NULL;
-	ck_assert_int_eq(mikgram_check(&gram), MIKERR_BAD_PTR);
+	mikgram_close(gram);
+
+	nodata_gram.data = NULL;
+	ck_assert_int_eq(mikgram_check(&nodata_gram), MIKERR_BAD_PTR);
 }
 END_TEST
 
@@ -51,27 +52,28 @@ START_TEST(test_gram_extraction)
 {
 	char hello[] = "Hello";
 	char buffer[6] = {0};
-	mikgram_t gram;
+	mikgram_t *gram;
 
-	mikgram(&gram, hello, 6);
+	gram = mikgram(hello, 6);
+	ck_assert(gram != NULL);
 
 	/* Proper use. */
-	ck_assert_int_eq(	mikgram_extract(&gram, buffer, 6),
+	ck_assert_int_eq(	mikgram_extract(gram, buffer, 6),
 				MIKERR_NONE);
 	ck_assert_int_eq(memcmp(buffer, hello, 6), 0);
 
 	/* Bad inputs. */
-	ck_assert_int_eq(	mikgram_extract(&gram, NULL, 10),
+	ck_assert_int_eq(	mikgram_extract(gram, NULL, 10),
 				MIKERR_BAD_PTR);
 	ck_assert_int_eq(	mikgram_extract(NULL, buffer, 10),
 				MIKERR_BAD_PTR);
-	gram.len = 0;
-	ck_assert_int_eq(	mikgram_extract(&gram, buffer, 10),
+	gram->len = 0;
+	ck_assert_int_eq(	mikgram_extract(gram, buffer, 10),
 				MIKERR_BAD_VALUE);
-	gram.data = NULL;
-	ck_assert_int_eq(	mikgram_extract(&gram, buffer, 10),
+	gram->data = NULL;
+	ck_assert_int_eq(	mikgram_extract(gram, buffer, 10),
 				MIKERR_BAD_PTR);
-	mikgram_close(&gram);
+	mikgram_close(gram);
 }
 END_TEST
 
