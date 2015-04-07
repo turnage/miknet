@@ -13,6 +13,7 @@ START_TEST(test_create)
 	gram = mikgram(hello, 6);
 	ck_assert(gram->data != NULL);
 	ck_assert(gram->len > 6);
+	ck_assert_int_eq(gram->next, NULL);
 	ck_assert_int_eq(((uint8_t *)gram->data)[0], 6);
 	ck_assert_int_eq(((uint8_t *)gram->data)[1], 0);
 

@@ -18,6 +18,7 @@ mikgram_t *mikgram(const void *data, size_t len)
 	
 	gram->len = MIKNET_METADATA_SIZE + len;
 	gram->data = (void *)gram + sizeof(mikgram_t);
+	gram->next = NULL;
 
 	((uint8_t *)gram->data)[0] = len & 0xff;
 	((uint8_t *)gram->data)[1] = (len >> 8) & 0xff;
