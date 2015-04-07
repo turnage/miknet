@@ -54,6 +54,8 @@ miknode_t *miknode_create(	const posix_t *posix,
 	node->max_peers = max_peers;
 	node->posix = posix;
 	node->sockfd = sockfd;
+	node->outgoing = NULL;
+	node->incoming = NULL;
 
 	return node;
 }
