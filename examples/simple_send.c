@@ -30,16 +30,10 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Added %s:%s as a peer.\n", argv[1], argv[2]);
 	}
 
-	if (mikgram(&gram, "Hello", 6) != MIKERR_NONE) {
-		FAIL("Failed to create mikgram.\n");
+	if (miknode_send(node, 0, "Hello", 6) != MIKERR_NONE) {
+		FAIL("Failed to queue data for sending.\n");
 	} else {
-		fprintf(stderr, "Created mikgram.\n");
-	}
-
-	if (miknode_send(node, 0, &gram) != MIKERR_NONE) {
-		FAIL("Failed to send mikgram.\n");
-	} else {
-		fprintf(stderr, "Sent mikgram.\n");
+		fprintf(stderr, "Data queued to send.\n");
 	}
 
 	mikgram_close(&gram);
