@@ -6,6 +6,34 @@
 #include "miknet/miknode.h"
 
 #include "miknet/mikdef.h"
+#include "miknet/miktime.h"
+
+/**
+ *  Dequeues a single outgoing command in the miknode's queue.
+ */
+static int miknode_dequeue_outgoing(miknode_t *node)
+{
+	mikgram_t *gram;
+	int err;
+
+	if (node == NULL)
+		return MIKERR_BAD_PTR;
+
+	if (node->outgoing == NULL)
+		return 0;
+
+	gram = node->outgoing;
+	node->outgoing = node->outgoing->next;
+
+	err = mikstation_send(	node->sockfd,
+				node->posix,
+				gram,
+				&node->peers[gram->peer].address);
+
+	mikgram_close(gram);
+
+	return err;
+}
 
 /**
  *  Free all mikpacks in queue.
@@ -130,25 +158,22 @@ int miknode_send(miknode_t *node, int peer, const void *data, size_t len)
 	return 0;
 }
 
-int miknode_service(miknode_t *node)
+int miknode_service(miknode_t *node, uint64_t nanoseconds)
 {
 	mikgram_t *gram;
+	uint64_t start;
 	int err;
 
 	if (node == NULL)
 		return MIKERR_BAD_PTR;
 
-	for (gram = node->outgoing; gram != NULL; gram = gram->next) {
-		err = mikstation_send(	node->sockfd,
-					node->posix,
-					gram,
-					&node->peers[gram->peer].address);
-		if (err != MIKERR_NONE)
-			break;
-	}
+	start = miktime();
 
-	miknode_free_grams(node->outgoing);
-	node->outgoing = NULL;
+	while (node->outgoing != NULL && miktime() - start < nanoseconds) {
+		err = miknode_dequeue_outgoing(node);
+		if (err != MIKERR_NONE)
+			return err;
+	}
 
 	return err;
 }

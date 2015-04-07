@@ -35,7 +35,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Data queued to send.\n");
 	}
 
-	miknode_service(node);
+	miknode_service(node, 1000000000);
 
 	miknode_close(node);
 

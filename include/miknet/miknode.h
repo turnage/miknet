@@ -1,6 +1,8 @@
 #ifndef MIKNET_MIKNODE_H_
 #define MIKNET_MIKNODE_H_
 
+#include <stdint.h>
+
 #include "miknet/mikaddr.h"
 #include "miknet/mikgram.h"
 #include "miknet/mikpack.h"
@@ -45,10 +47,10 @@ int miknode_new_peer(miknode_t *node, const char *address, uint16_t port);
 int miknode_send(miknode_t *node, int peer, const void *data, size_t len);
 
 /**
- *  Dequeues pending operations and updates the state of peers. Returns 0 on
- *  success.
+ *  Dequeues pending operations and updates the state of peers. This will take
+ *  at most the amount of time given in nanoseconds. Returns 0 on success.
  */
-int miknode_service(miknode_t *node);
+int miknode_service(miknode_t *node, uint64_t nanoseconds);
 
 /**
  *  Frees the resources used by a miknode.
