@@ -5,7 +5,7 @@
 #include "miknet/mikdef.h"
 #include "testing/miksysmock.h"
 
-START_TEST(test_create)
+START_TEST(test_mikaddr)
 {
 	mikaddr_t addr;
 	struct addrinfo expected_addr;
@@ -59,7 +59,7 @@ Suite *mikaddr_suite()
 	Suite *suite = suite_create("mikaddr_suite");
 	TCase *mikaddr_units = tcase_create("mikaddr_units");
 
-	tcase_add_test(mikaddr_units, test_create);
+	tcase_add_test(mikaddr_units, test_mikaddr);
 	suite_add_tcase(suite, mikaddr_units);
 
 	return suite;

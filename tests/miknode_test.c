@@ -7,7 +7,7 @@
 #include "miknet/mikdef.h"
 #include "testing/miksysmock.h"
 
-START_TEST(test_create)
+START_TEST(test_miknode_create)
 {
 	int expected_socket = 10;
 	mikaddr_t addr;
@@ -41,7 +41,7 @@ START_TEST(test_create)
 }
 END_TEST
 
-START_TEST(test_insert_peer)
+START_TEST(test_miknode_insert_peer)
 {
 	miknode_t node = {0};
 	mikpeer_t peers[3] = {{0}};
@@ -95,8 +95,8 @@ Suite *miknode_suite()
 	Suite *suite = suite_create("miknode_suite");
 	TCase *miknode_units = tcase_create("miknode_units");
 
-	tcase_add_test(miknode_units, test_create);
-	tcase_add_test(miknode_units, test_insert_peer);
+	tcase_add_test(miknode_units, test_miknode_create);
+	tcase_add_test(miknode_units, test_miknode_insert_peer);
 	tcase_add_test(miknode_units, test_miknode_send);
 	suite_add_tcase(suite, miknode_units);
 

@@ -4,7 +4,7 @@
 #include "miknet/mikgram.h"
 #include "miknet/mikdef.h"
 
-START_TEST(test_create)
+START_TEST(test_mikgram)
 {
 	char hello[] = "Hello";
 	mikgram_t *gram;
@@ -25,7 +25,7 @@ START_TEST(test_create)
 }
 END_TEST
 
-START_TEST(test_gram_detection)
+START_TEST(test_mikgram_check)
 {
 	char hello[] = "Hello";
 	mikgram_t *gram;
@@ -49,7 +49,7 @@ START_TEST(test_gram_detection)
 }
 END_TEST
 
-START_TEST(test_gram_extraction)
+START_TEST(test_mikgram_extract)
 {
 	char hello[] = "Hello";
 	char buffer[6] = {0};
@@ -83,9 +83,9 @@ Suite *mikgram_suite()
 	Suite *suite = suite_create("mikgram_suite");
 	TCase *gram_units = tcase_create("mikgram_units");
 
-	tcase_add_test(gram_units, test_create);
-	tcase_add_test(gram_units, test_gram_detection);
-	tcase_add_test(gram_units, test_gram_extraction);
+	tcase_add_test(gram_units, test_mikgram);
+	tcase_add_test(gram_units, test_mikgram_check);
+	tcase_add_test(gram_units, test_mikgram_extract);
 	suite_add_tcase(suite, gram_units);
 
 	return suite;
