@@ -82,11 +82,12 @@ START_TEST(test_miknode_send)
 	ck_assert_int_eq(gram->peer, 0);
 
 	/* Bad inputs. */
-	ck_assert_int_eq(	miknode_send(&node, 0, "o", INT_MAX),
+	ck_assert_int_eq(	miknode_send(&node, 0, "Hello", INT_MAX),
 				MIKERR_BAD_VALUE);
 	ck_assert_int_eq(miknode_send(&node, 2, "Hello", 6), MIKERR_BAD_VALUE);
 	ck_assert_int_eq(miknode_send(NULL, 0, "Hello", 6), MIKERR_BAD_PTR);
 	ck_assert_int_eq(miknode_send(&node, 0, NULL, 6), MIKERR_BAD_PTR);
+	ck_assert_int_eq(miknode_send(&node, -1, "Hello", 6), MIKERR_BAD_VALUE);
 }
 END_TEST
 
