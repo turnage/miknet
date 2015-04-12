@@ -22,14 +22,13 @@ static int miknode_dequeue_outgoing(miknode_t *node)
 	if (node->outgoing == NULL)
 		return MIK_SUCCESS;
 
-	gram = node->outgoing;
-	node->outgoing = node->outgoing->next;
-
 	err = mikstation_send(	node->sockfd,
 				node->posix,
-				gram,
+				node->outgoing,
 				&node->peers[gram->peer].address);
 
+	gram = node->outgoing;
+	node->outgoing = node->outgoing->next;
 	mikgram_close(gram);
 
 	return err;
