@@ -20,6 +20,7 @@ START_TEST(test_mikgram)
 	/* Bad inputs. */
 	ck_assert_int_eq(mikgram(NULL, 6), NULL);
 	ck_assert_int_eq(mikgram(hello, SIZE_MAX), NULL);
+	ck_assert_int_eq(mikgram(hello, 0), NULL);
 
 	mikgram_close(gram);
 }
@@ -35,7 +36,6 @@ START_TEST(test_mikgram_check)
 	ck_assert(gram != NULL);
 
 	/* Proper use. */
-	gram->len = 1024;
 	ck_assert_int_eq(mikgram_check(gram), 6);
 	gram->len = 3;
 	ck_assert_int_eq(mikgram_check(gram), MIKERR_BAD_VALUE);

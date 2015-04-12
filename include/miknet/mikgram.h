@@ -30,10 +30,11 @@ mikgram_t *mikgram(const void *data, size_t len);
 
 /**
  *  If the data is a complete mikgram, returns the number of octets needed to
- *  extract the payload from it.
+ *  extract the payload from it with mikgram_extract (zero-length mikgrams are
+ *  not allowed).
  *
- *  Returns zero if the data is not a mikgram, or if the mikgram is incomplete,
- *  or a negative value on error.
+ *  Negative values indicate an error or that the gram does not conform to
+ *  miknet expectations.
  */
 ssize_t mikgram_check(const mikgram_t *gram);
 

@@ -9,7 +9,7 @@ mikgram_t *mikgram(const void *data, size_t len)
 {
 	mikgram_t *gram;
 
-	if (data == NULL || len > MIKNET_GRAM_MAX_SIZE)
+	if (data == NULL || len > MIKNET_MAX_PAYLOAD_SIZE || len == 0)
 		return NULL;
 
 	gram = malloc(sizeof(mikgram_t) + MIKNET_METADATA_SIZE + len);
@@ -45,7 +45,8 @@ ssize_t mikgram_check(const mikgram_t *gram)
 	payload_len =	((uint8_t *)gram->data)[0]
 			^ (((uint8_t *)gram->data)[1] << 8);
 
-	if (gram->len < payload_len + MIKNET_METADATA_SIZE)
+	if (	gram->len == MIKNET_METADATA_SIZE
+		|| gram->len != payload_len + MIKNET_METADATA_SIZE)
 		return MIKERR_BAD_VALUE;
 
 	return payload_len;
