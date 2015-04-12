@@ -29,7 +29,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Added %s:%s as a peer.\n", argv[1], argv[2]);
 	}
 
-	if (miknode_send(node, 0, "Hello", 6) != MIKERR_NONE) {
+	if (miknode_send(node, 0, "Hello", 6) != MIK_SUCCESS) {
 		FAIL("Failed to queue data for sending.\n");
 	} else {
 		fprintf(stderr, "Data queued to send.\n");

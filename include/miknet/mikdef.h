@@ -9,7 +9,7 @@ typedef enum {
 } mikbool_t;
 
 typedef enum {
-	MIKERR_NONE = 0,
+	MIK_SUCCESS = 0,
 	MIKERR_VALUE_BOUND = INT_MIN,
 
 	/* Errors beneath miknet. */

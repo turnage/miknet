@@ -84,7 +84,7 @@ int mikstation_receive(	const int sockfd,
 		return error;
 	}
 
-	return 0;
+	return MIK_SUCCESS;
 }
 
 int mikstation_send(	const int sockfd,
@@ -120,5 +120,5 @@ int mikstation_send(	const int sockfd,
 	if (error < gram->len)
 		return MIKERR_NET_FAIL;
 
-	return 0;
+	return MIK_SUCCESS;
 }

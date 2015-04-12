@@ -53,5 +53,5 @@ int mikaddr(	mikaddr_t *mikaddr,
 
 	pos->freeaddrinfo(pos, candidate);
 
-	return MIKERR_NONE;
+	return MIK_SUCCESS;
 }

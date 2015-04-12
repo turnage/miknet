@@ -66,7 +66,7 @@ int mikgram_extract(const mikgram_t *gram, void *buf, size_t len)
 		gram->data + MIKNET_METADATA_SIZE,
 		gram->len - MIKNET_METADATA_SIZE);
 
-	return MIKERR_NONE;
+	return MIK_SUCCESS;
 }
 
 void mikgram_close(mikgram_t *gram)

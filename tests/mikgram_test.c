@@ -60,7 +60,7 @@ START_TEST(test_mikgram_extract)
 
 	/* Proper use. */
 	ck_assert_int_eq(	mikgram_extract(gram, buffer, 6),
-				MIKERR_NONE);
+				MIK_SUCCESS);
 	ck_assert_int_eq(memcmp(buffer, hello, 6), 0);
 
 	/* Bad inputs. */

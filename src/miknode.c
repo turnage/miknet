@@ -20,7 +20,7 @@ static int miknode_dequeue_outgoing(miknode_t *node)
 		return MIKERR_BAD_PTR;
 
 	if (node->outgoing == NULL)
-		return 0;
+		return MIK_SUCCESS;
 
 	gram = node->outgoing;
 	node->outgoing = node->outgoing->next;
@@ -94,7 +94,7 @@ miknode_t *miknode(uint16_t port, uint8_t max_peers)
 	mikaddr_t addr;
 	miknode_t *node;
 
-	if (mikaddr(&addr, posix, NULL, port) != MIKERR_NONE)
+	if (mikaddr(&addr, posix, NULL, port) != MIK_SUCCESS)
 		return NULL;
 
 	node = miknode_create(posix, &addr, port, max_peers);
@@ -126,7 +126,7 @@ int miknode_new_peer(miknode_t *node, const char *address, uint16_t port)
 	if (node == NULL || address == NULL)
 		return MIKERR_BAD_PTR;
 
-	if (mikaddr(&addr, node->posix, address, port) != MIKERR_NONE)
+	if (mikaddr(&addr, node->posix, address, port) != MIK_SUCCESS)
 		return MIKERR_NET_FAIL;
 
 	return miknode_insert_peer(node, &addr);
@@ -155,7 +155,7 @@ int miknode_send(miknode_t *node, int peer, const void *data, size_t len)
 		nav->next = gram;
 	}
 
-	return 0;
+	return MIK_SUCCESS;
 }
 
 int miknode_service(miknode_t *node, uint64_t nanoseconds)
@@ -171,7 +171,7 @@ int miknode_service(miknode_t *node, uint64_t nanoseconds)
 
 	while (node->outgoing != NULL && miktime() - start < nanoseconds) {
 		err = miknode_dequeue_outgoing(node);
-		if (err != MIKERR_NONE)
+		if (err != MIK_SUCCESS)
 			return err;
 	}
 
