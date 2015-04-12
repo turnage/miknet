@@ -6,7 +6,7 @@
 #define MIKNET_METADATA_SIZE 4
 #define MIKNET_GRAM_MAX_SIZE 512
 #define MIKNET_GRAM_MIN_SIZE MIKNET_METADATA_SIZE
-#define MIKNET_MAX_PAYLOAD_SIZE MIKNET_GRAM_MAX_SIZE
+#define MIKNET_MAX_PAYLOAD_SIZE MIKNET_GRAM_MAX_SIZE - MIKNET_METADATA_SIZE
 
 /**
  *  A mikgram represents the most basic unit of communication between miknodes.
