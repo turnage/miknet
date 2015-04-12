@@ -5,7 +5,7 @@
 
 #include "miknet/mikaddr.h"
 #include "miknet/mikgram.h"
-#include "miknet/mikpack.h"
+#include "miknet/mikmsg.h"
 #include "miknet/mikpeer.h"
 #include "miknet/miksys.h"
 
@@ -15,7 +15,7 @@ typedef struct miknode_t {
 	mikpeer_t *peers;
 	uint8_t max_peers;
 	mikgram_t *outgoing;
-	mikpack_t *incoming;
+	mikmsg_t *incoming;
 } miknode_t;
 
 /**

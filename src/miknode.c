@@ -35,7 +35,7 @@ static int miknode_dequeue_outgoing(miknode_t *node)
 }
 
 /**
- *  Free all mikpacks in queue.
+ *  Free all mikgrams in queue.
  */
 static void miknode_free_grams(mikgram_t *gram)
 {

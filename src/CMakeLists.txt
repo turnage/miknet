@@ -11,10 +11,14 @@ target_link_libraries(mikaddr miksys)
 # miknet datagrams
 add_library(mikgram mikgram.c)
 
+# miknet messages
+add_library(mikmsg mikmsg.c)
+target_link_libraries(mikmsg mikgram)
+
 # miknet network interface
 add_library(mikstation mikstation.c)
 target_link_libraries(mikstation mikgram miksys)
 
 # miknet node/user interface
 add_library(miknode miknode.c)
-target_link_libraries(miknode mikaddr mikgram mikstation miksys miktime)
+target_link_libraries(miknode mikaddr mikmsg mikgram mikstation miksys miktime)

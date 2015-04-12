@@ -22,6 +22,12 @@ target_link_libraries(mikgram_test ${CHECK_LIBRARIES} mikgram)
 set_target_properties(mikgram_test PROPERTIES LINK_FLAGS ${CHECK_CFLAGS})
 add_test(mikgram_test ${CMAKE_CURRENT_BINARY_DIR}/mikgram_test)
 
+# mikmsg
+add_executable(mikmsg_test mikmsg_test.c)
+target_link_libraries(mikmsg_test ${CHECK_LIBRARIES} mikmsg mikgram)
+set_target_properties(mikmsg_test PROPERTIES LINK_FLAGS ${CHECK_CFLAGS})
+add_test(mikmsg_test ${CMAKE_CURRENT_BINARY_DIR}/mikmsg_test)
+
 # mikstation
 add_executable(mikstation_test mikstation_test.c)
 target_link_libraries(mikstation_test ${CHECK_LIBRARIES} mikstation miksysmock)
