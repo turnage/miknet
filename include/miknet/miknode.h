@@ -11,7 +11,7 @@
 
 typedef struct miknode_t {
 	int sockfd;
-	const posix_t *posix;
+	const mikposix_t *posix;
 	mikpeer_t *peers;
 	uint8_t max_peers;
 	mikgram_t *outgoing;
@@ -27,7 +27,7 @@ typedef struct miknode_t {
  *
  *  Request a port of 0 for auto-assign.
  */
-miknode_t *miknode_create(	const posix_t *posix,
+miknode_t *miknode_create(	const mikposix_t *posix,
 				const mikaddr_t *addr,
 				uint16_t port,
 				uint8_t max_peers);

@@ -47,7 +47,7 @@ static void miknode_free_grams(mikgram_t *gram)
 	mikgram_close(gram);
 }
 
-miknode_t *miknode_create(	const posix_t *posix,
+miknode_t *miknode_create(	const mikposix_t *posix,
 				const mikaddr_t *addr,
 				uint16_t port,
 				uint8_t max_peers)
@@ -90,7 +90,7 @@ miknode_t *miknode_create(	const posix_t *posix,
 
 miknode_t *miknode(uint16_t port, uint8_t max_peers)
 {
-	posix_t *posix = mikposix();
+	mikposix_t *posix = mikposix();
 	mikaddr_t addr;
 	miknode_t *node;
 

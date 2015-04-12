@@ -13,43 +13,43 @@
  *  with other dependencies at runtime, for testing.
  */
 
-typedef struct posix_t {
-	int (*bind)(	const struct posix_t *,
+typedef struct mikposix_t {
+	int (*bind)(	const struct mikposix_t *,
 			int,
 			const struct sockaddr *,
 			socklen_t);
-	void (*freeaddrinfo)(const struct posix_t *, struct addrinfo *);
-	int (*getaddrinfo)(	const struct posix_t *,
+	void (*freeaddrinfo)(const struct mikposix_t *, struct addrinfo *);
+	int (*getaddrinfo)(	const struct mikposix_t *,
 				const char *,
 				const char *,
 				const struct addrinfo *,
 				struct addrinfo **);
-	ssize_t (*sendto)(	const struct posix_t *,
+	ssize_t (*sendto)(	const struct mikposix_t *,
 				int,
 				const void *,
 				size_t,
 				int,
 				const struct sockaddr *,
 				socklen_t);
-	int (*setsockopt)(	const struct posix_t *,
+	int (*setsockopt)(	const struct mikposix_t *,
 				int,
 				int,
 				int,
 				const void *,
 				socklen_t);
-	int (*socket)(const struct posix_t *, int, int, int);
-	ssize_t (*recvfrom)(	const struct posix_t *,
+	int (*socket)(const struct mikposix_t *, int, int, int);
+	ssize_t (*recvfrom)(	const struct mikposix_t *,
 				int,
 				void *,
 				size_t,
 				int,
 				struct sockaddr *,
 				socklen_t *);
-} posix_t;
+} mikposix_t;
 
 /**
  *  Returns the default posix wrapper.
  */
-posix_t *mikposix();
+mikposix_t *mikposix();
 
 #endif /* MIKNET_MIKSYS_H_ */

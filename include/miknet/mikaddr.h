@@ -21,7 +21,7 @@ typedef struct mikaddr_t {
 *  If the mikaddr's connectable flag is not true, creating the address failed.
 */
 int mikaddr(	mikaddr_t *mikaddr,
-		const posix_t *pos,
+		const mikposix_t *pos,
 		const char *addr,
 		uint16_t port);
 

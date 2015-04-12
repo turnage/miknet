@@ -4,7 +4,7 @@
 #include "miknet/mikdef.h"
 #include "miknet/mikaddr.h"
 
-static struct addrinfo *mikaddr_get_candidate(	const posix_t *pos,
+static struct addrinfo *mikaddr_get_candidate(	const mikposix_t *pos,
 						const char *addr,
 						uint16_t port)
 {
@@ -34,7 +34,7 @@ static struct addrinfo *mikaddr_get_candidate(	const posix_t *pos,
 }
 
 int mikaddr(	mikaddr_t *mikaddr,
-		const posix_t *pos,
+		const mikposix_t *pos,
 		const char *addr,
 		uint16_t port)
 {

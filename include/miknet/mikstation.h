@@ -14,20 +14,20 @@
  *  Clears one datagram waiting to be received. Returns the number of octets
  *  discarded.
  */
-ssize_t mikstation_discard(const int sockfd, const posix_t *posix);
+ssize_t mikstation_discard(const int sockfd, const mikposix_t *posix);
 
 /**
  *  Returns the size of the next datagram waiting to be received. Nonnegative
  *  values indicate success.
  */
-ssize_t mikstation_poll(const int sockfd, const posix_t *posix);
+ssize_t mikstation_poll(const int sockfd, const mikposix_t *posix);
 
 /**
  *  Receives a single mikgram from the network and writes both the gram and
  *  sender address to the provided arguments. Returns 0 on success.
  */
 int mikstation_receive(	const int sockfd,
-			const posix_t *posix,
+			const mikposix_t *posix,
 			mikgram_t **gram,
 			mikaddr_t *addr);
 
@@ -36,7 +36,7 @@ int mikstation_receive(	const int sockfd,
  *  success.
  */
 int mikstation_send(	const int sockfd,
-			const posix_t *posix,
+			const mikposix_t *posix,
 			const mikgram_t *gram,
 			const mikaddr_t *addr);
 

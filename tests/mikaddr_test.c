@@ -21,15 +21,16 @@ START_TEST(test_mikaddr)
 
 	/* Proper use. */
 	mock.getaddrinfo_return = MIKERR_NONE;
-	ck_assert_int_eq(	mikaddr(&addr, (posix_t *)&mock, "0.0.0.0", 80),
-				MIKERR_NONE);
+	ck_assert_int_eq(
+		mikaddr(&addr, (mikposix_t *)&mock, "0.0.0.0", 80),
+		MIKERR_NONE);
 	ck_assert_int_eq(addr.addrlen, expected_addr.ai_addrlen);
 	actual = (struct sockaddr_in *)&addr.addr;
 	ck_assert_int_eq(actual->sin_port, expected->sin_port);
 	ck_assert_int_eq(actual->sin_addr.s_addr, expected->sin_addr.s_addr);
 
 	/* NULL address should request INADDR_ANY */
-	ck_assert_int_eq(	mikaddr(&addr, (posix_t *)&mock, NULL, 80),
+	ck_assert_int_eq(	mikaddr(&addr, (mikposix_t *)&mock, NULL, 80),
 				MIKERR_NONE);
 	actual = (struct sockaddr_in *)&addr.addr;
 	ck_assert_int_eq(actual->sin_addr.s_addr, INADDR_ANY);
@@ -37,20 +38,23 @@ START_TEST(test_mikaddr)
 	/* Failure by report. */
 	mock.posix = mikposixmock();
 	mock.getaddrinfo_return = -1;
-	ck_assert_int_eq(	mikaddr(&addr, (posix_t *)&mock, "0.0.0.0", 80),
-				MIKERR_NET_FAIL);
+	ck_assert_int_eq(
+		mikaddr(&addr, (mikposix_t *)&mock, "0.0.0.0", 80),
+		MIKERR_NET_FAIL);
 
 	/* Failure by no results. */
 	mock.getaddrinfo_return = MIKERR_NONE;
 	mock.getaddrinfo_arg_set = NULL;
-	ck_assert_int_eq(	mikaddr(&addr, (posix_t *)&mock, "0.0.0.0", 80),
-				MIKERR_NET_FAIL);
+	ck_assert_int_eq(
+		mikaddr(&addr, (mikposix_t *)&mock, "0.0.0.0", 80),
+		MIKERR_NET_FAIL);
 
 	/* Bad inputs. */
 	mock.getaddrinfo_return = MIKERR_NONE;
 	ck_assert_int_eq(mikaddr(&addr, NULL, "0.0.0.0", 80), MIKERR_BAD_PTR);
-	ck_assert_int_eq(	mikaddr(NULL, (posix_t *)&mock, "0.0.0.0", 80),
-				MIKERR_BAD_PTR);
+	ck_assert_int_eq(
+		mikaddr(NULL, (mikposix_t *)&mock, "0.0.0.0", 80),
+		MIKERR_BAD_PTR);
 }
 END_TEST
 

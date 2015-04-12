@@ -18,7 +18,7 @@ static ssize_t mikstation_parse_error(ssize_t error)
 }
 
 static ssize_t mikstation_blank_read(	const int sockfd,
-					const posix_t *posix,
+					const mikposix_t *posix,
 					const int flags)
 {
 	char bin;
@@ -38,18 +38,18 @@ static ssize_t mikstation_blank_read(	const int sockfd,
 							NULL));
 }
 
-ssize_t mikstation_discard(const int sockfd, const posix_t *posix)
+ssize_t mikstation_discard(const int sockfd, const mikposix_t *posix)
 {
 	return mikstation_blank_read(sockfd, posix, MSG_TRUNC);
 }
 
-ssize_t mikstation_poll(const int sockfd, const posix_t *posix)
+ssize_t mikstation_poll(const int sockfd, const mikposix_t *posix)
 {
 	return mikstation_blank_read(sockfd, posix, MSG_PEEK | MSG_TRUNC);
 }
 
 int mikstation_receive(	const int sockfd,
-			const posix_t *posix,
+			const mikposix_t *posix,
 			mikgram_t **gram,
 			mikaddr_t *addr)
 {
@@ -88,7 +88,7 @@ int mikstation_receive(	const int sockfd,
 }
 
 int mikstation_send(	const int sockfd,
-			const posix_t *posix,
+			const mikposix_t *posix,
 			const mikgram_t *gram,
 			const mikaddr_t *addr)
 {
