@@ -3,6 +3,7 @@ add_library(miksys miksys.c)
 
 # miknet time utility
 add_library(miktime miktime.c)
+target_link_libraries(miktime rt)
 
 # miknet address storage
 add_library(mikaddr mikaddr.c)
