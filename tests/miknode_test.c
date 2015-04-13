@@ -77,8 +77,8 @@ START_TEST(test_miknode_send)
 	for (gram = node.outgoing; gram->next != NULL; gram = gram->next)
 		++gram_index;
 
+	ck_assert(gram->len > 7);
 	ck_assert_int_eq(gram_index, 2);
-	ck_assert_int_gt(gram->len, 7);
 	ck_assert_int_eq(gram->peer, 0);
 
 	/* Bad inputs. */
