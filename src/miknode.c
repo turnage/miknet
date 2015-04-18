@@ -148,18 +148,21 @@ int miknode_send(miknode_t *node, int peer, const void *data, size_t len)
 int miknode_service(miknode_t *node, uint64_t nanoseconds)
 {
 	mikgram_t *gram;
-	uint64_t start;
+	uint64_t end;
 	int err;
 
 	if (node == NULL)
 		return MIKERR_BAD_PTR;
 
-	start = miktime();
+	end = miktime() + nanoseconds;
+	err = MIK_SUCCESS;
 
-	while (node->outgoing != NULL && miktime() - start < nanoseconds) {
+	while (miktime() < end) {
 		err = miknode_dequeue_outgoing(node);
 		if (err != MIK_SUCCESS)
 			return err;
+
+		miktime_sleep(nanoseconds / 10);
 	}
 
 	return err;
