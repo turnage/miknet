@@ -35,7 +35,11 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Data queued to send.\n");
 	}
 
-	miknode_service(node, 1000000000);
+	if (miknode_service(node, 5000000000) != MIK_SUCCESS) {
+		fprintf(stderr, "Failed to service node.\n");
+	} else {
+		fprintf(stderr, "Node serviced.\n");
+	}
 
 	miknode_close(node);
 
