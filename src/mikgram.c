@@ -72,5 +72,9 @@ int mikgram_extract(const mikgram_t *gram, void *buf, size_t len)
 
 void mikgram_close(mikgram_t *gram)
 {
+	if (gram == NULL)
+		return;
+
+	mikgram_close(gram->next);
 	free(gram);
 }

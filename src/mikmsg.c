@@ -37,5 +37,8 @@ mikmsg_t *mikmsg(const mikgram_t *gram, const mikaddr_t *addr)
 
 void mikmsg_close(mikmsg_t *msg)
 {
+	if (msg == NULL)
+		return;
+	mikmsg_close(msg->next);
 	free(msg);
 }

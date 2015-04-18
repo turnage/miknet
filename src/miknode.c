@@ -22,28 +22,16 @@ static int miknode_dequeue_outgoing(miknode_t *node)
 	if (node->outgoing == NULL)
 		return MIK_SUCCESS;
 
+	gram = node->outgoing;
 	err = mikstation_send(	node->sockfd,
 				node->posix,
 				node->outgoing,
 				&node->peers[gram->peer].address);
 
-	gram = node->outgoing;
 	node->outgoing = node->outgoing->next;
-	mikgram_close(gram);
+	free(gram);
 
 	return err;
-}
-
-/**
- *  Free all mikgrams in queue.
- */
-static void miknode_free_grams(mikgram_t *gram)
-{
-	if (gram == NULL)
-		return;
-
-	miknode_free_grams(gram->next);
-	mikgram_close(gram);
 }
 
 miknode_t *miknode_create(	const mikposix_t *posix,
@@ -179,8 +167,7 @@ int miknode_service(miknode_t *node, uint64_t nanoseconds)
 
 void miknode_close(miknode_t *node)
 {
-	if (node->outgoing != NULL)
-		miknode_free_grams(node->outgoing);
-
+	mikgram_close(node->outgoing);
+	mikmsg_close(node->incoming);
 	free(node);
 }
