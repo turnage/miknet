@@ -9,6 +9,48 @@
 #include "miknet/miktime.h"
 
 /**
+ *  Dequeues a single miknet datagram waiting to be received.
+ */
+static int miknode_dequeue_incoming(miknode_t *node)
+{
+	mikaddr_t addr;
+	mikgram_t *gram;
+	mikmsg_t *nav;
+	mikmsg_t **next;
+	ssize_t poll_err;
+	ssize_t check_err;
+
+	poll_err = mikstation_poll(node->sockfd, node->posix);
+	if (poll_err == MIKERR_NO_MSG)
+		return MIK_SUCCESS;
+	else if (poll_err < 0)
+		return MIKERR_NET_FAIL;
+	else if (poll_err == 0 || poll_err > MIKNET_GRAM_MAX_SIZE) {
+		mikstation_discard(node->sockfd, node->posix);
+		return MIKERR_NONCONFORM;
+	}
+
+	if (mikstation_receive(	node->sockfd,
+				node->posix,
+				&gram,
+				&addr) != MIK_SUCCESS)
+		return MIKERR_NET_FAIL;
+
+	if (node->incoming == NULL)
+		next = &node->incoming;
+	else {
+		for (nav = node->incoming; nav->next != NULL; nav = nav->next);
+		next = &nav->next;
+	}
+
+	*next = mikmsg(gram, &addr);
+	if (*next == NULL)
+		return MIKERR_NONCONFORM;
+
+	return MIK_SUCCESS;
+}
+
+/**
  *  Dequeues a single outgoing command in the miknode's queue.
  */
 static int miknode_dequeue_outgoing(miknode_t *node)
@@ -160,6 +202,10 @@ int miknode_service(miknode_t *node, uint64_t nanoseconds)
 	while (miktime() < end) {
 		err = miknode_dequeue_outgoing(node);
 		if (err != MIK_SUCCESS)
+			return err;
+
+		err = miknode_dequeue_incoming(node);
+		if (err == MIKERR_NET_FAIL)
 			return err;
 
 		miktime_sleep(nanoseconds / 10);
