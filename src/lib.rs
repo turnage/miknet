@@ -11,6 +11,7 @@ pub mod channel;
 pub mod peer;
 pub mod host;
 pub mod event;
+mod packet;
 
 use event::Event;
 use host::{Host, Target};
@@ -23,7 +24,7 @@ error_chain! {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Protocol {
     channels: Vec<channel::Config>,
 }

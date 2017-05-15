@@ -1,18 +1,36 @@
 use std::fmt::Debug;
+use std::net::SocketAddr;
 
-pub type ID = usize;
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct ID(usize);
 
-#[derive(Debug)]
-pub struct Peer<U: Debug> {
-    id: ID,
-    user_data: U,
+impl Default for ID {
+    fn default() -> Self { ID(0) }
 }
 
-impl<U: Debug> Peer<U> {
-    pub fn new(id: ID, user_data: U) -> Self {
+pub fn next(id: ID) -> ID {
+    let ID(val) = id;
+    ID(val + 1)
+}
+
+#[derive(Debug)]
+pub enum State {
+    Connecting,
+    Connected,
+    Disconnecting,
+}
+
+#[derive(Debug)]
+pub struct Peer {
+    state: State,
+    addr: SocketAddr,
+}
+
+impl Peer {
+    pub fn new(addr: SocketAddr) -> Self {
         Peer {
-            id: id,
-            user_data: user_data,
+            state: State::Connecting,
+            addr: addr,
         }
     }
 }
