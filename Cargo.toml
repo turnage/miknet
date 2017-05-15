@@ -1,0 +1,10 @@
+[package]
+name = "miknet"
+version = "0.1.0"
+authors = ["Payton Turnage <paytonturnage@gmail.com>"]
+
+[dependencies]
+bincode = "0.8.0"
+error-chain = "0.10"
+serde = "1"
+serde_derive = "1"

@@ -1,5 +1,4 @@
-build
-debug
-release
-Testing
+target/
 *.swp
+**/*.rs.bk
+Cargo.lock
