@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 extern crate bincode;
 #[macro_use]
 extern crate error_chain;
@@ -12,6 +14,8 @@ pub mod event;
 
 use event::Event;
 use host::{Host, Target};
+
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
 error_chain! {
     foreign_links {
@@ -30,17 +34,20 @@ mod tests {
 
     #[test]
     fn api_works() {
-        let mut host: Host<usize> = Host::new(Protocol {
-            channels: vec![channel::Config::new(channel::Sequence::Sequenced,
-                                                channel::Reliability::Reliable)],
-        });
+        let mut host: Host<usize> =
+            Host::new(Protocol {
+                          channels: vec![channel::Config::new(channel::Sequence::Sequenced,
+                                                              channel::Reliability::Reliable)],
+                      },
+                      SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 0)))
+                .expect("failed to bind to a socket");
         host.send(Target::All, 8);
         while let Some(result) = host.service() {
             match result {
                 Ok(event) => {
                     match event {
                         Event::Connect(peer_id) => println!("{:?} connected", peer_id),
-                        Event::Message { peer_id: peer_id, payload: payload } => {
+                        Event::Message { peer_id, payload } => {
                             println!("{:?} sent {:?}", peer_id, payload)
                         }
                         Event::Disconnect(peer_id) => println!("{:?} disconnected", peer_id),
