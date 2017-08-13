@@ -19,3 +19,9 @@ error_chain! {
         Bincode(Box<bincode::ErrorKind>);
     }
 }
+
+impl<T> std::convert::From<std::sync::mpsc::SendError<T>> for Error {
+    fn from(e: std::sync::mpsc::SendError<T>) -> Error {
+        "failed to send on closed channel".into()
+    }
+}

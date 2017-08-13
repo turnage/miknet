@@ -11,9 +11,9 @@ pub enum ProtoError {
 
 #[derive(Debug, PartialEq)]
 pub enum Api {
-    Tx(Dest, Vec<u8>),
-    Disc(Dest),
-    Conn(SocketAddr),
+    Tx(Vec<u8>),
+    Disc,
+    Conn,
 }
 
 #[derive(Debug, PartialEq)]

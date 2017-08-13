@@ -4,7 +4,7 @@ use std::net::SocketAddr;
 
 #[derive(Debug, PartialEq)]
 pub struct Peer {
-    addr: SocketAddr,
+    pub addr: SocketAddr,
 }
 
 #[derive(Debug, PartialEq)]
