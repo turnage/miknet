@@ -1,64 +1,61 @@
-use super::Protocol;
-use super::Result;
+//! host defines the traits and behaviors of hosts in the miknet protocol.
 
-use event::Event;
-use packet::{Command, Packet};
-use peer::{self, Peer};
-
-use serde::Serialize;
-use serde::de::DeserializeOwned;
-use std::collections::{HashMap, VecDeque};
-use std::fmt::Debug;
-use std::marker::PhantomData;
+use Result;
+use bincode::deserialize;
+use event::{Event, ProtoError};
+use gram::{Gram, MTU_BYTES};
 use std::net::{SocketAddr, UdpSocket};
 
-#[derive(Debug)]
-pub enum Target {
-    All,
-    Peer(peer::ID),
-}
-
-pub struct Host<P: Debug + Serialize + DeserializeOwned> {
-    peer_id_gen: peer::ID,
-    queue: VecDeque<(peer::ID, Packet)>,
-    peers: HashMap<peer::ID, Peer>,
+pub struct Host {
     socket: UdpSocket,
-    protocol: Protocol,
-    _payload: PhantomData<P>,
 }
 
-impl<P: Debug + Serialize + DeserializeOwned> Host<P> {
-    pub fn new(protocol: Protocol, address: SocketAddr) -> Result<Self> {
-        let socket = UdpSocket::bind(address)?;
-        let _ = socket.set_nonblocking(true)?;
-        let _ = socket.set_broadcast(true)?;
-        Ok(Host {
-            peer_id_gen: Default::default(),
-            queue: VecDeque::new(),
-            peers: HashMap::new(),
-            socket: socket,
-            protocol: protocol,
-            _payload: PhantomData,
-        })
+impl Host {
+    fn new(socket: UdpSocket) -> Self { Self { socket: socket } }
+
+    fn poll(&self) -> Result<(SocketAddr, Vec<Event>)> {
+        self.socket.set_nonblocking(false)?;
+        let mut buffer = [0; MTU_BYTES];
+        let (_, sender) = self.socket.recv_from(&mut buffer)?;
+        let gram: Result<Gram> = deserialize(&buffer).map_err(|e| e.into());
+        match gram {
+            Ok(gram) => Ok((sender, gram.into())),
+            Err(_) => Ok((sender, vec![Event::ProtoError(ProtoError::InvalidGram)])),
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use bincode::serialize;
+    use gram::{Gram, MTU};
+    use gram::Ctrl;
+
+    #[test]
+    fn runner() {
+        for (gram, expectation) in
+            vec![(serialize(&Gram {
+                                cmds: vec![Ctrl::Syn(10)],
+                                payload: vec![1, 0, 2],
+                            },
+                            MTU)
+                      .expect("seriazed gram"),
+                  vec![Event::Ctrl(Ctrl::Syn(10)), Event::Payload(vec![1, 0, 2])]),
+                 (vec![0, 20, 3], vec![Event::ProtoError(ProtoError::InvalidGram)])] {
+            assert_eq!(events(gram).expect("to generate events"), expectation);
+        }
     }
 
-    /// Queues a connection to an address which will be attempted on the next
-    /// host service. Returns the ID of the new peer.
-    pub fn connect(&mut self, addr: SocketAddr) -> peer::ID {
-        let peer = self.add_peer(addr);
-        self.queue.push_back((peer, Packet::Command(Command::Connect(self.protocol.clone()))));
-        peer
-    }
+    fn events(payload: Vec<u8>) -> Result<Vec<Event>> {
+        let (sender, receiver) = (UdpSocket::bind("localhost:0")?, UdpSocket::bind("localhost:0")?);
+        let test_addr = receiver.local_addr()?;
+        let host = Host::new(receiver);
 
-    pub fn send(&mut self, target: Target, payload: P) -> Result<()> { Ok(()) }
-    pub fn service(&mut self) -> Option<Result<Event<P>>> { None }
-    pub fn disconnect(&mut self, target: Target) -> Result<()> { Ok(()) }
+        sender.send_to(&payload, test_addr)?;
+        let (sender_addr, events) = host.poll()?;
 
-    /// Adds a peer in a connecting state, returning the new peer's ID.
-    fn add_peer(&mut self, addr: SocketAddr) -> peer::ID {
-        let peer = self.peer_id_gen;
-        self.peers.insert(peer, Peer::new(addr));
-        self.peer_id_gen = peer::next(self.peer_id_gen);
-        peer
+        assert_eq!(sender_addr, sender.local_addr()?);
+        Ok(events)
     }
 }

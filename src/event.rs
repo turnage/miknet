@@ -1,12 +1,16 @@
-use peer;
+//! event defines events, the atomic temporal unit of the miknet protocol.
 
-use serde::Serialize;
-use serde::de::DeserializeOwned;
-use std::fmt::Debug;
+use gram;
+use std::net::SocketAddr;
 
-#[derive(Debug)]
-pub enum Event<P: Debug + Serialize + DeserializeOwned> {
-    Connect(peer::ID),
-    Message { peer_id: peer::ID, payload: P },
-    Disconnect(peer::ID),
+#[derive(Debug, PartialEq)]
+pub enum ProtoError {
+    InvalidGram,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Event {
+    Ctrl(gram::Ctrl),
+    Payload(Vec<u8>),
+    ProtoError(ProtoError),
 }
