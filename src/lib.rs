@@ -11,6 +11,7 @@ extern crate serde;
 mod gram;
 mod host;
 mod event;
+mod peer;
 
 error_chain! {
     foreign_links {

@@ -1,22 +1,43 @@
 //! host defines the traits and behaviors of hosts in the miknet protocol.
 
-use Result;
+use {Error, Result};
 use bincode::deserialize;
 use event::{Event, ProtoError};
 use gram::{Gram, MTU_BYTES};
 use std::net::{SocketAddr, UdpSocket};
+use std::sync::mpsc::{Sender, channel};
+use std::thread;
 
-pub struct Host {
-    socket: UdpSocket,
-}
+pub struct Host {}
 
 impl Host {
-    fn new(socket: UdpSocket) -> Self { Self { socket: socket } }
+    fn new(socket: UdpSocket) -> Result<Self> {
+        let (event_sink, event_feed) = channel::<(SocketAddr, Vec<Event>)>();
+        let (error_sink, error_feed) = channel::<Error>();
+        let receiver = socket.try_clone()?;
+        thread::spawn(|| Host::poll_proc(receiver, event_sink, error_sink));
+        Ok(Self {})
+    }
 
-    fn poll(&self) -> Result<(SocketAddr, Vec<Event>)> {
-        self.socket.set_nonblocking(false)?;
+    fn poll_proc(receiver: UdpSocket,
+                 events: Sender<(SocketAddr, Vec<Event>)>,
+                 errors: Sender<Error>) {
+        loop {
+            match Host::poll(&receiver) {
+                Err(e) => if let Err(_) = errors.send(e) {
+                    return;
+                }
+                Ok(e) => if let Err(_) = events.send(e) {
+                    return;
+                }
+            }
+        }
+    }
+
+    fn poll(socket: &UdpSocket) -> Result<(SocketAddr, Vec<Event>)> {
+        socket.set_nonblocking(false)?;
         let mut buffer = [0; MTU_BYTES];
-        let (_, sender) = self.socket.recv_from(&mut buffer)?;
+        let (_, sender) = socket.recv_from(&mut buffer)?;
         let gram: Result<Gram> = deserialize(&buffer).map_err(|e| e.into());
         match gram {
             Ok(gram) => Ok((sender, gram.into())),
@@ -50,10 +71,9 @@ mod test {
     fn events(payload: Vec<u8>) -> Result<Vec<Event>> {
         let (sender, receiver) = (UdpSocket::bind("localhost:0")?, UdpSocket::bind("localhost:0")?);
         let test_addr = receiver.local_addr()?;
-        let host = Host::new(receiver);
 
         sender.send_to(&payload, test_addr)?;
-        let (sender_addr, events) = host.poll()?;
+        let (sender_addr, events) = Host::poll(&receiver)?;
 
         assert_eq!(sender_addr, sender.local_addr()?);
         Ok(events)
