@@ -5,11 +5,6 @@ use peer::Dest;
 use std::net::SocketAddr;
 
 #[derive(Debug, PartialEq)]
-pub enum ProtoError {
-    InvalidGram,
-}
-
-#[derive(Debug, PartialEq)]
 pub enum Api {
     Tx(Vec<u8>),
     Disc,
@@ -21,5 +16,5 @@ pub enum Event {
     Api(Api),
     Ctrl(gram::Ctrl),
     Payload(Vec<u8>),
-    ProtoError(ProtoError),
+    InvalidGram,
 }
