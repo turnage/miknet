@@ -11,6 +11,7 @@ extern crate futures;
 extern crate tokio_core;
 
 mod gram;
+mod host;
 mod event;
 mod peer;
 
@@ -22,6 +23,9 @@ error_chain! {
     }
 }
 
-impl<T> std::convert::From<std::sync::mpsc::SendError<T>> for Error {
-    fn from(e: std::sync::mpsc::SendError<T>) -> Error { "failed to send on closed channel".into() }
+
+impl<T> std::convert::From<futures::unsync::mpsc::SendError<T>> for Error {
+    fn from(e: futures::unsync::mpsc::SendError<T>) -> Error {
+        "failed to send on closed channel".into()
+    }
 }
