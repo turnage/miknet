@@ -15,6 +15,6 @@ pub enum Api {
 pub enum Event {
     Api(Api),
     Ctrl(gram::Ctrl),
-    Payload(Vec<u8>),
+    Frag(gram::Frag),
     InvalidGram,
 }
