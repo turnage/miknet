@@ -84,12 +84,7 @@ mod test {
 
     #[test]
     fn runner() {
-        let expected_frag = Frag {
-            seq: 1,
-            id: 10,
-            total: 11,
-            payload: vec![0, 2, 3],
-        };
+        let expected_frag = Frag { seq: 1, id: 10, total: 11, payload: vec![0, 2, 3] };
         for (gram, expectation) in
             vec![(serialize(&Gram {
                                 cmds: vec![Ctrl::Syn(10)],

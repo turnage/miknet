@@ -9,11 +9,14 @@ extern crate serde_derive;
 extern crate serde;
 extern crate futures;
 extern crate tokio_core;
+extern crate rand;
 
 mod gram;
 mod host;
 mod event;
 mod peer;
+mod cmd;
+mod conn;
 
 error_chain! {
     foreign_links {
@@ -28,4 +31,7 @@ impl<T> std::convert::From<futures::unsync::mpsc::SendError<T>> for Error {
     fn from(e: futures::unsync::mpsc::SendError<T>) -> Error {
         "failed to send on closed channel".into()
     }
+}
+
+pub enum MEvent {
 }
