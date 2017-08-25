@@ -1,7 +1,6 @@
 //! event defines events, the atomic temporal unit of the miknet protocol.
 
-use gram;
-use peer::Dest;
+use gram::Chunk;
 use std::net::SocketAddr;
 
 #[derive(Debug, PartialEq)]
@@ -14,7 +13,6 @@ pub enum Api {
 #[derive(Debug, PartialEq)]
 pub enum Event {
     Api(Api),
-    Ctrl(gram::Ctrl),
-    Frag(gram::Frag),
+    Chunk(Chunk),
     InvalidGram,
 }

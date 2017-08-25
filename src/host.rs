@@ -21,10 +21,6 @@ impl Host {
         self.queue(*addr, vec![Event::Api(Api::Conn)])
     }
 
-    pub fn send<T: Serialize>(&self, addr: &SocketAddr, msg: T) -> Result<()> {
-        self.queue(*addr, vec![Event::Api(Api::Tx(serialize(&msg, MTU)?))])
-    }
-
     pub fn disconnect(&self, addr: &SocketAddr) -> Result<()> {
         self.queue(*addr, vec![Event::Api(Api::Disc)])
     }

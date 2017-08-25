@@ -14,9 +14,7 @@ extern crate rand;
 mod gram;
 mod host;
 mod event;
-mod peer;
 mod cmd;
-mod conn;
 
 error_chain! {
     foreign_links {
