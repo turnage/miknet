@@ -1,7 +1,6 @@
 //! event defines events, the atomic temporal unit of the miknet protocol.
 
 use gram::Chunk;
-use std::net::SocketAddr;
 
 #[derive(Debug, PartialEq)]
 pub enum Api {

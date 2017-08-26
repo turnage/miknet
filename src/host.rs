@@ -1,12 +1,9 @@
 //! A user handle to their own host in a miknet connection(s).
 
 use Result;
-use bincode::serialize;
 use event::{Api, Event};
 use futures::{Future, Sink};
 use futures::unsync::mpsc::UnboundedSender;
-use gram::MTU;
-use serde::Serialize;
 use std::net::SocketAddr;
 
 /// Defines user api calls for miknet connections.
@@ -15,7 +12,7 @@ pub struct Host {
 }
 
 impl Host {
-    pub fn new(tx: UnboundedSender<(SocketAddr, Vec<Event>)>) -> Self { Self { tx: tx } }
+    pub(crate) fn new(tx: UnboundedSender<(SocketAddr, Vec<Event>)>) -> Self { Self { tx: tx } }
 
     pub fn connect(&self, addr: &SocketAddr) -> Result<()> {
         self.queue(*addr, vec![Event::Api(Api::Conn)])

@@ -1,6 +1,3 @@
-#![allow(unused)]
-#![allow(unused_doc_comment)]
-
 extern crate bincode;
 #[macro_use]
 extern crate error_chain;
@@ -16,6 +13,7 @@ mod host;
 mod event;
 mod cmd;
 
+#[allow(unused_doc_comment)]
 error_chain! {
     foreign_links {
         Io(std::io::Error);
@@ -26,7 +24,7 @@ error_chain! {
 
 
 impl<T> std::convert::From<futures::unsync::mpsc::SendError<T>> for Error {
-    fn from(e: futures::unsync::mpsc::SendError<T>) -> Error {
+    fn from(_: futures::unsync::mpsc::SendError<T>) -> Error {
         "failed to send on closed channel".into()
     }
 }

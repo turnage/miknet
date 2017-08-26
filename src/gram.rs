@@ -1,13 +1,10 @@
 //! gram defines the atomic unit of the miknet protocol.
 
-use bincode::{Bounded, deserialize, serialize_into};
+use bincode::deserialize;
 use event::Event;
 use std::io;
 use std::net::SocketAddr;
 use tokio_core::net::UdpCodec;
-
-pub const MTU: Bounded = Bounded(1400);
-pub const MTU_BYTES: usize = 1400;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Chunk {
@@ -29,10 +26,13 @@ pub struct Gram {
     chunks: Vec<Chunk>,
 }
 
-impl Into<Vec<Event>> for Gram {
-    fn into(mut self) -> Vec<Event> {
-        let events = self.chunks.drain(0..).map(Chunk::into).collect();
-        events
+impl Gram {
+    pub fn events(self, expected_token: u32) -> Vec<Event> {
+        if self.token == expected_token {
+            self.chunks.into_iter().map(Chunk::into).collect()
+        } else {
+            vec![Event::InvalidGram]
+        }
     }
 }
 
@@ -61,7 +61,7 @@ impl UdpCodec for GramCodec {
 mod test {
     use super::*;
     use Result;
-    use bincode::serialize;
+    use bincode::{Infinite, serialize};
     use futures::Stream;
     use std::net::{self, SocketAddr};
     use std::str::FromStr;
@@ -71,16 +71,20 @@ mod test {
     #[test]
     fn runner() {
         let gram = Gram { token: 0, chunks: vec![Chunk::CookieAck] };
-        assert_eq!(events(serialize(&gram, MTU).expect("serialized_gram"))
-                       .expect("to generate events"),
-                   gram);
+        assert_eq!(
+            events(serialize(&gram, Infinite).expect("serialized_gram"))
+                .expect("to generate events"),
+            gram
+        );
     }
 
     fn events(payload: Vec<u8>) -> Result<Gram> {
         let mut core = Core::new()?;
         let handle = core.handle();
-        let (sender, receiver) = (net::UdpSocket::bind("127.0.0.1:0")?,
-                                  UdpSocket::bind(&SocketAddr::from_str("127.0.0.1:0")?, &handle)?);
+        let (sender, receiver) = (
+            net::UdpSocket::bind("127.0.0.1:0")?,
+            UdpSocket::bind(&SocketAddr::from_str("127.0.0.1:0")?, &handle)?,
+        );
         let test_addr = receiver.local_addr()?;
 
         sender.send_to(&payload, &test_addr)?;
