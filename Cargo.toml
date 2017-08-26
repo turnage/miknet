@@ -11,3 +11,4 @@ error-chain = { git = "https://github.com/rust-lang-nursery/error-chain" }
 futures = "0.1.14"
 tokio-core = "0.1.9"
 rand = "0.3"
+rust-crypto = "^0.2"

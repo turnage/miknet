@@ -7,11 +7,13 @@ extern crate serde;
 extern crate futures;
 extern crate tokio_core;
 extern crate rand;
+extern crate crypto;
 
 mod gram;
 mod host;
 mod event;
 mod cmd;
+mod conn;
 
 #[allow(unused_doc_comment)]
 error_chain! {
