@@ -8,22 +8,22 @@ use std::net::SocketAddr;
 
 /// Defines user api calls for miknet connections.
 pub struct Host {
-    tx: UnboundedSender<(SocketAddr, Vec<Event>)>,
+    tx: UnboundedSender<(SocketAddr, Event)>,
 }
 
 impl Host {
-    pub(crate) fn new(tx: UnboundedSender<(SocketAddr, Vec<Event>)>) -> Self { Self { tx: tx } }
+    pub(crate) fn new(tx: UnboundedSender<(SocketAddr, Event)>) -> Self { Self { tx: tx } }
 
     pub fn connect(&self, addr: &SocketAddr) -> Result<()> {
-        self.queue(*addr, vec![Event::Api(Api::Conn)])
+        self.queue(*addr, Event::Api(Api::Conn))
     }
 
     pub fn disconnect(&self, addr: &SocketAddr) -> Result<()> {
-        self.queue(*addr, vec![Event::Api(Api::Disc)])
+        self.queue(*addr, Event::Api(Api::Disc))
     }
 
-    fn queue(&self, addr: SocketAddr, events: Vec<Event>) -> Result<()> {
-        self.tx.clone().send((addr, events)).wait()?;
+    fn queue(&self, addr: SocketAddr, event: Event) -> Result<()> {
+        self.tx.clone().send((addr, event)).wait()?;
         Ok(())
     }
 }
@@ -43,9 +43,9 @@ mod test {
         let addr = SocketAddr::from_str("127.0.0.1:0").expect("loopback addr");
         host.connect(&addr);
 
-        if let Ok((Some((dest_addr, events)), _)) = rx.into_future().wait() {
+        if let Ok((Some((dest_addr, event)), _)) = rx.into_future().wait() {
             assert_eq!(dest_addr, addr);
-            assert_eq!(events, vec![Event::Api(Api::Conn)]);
+            assert_eq!(event, Event::Api(Api::Conn));
         } else {
             panic!("no api event!");
         }
