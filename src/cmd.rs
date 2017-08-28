@@ -2,10 +2,12 @@
 
 use MEvent;
 use gram::Chunk;
-use std::time::Duration;
+use timers::Timer;
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Cmd {
-    Net(Chunk),
-    Timer(Duration),
+    Chunk(Chunk),
+    Net(Vec<u8>),
+    Timer(Timer),
     User(MEvent),
 }

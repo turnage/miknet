@@ -3,7 +3,7 @@
 use Result;
 use event::{Api, Event};
 use futures::{Future, Sink};
-use futures::unsync::mpsc::UnboundedSender;
+use futures::sync::mpsc::UnboundedSender;
 use std::net::SocketAddr;
 
 /// Defines user api calls for miknet connections.

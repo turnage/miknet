@@ -1,16 +1,17 @@
 //! gram defines the atomic unit of the miknet protocol.
 
 use bincode::deserialize;
+use conn::StateCookie;
 use event::Event;
 use std::io;
 use std::net::SocketAddr;
 use tokio_core::net::UdpCodec;
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Chunk {
     Init { token: u32, tsn: u32 },
-    InitAck { token: u32, tsn: u32, state_cookie: u32 },
-    CookieEcho(u32),
+    InitAck { token: u32, tsn: u32, state_cookie: StateCookie },
+    CookieEcho(StateCookie),
     CookieAck,
 }
 
@@ -22,8 +23,8 @@ impl Into<Event> for Chunk {
 /// before they are written on the network.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Gram {
-    token: u32,
-    chunks: Vec<Chunk>,
+    pub token: u32,
+    pub chunks: Vec<Chunk>,
 }
 
 impl Gram {
@@ -40,12 +41,12 @@ impl Gram {
 pub struct GramCodec;
 
 impl UdpCodec for GramCodec {
-    type In = Option<(SocketAddr, Gram)>;
+    type In = Option<(SocketAddr, Event)>;
     type Out = (SocketAddr, Vec<u8>);
 
     fn decode(&mut self, src: &SocketAddr, buf: &[u8]) -> io::Result<Self::In> {
         match deserialize::<Gram>(buf) {
-            Ok(gram) => Ok(Some((*src, gram))),
+            Ok(gram) => Ok(Some((*src, Event::Gram(gram)))),
             Err(_) => Ok(None),
         }
     }
@@ -74,11 +75,11 @@ mod test {
         assert_eq!(
             events(serialize(&gram, Infinite).expect("serialized_gram"))
                 .expect("to generate events"),
-            gram
+            Event::Gram(gram)
         );
     }
 
-    fn events(payload: Vec<u8>) -> Result<Gram> {
+    fn events(payload: Vec<u8>) -> Result<Event> {
         let mut core = Core::new()?;
         let handle = core.handle();
         let (sender, receiver) = (
@@ -94,9 +95,9 @@ mod test {
         }?;
 
         match product {
-            Some(Some((sender_addr, gram))) => {
+            Some(Some((sender_addr, event))) => {
                 assert_eq!(sender_addr, sender.local_addr()?);
-                Ok(gram)
+                Ok(event)
             }
             _ => panic!("no events in the stream!"),
         }

@@ -14,6 +14,12 @@ mod host;
 mod event;
 mod cmd;
 mod conn;
+mod timers;
+mod node;
+
+use std::convert::From;
+use std::fmt::{self, Display, Formatter};
+use std::net::SocketAddr;
 
 #[allow(unused_doc_comment)]
 error_chain! {
@@ -25,11 +31,31 @@ error_chain! {
 }
 
 
-impl<T> std::convert::From<futures::unsync::mpsc::SendError<T>> for Error {
-    fn from(_: futures::unsync::mpsc::SendError<T>) -> Error {
+impl<T> From<futures::sync::mpsc::SendError<T>> for Error {
+    fn from(_: futures::sync::mpsc::SendError<T>) -> Error {
         "failed to send on closed channel".into()
     }
 }
 
+impl From<()> for Error {
+    fn from(_: ()) -> Error { "Something happenend that ought not have.".into() }
+}
+
+#[derive(Eq, Clone, Debug, PartialEq)]
 pub enum MEvent {
+    ConnectionAttemptTimedOut(SocketAddr),
+    ConnectionEstablished(SocketAddr),
+    Error(String),
+}
+
+impl Display for MEvent {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match *self {
+            MEvent::ConnectionAttemptTimedOut(addr) => {
+                write!(f, "Connecting to {} timed out.", addr)
+            }
+            MEvent::ConnectionEstablished(addr) => write!(f, "Connected to {}!", addr),
+            MEvent::Error(ref e) => write!(f, "Miknet failed due to error: {}", e),
+        }
+    }
 }
