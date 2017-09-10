@@ -113,11 +113,8 @@ impl Host {
 #[cfg(test)]
 mod test {
     use super::*;
-    use futures::Stream;
-    use futures::stream::iter;
-    use std::net::SocketAddr;
     use std::str::FromStr;
-    use tokio_core::reactor::Core;
+    use test_util::simulate;
 
     #[test]
     fn api_stream_works() {
@@ -137,35 +134,18 @@ mod test {
 
     #[test]
     fn event_loop_works() {
-        let (h1, stream1) = Host::new("127.0.0.1:0").expect("host one");
-        let (h2, stream2) = Host::new("127.0.0.1:0").expect("host two");
-
-        let h1addr = h1.addr;
-        let h2addr = h2.addr;
-
-        let ok = |v| -> Result<MEvent> { Ok(v) };
-        let killswitch = |host: Host| {
-            move |event| {
-                if let MEvent::ConnectionEstablished(_) = event {
-                    host.shutdown().expect("host shutdown");
-                }
-                event
-            }
-        };
-
-        h1.connect(&h2addr).expect("connection request");
-        let mut core = Core::new().expect("built core");
-
-        assert_eq!(
-            core.run(
-                iter(stream1.map(&killswitch(h1)).map(&ok))
-                    .select(iter(stream2.map(&killswitch(h2)).map(&ok)))
-                    .collect(),
-            ).expect("user events"),
-            vec![
-                MEvent::ConnectionEstablished(h2addr),
-                MEvent::ConnectionEstablished(h1addr),
-            ]
+        simulate(
+            |h1, h2| h1.connect(&h2.addr),
+            &|event| match *event {
+                MEvent::ConnectionEstablished(_) => true,
+                _ => false,
+            },
+            |h1addr, h2addr| {
+                vec![
+                    MEvent::ConnectionEstablished(h2addr),
+                    MEvent::ConnectionEstablished(h1addr),
+                ]
+            },
         );
     }
 }

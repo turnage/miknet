@@ -15,6 +15,7 @@ mod event;
 mod cmd;
 mod conn;
 mod timers;
+mod test_util;
 
 pub use host::Host;
 
