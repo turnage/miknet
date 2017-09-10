@@ -15,7 +15,8 @@ mod event;
 mod cmd;
 mod conn;
 mod timers;
-mod node;
+
+pub use host::Host;
 
 use std::convert::From;
 use std::fmt::{self, Display, Formatter};
@@ -46,6 +47,7 @@ pub enum MEvent {
     ConnectionAttemptTimedOut(SocketAddr),
     ConnectionEstablished(SocketAddr),
     Error(String),
+    Shutdown,
 }
 
 impl Display for MEvent {
@@ -56,6 +58,7 @@ impl Display for MEvent {
             }
             MEvent::ConnectionEstablished(addr) => write!(f, "Connected to {}!", addr),
             MEvent::Error(ref e) => write!(f, "Miknet failed due to error: {}", e),
+            MEvent::Shutdown => write!(f, "Miknet host shutdown."),
         }
     }
 }

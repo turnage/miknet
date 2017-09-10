@@ -8,6 +8,7 @@ pub enum Api {
     Tx(Vec<u8>),
     Disc,
     Conn,
+    Shutdown,
 }
 
 #[derive(Debug, PartialEq)]

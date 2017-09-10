@@ -28,11 +28,10 @@ pub struct Gram {
 }
 
 impl Gram {
-    pub fn events(self, expected_token: u32) -> Vec<Event> {
-        if self.token == expected_token {
-            self.chunks.into_iter().map(Chunk::into).collect()
-        } else {
-            vec![Event::InvalidGram]
+    pub fn events(self, expected_token: Option<u32>) -> Vec<Event> {
+        match expected_token {
+            Some(expectation) if self.token != expectation => vec![Event::InvalidGram],
+            _ => self.chunks.into_iter().map(Chunk::into).collect(),
         }
     }
 }
