@@ -8,6 +8,7 @@ extern crate futures;
 extern crate tokio_core;
 extern crate rand;
 extern crate crypto;
+extern crate itertools;
 
 mod gram;
 mod host;
@@ -32,10 +33,15 @@ error_chain! {
     }
 }
 
-
 impl<T> From<futures::sync::mpsc::SendError<T>> for Error {
     fn from(_: futures::sync::mpsc::SendError<T>) -> Error {
         "failed to send on closed channel".into()
+    }
+}
+
+impl<T> From<futures::unsync::mpsc::SendError<T>> for Error {
+    fn from(_: futures::unsync::mpsc::SendError<T>) -> Error {
+        "failed to send on closed unsync channel".into()
     }
 }
 

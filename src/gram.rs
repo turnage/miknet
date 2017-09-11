@@ -13,6 +13,9 @@ pub enum Chunk {
     InitAck { token: u32, tsn: u32, state_cookie: StateCookie },
     CookieEcho(StateCookie),
     CookieAck,
+    Shutdown,
+    ShutdownAck,
+    ShutdownComplete,
 }
 
 impl Into<Event> for Chunk {

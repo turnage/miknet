@@ -29,7 +29,10 @@ impl Host {
             move || match Self::run(socket, api_stream.map_err(Error::from), user_event_sink.clone()) {
                 Ok(()) => {}
                 Err(e) => {
-                    user_event_sink.send(MEvent::Error(format!("{}", e))).wait();
+                    user_event_sink
+                        .send(MEvent::Error(format!("{}", e)))
+                        .wait()
+                        .expect(&format!("Could not report error to user: {:?}", e));
                 }
             },
         );
@@ -133,7 +136,7 @@ mod test {
     }
 
     #[test]
-    fn event_loop_works() {
+    fn connection() {
         simulate(
             |h1, h2| h1.connect(&h2.addr),
             &|event| match *event {
