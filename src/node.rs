@@ -1,4 +1,4 @@
-//! A user handle to their own host in a miknet connection(s).
+//! A user handle to their own node in a miknet connection(s).
 
 use {Error, MEvent, Result};
 use cmd::Cmd;
@@ -13,12 +13,14 @@ use std::thread::spawn;
 use tokio_core::net::UdpSocket;
 use tokio_core::reactor::Core;
 
-pub struct Host {
+/// Node is miknet's abstaction over a socket. This represents a single node which may be connected
+/// to and communicate with other miknet Nodes.
+pub struct Node {
     pub addr: SocketAddr,
     api_sink: UnboundedSender<(Option<SocketAddr>, Event)>,
 }
 
-impl Host {
+impl Node {
     pub fn new<T: ToSocketAddrs>(addrs: T) -> Result<(Self, Box<Iterator<Item = MEvent>>)> {
         let (user_event_sink, user_event_stream) = unbounded();
         let (api_sink, api_stream) = unbounded();
@@ -123,9 +125,9 @@ mod test {
     fn api_stream_works() {
         let (tx, rx) = unbounded();
         let local_addr = SocketAddr::from_str("127.0.0.1:1").expect("any addr");
-        let host = Host { addr: local_addr, api_sink: tx };
+        let node = Node { addr: local_addr, api_sink: tx };
         let addr = SocketAddr::from_str("127.0.0.1:0").expect("loopback addr");
-        host.connect(&addr);
+        node.connect(&addr);
 
         if let Ok((Some((Some(dest_addr), event)), _)) = rx.into_future().wait() {
             assert_eq!(dest_addr, addr);
@@ -138,15 +140,15 @@ mod test {
     #[test]
     fn connection() {
         simulate(
-            |h1, h2| h1.connect(&h2.addr),
+            |n1, n2| n1.connect(&n2.addr),
             &|event| match *event {
                 MEvent::ConnectionEstablished(_) => true,
                 _ => false,
             },
-            |h1addr, h2addr| {
+            |n1addr, n2addr| {
                 vec![
-                    MEvent::ConnectionEstablished(h2addr),
-                    MEvent::ConnectionEstablished(h1addr),
+                    MEvent::ConnectionEstablished(n2addr),
+                    MEvent::ConnectionEstablished(n1addr),
                 ]
             },
         );

@@ -11,14 +11,14 @@ extern crate crypto;
 extern crate itertools;
 
 mod gram;
-mod host;
+mod node;
 mod event;
 mod cmd;
 mod conn;
 mod timers;
 mod test_util;
 
-pub use host::Host;
+pub use node::Node;
 
 use std::convert::From;
 use std::fmt::{self, Display, Formatter};

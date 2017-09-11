@@ -1,4 +1,5 @@
-//! miklow is the lower level component of the miknet protocol responsible for connections.
+//! miklow is the lower level component of the miknet protocol responsible for establishing and
+//! tearing down connections.
 
 use {MEvent, Result};
 use bincode::{Infinite, serialize};
@@ -13,6 +14,7 @@ use rand::random;
 use std::net::SocketAddr;
 use timers::Timer;
 
+/// Key is a crytographic key used to authenticate state cookies.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Key {
     bytes: [u8; Key::BYTES],
@@ -21,6 +23,7 @@ pub struct Key {
 impl Key {
     const BYTES: usize = 32;
 
+    /// Returns a new key using random bytes from the OS Rng.
     pub fn new() -> Result<Self> {
         let mut rng = OsRng::new()?;
         let mut bytes = [0; Key::BYTES];
@@ -29,6 +32,8 @@ impl Key {
     }
 }
 
+/// State cookies are used in the four way connection handshake. Usage is based on SCTP; look there
+/// for further information.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct StateCookie {
     tcb: Tcb,
@@ -36,15 +41,20 @@ pub struct StateCookie {
 }
 
 impl StateCookie {
+    /// Creates a new state cookie signed by the given key.
     pub fn new(tcb: Tcb, key: &Key) -> Self { Self { tcb, hmac: tcb.hmac(key) } }
 
+    /// Returns true if the state cookie was signed using the given key. Uses invariable time
+    /// comparison.
     pub fn valid(&self, key: &Key) -> bool {
         MacResult::new(&self.hmac) == MacResult::new(&self.tcb.hmac(key))
     }
 
+    /// Consumes the state cookie and yield the Tcb.
     pub fn tcb(self) -> Tcb { self.tcb }
 }
 
+/// Tcb contains all the information needed to manage an established connection.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Tcb {
     pub our_tsn: u32,
@@ -54,6 +64,7 @@ pub struct Tcb {
 }
 
 impl Tcb {
+    /// Returns an HMAC for the tcb content using the key.
     fn hmac(&self, key: &Key) -> [u8; Key::BYTES] {
         let mut hmac_gen = Hmac::new(Sha3::sha3_256(), &key.bytes);
         hmac_gen.input(&serialize(self, Infinite).unwrap());
@@ -65,6 +76,8 @@ impl Tcb {
     }
 }
 
+/// Connection is a relationship between two miknet nodes. Handshake and teardown based roughly on
+/// SCTP.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Connection {
     Listen { key: Key },
@@ -79,6 +92,7 @@ pub enum Connection {
 }
 
 impl Connection {
+    /// Returns a connection using the given key to sign and verify state cookies.
     pub fn new(key: Key) -> Self { Connection::Listen { key: key } }
 
     /// ready_for returns whether this connection is capable of processing this event (yet). If not
@@ -97,6 +111,8 @@ impl Connection {
         }
     }
 
+    /// Processes an event and returns the next state of the connection and any commands that
+    /// should be executed as part of the transition.
     pub fn gen_cmds(self, peer: SocketAddr, event: Event) -> (Self, Vec<(SocketAddr, Cmd)>) {
         let (next, cmds) = self.step(event, peer);
         let token = next.token();
@@ -121,6 +137,8 @@ impl Connection {
         )
     }
 
+    /// Returns whether this connection should be persisted between events. For example, we do not
+    /// keep an InitAckSent state between events to prevent DOS attacks.
     pub fn should_persist(&self) -> bool {
         match *self {
             Connection::Listen { .. } => false,
@@ -130,6 +148,7 @@ impl Connection {
         }
     }
 
+    /// Returns the token this connection should embed in all its grams for association.
     fn token(&self) -> u32 {
         match *self {
             Connection::InitAckSent { their_token } => their_token,
@@ -243,6 +262,7 @@ impl Connection {
         }
     }
 
+    /// Returns the token we expect in valid grams from our peer.
     fn expected_token(&self) -> Option<u32> {
         match *self {
             Connection::InitSent { token, .. } => Some(token),
