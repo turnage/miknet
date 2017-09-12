@@ -3,7 +3,7 @@
 use gram::{Chunk, Gram};
 use timers::Timer;
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Api {
     Tx(Vec<u8>),
     Disc,

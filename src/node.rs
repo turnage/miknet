@@ -96,7 +96,7 @@ impl Node {
             .map(|(addr, event)| (Some(addr), event))
             .map_err(Error::from)
             .select(api_stream);
-        let stream = ConnectionManager::new(sources)?.for_each(
+        let stream = ConnectionManager::pipe(sources)?.for_each(
             move |(peer, cmd)| {
                 match (peer, cmd) {
                     (peer, Cmd::Net(bytes)) => {
@@ -140,15 +140,20 @@ mod test {
     #[test]
     fn connection() {
         simulate(
-            |n1, n2| n1.connect(&n2.addr),
+            |n1, n2| {
+                n1.connect(&n2.addr)?;
+                n1.disconnect(&n2.addr)
+            },
             &|event| match *event {
-                MEvent::ConnectionEstablished(_) => true,
+                MEvent::Disconnect(_) => true,
                 _ => false,
             },
             |n1addr, n2addr| {
                 vec![
                     MEvent::ConnectionEstablished(n2addr),
                     MEvent::ConnectionEstablished(n1addr),
+                    MEvent::Disconnect(n2addr),
+                    MEvent::Disconnect(n1addr),
                 ]
             },
         );

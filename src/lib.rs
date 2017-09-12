@@ -53,6 +53,7 @@ impl From<()> for Error {
 pub enum MEvent {
     ConnectionAttemptTimedOut(SocketAddr),
     ConnectionEstablished(SocketAddr),
+    Disconnect(SocketAddr),
     Error(String),
     Shutdown,
 }
@@ -64,6 +65,7 @@ impl Display for MEvent {
                 write!(f, "Connecting to {} timed out.", addr)
             }
             MEvent::ConnectionEstablished(addr) => write!(f, "Connected to {}!", addr),
+            MEvent::Disconnect(addr) => write!(f, "Disconnect from {}", addr),
             MEvent::Error(ref e) => write!(f, "Miknet failed due to error: {}", e),
             MEvent::Shutdown => write!(f, "Miknet host shutdown."),
         }
