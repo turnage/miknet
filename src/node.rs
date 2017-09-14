@@ -7,6 +7,7 @@ use event::{Api, Event};
 use futures::{Future, Sink, Stream};
 use futures::sync::mpsc::{UnboundedSender, unbounded};
 use gram::GramCodec;
+use socket::Socket;
 use std::io;
 use std::net::{SocketAddr, ToSocketAddrs, UdpSocket as StdUdpSocket};
 use std::thread::spawn;
@@ -71,28 +72,9 @@ impl Node {
         let mut core = Core::new()?;
         let handle = core.handle();
 
-        let net_error_reporter = user_event_sink.clone();
-        let (net_sink, net_stream) = UdpSocket::from_socket(socket, &handle)?
-            .framed(GramCodec {})
-            .split();
-        let (net_cmd_sink, net_cmd_stream) = unbounded();
-        handle.spawn(
-            net_sink
-                .send_all(net_cmd_stream.map_err(|_| {
-                    io::Error::new(io::ErrorKind::WriteZero, "Sender is corrupt.")
-                }))
-                .map(|_| ())
-                .or_else(move |_| {
-                    net_error_reporter
-                        .clone()
-                        .send(MEvent::Error("".to_string()))
-                        .then(|_| Ok(()))
-                }),
-        );
-
-
+        let net_handle = core.handle();
+        let (net_cmd_sink, net_stream) = Socket::pipe(socket, &net_handle)?;
         let sources = net_stream
-            .filter_map(|e| e)
             .map(|(addr, event)| (Some(addr), event))
             .map_err(Error::from)
             .select(api_stream);
