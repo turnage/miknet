@@ -6,6 +6,7 @@ extern crate serde_derive;
 extern crate serde;
 extern crate futures;
 extern crate tokio_core;
+extern crate tokio_timer;
 extern crate rand;
 extern crate crypto;
 extern crate itertools;
@@ -31,6 +32,7 @@ error_chain! {
         Io(std::io::Error);
         Bincode(Box<bincode::ErrorKind>);
         Addr(std::net::AddrParseError);
+        Timer(tokio_timer::TimerError);
     }
 }
 

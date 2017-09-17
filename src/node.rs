@@ -9,6 +9,7 @@ use futures::sync::mpsc::{UnboundedSender, unbounded};
 use socket::Socket;
 use std::net::{SocketAddr, ToSocketAddrs, UdpSocket};
 use std::thread::spawn;
+use timers::Wheel;
 use tokio_core::reactor::Core;
 
 /// Node is miknet's abstaction over a socket. This represents a single node which may be connected
@@ -69,12 +70,17 @@ impl Node {
         let mut core = Core::new()?;
         let handle = core.handle();
 
+        let (timer_sink, timer_stream) = Wheel::pipe();
+
         let net_handle = core.handle();
         let (net_cmd_sink, net_stream) = Socket::pipe(socket, &net_handle)?;
-        let sources = net_stream
-            .map(|(addr, event)| (Some(addr), event))
-            .map_err(Error::from)
-            .select(api_stream);
+
+        let sources =
+            net_stream
+                .map(|(addr, event)| (Some(addr), event))
+                .map_err(Error::from)
+                .select(api_stream)
+                .select(timer_stream.map(|(addr, timer)| (Some(addr), Event::Timer(timer))));
         let stream = ConnectionManager::pipe(sources)?.for_each(
             move |(peer, cmd)| {
                 match (peer, cmd) {
@@ -83,6 +89,9 @@ impl Node {
                     }
                     (_, Cmd::User(event)) => {
                         handle.spawn(user_event_sink.clone().send(event).then(|_| Ok(())));
+                    }
+                    (peer, Cmd::Timer(timer)) => {
+                        handle.spawn(timer_sink.clone().send((peer, timer)).then(|_| Ok(())));
                     }
                     _ => (),
                 };
