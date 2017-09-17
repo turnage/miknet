@@ -1,11 +1,13 @@
 //! A user handle to their own node in a miknet connection(s).
 
 use {Error, MEvent, Result};
+use bincode::{Infinite, serialize};
 use cmd::Cmd;
 use conn::ConnectionManager;
 use event::{Api, Event};
 use futures::{Future, Sink, Stream};
 use futures::sync::mpsc::{UnboundedSender, unbounded};
+use serde::Serialize;
 use socket::Socket;
 use std::net::{SocketAddr, ToSocketAddrs, UdpSocket};
 use std::thread::spawn;
@@ -45,6 +47,10 @@ impl Node {
                 Err(_) => Some(MEvent::Shutdown),
             })),
         ))
+    }
+
+    pub fn send<T: Serialize>(&self, addr: &SocketAddr, payload: T) -> Result<()> {
+        self.queue(Some(*addr), Event::Api(Api::Tx(serialize(&payload, Infinite)?)))
     }
 
     pub fn connect(&self, addr: &SocketAddr) -> Result<()> {
