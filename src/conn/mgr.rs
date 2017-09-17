@@ -2,13 +2,11 @@
 
 use {Error, Result};
 use cmd::Cmd;
-use conn::miklow::{Connection, Key, StateCookie};
+use conn::miklow::{Connection, Key};
 use event::{Api, Event};
-use futures::{Async, Poll, Stream};
+use futures::Stream;
 use futures::future::ok;
-use futures::stream::iter;
-use futures::unsync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
-use itertools::Itertools;
+use futures::stream::iter_ok;
 use std::collections::hash_map::HashMap;
 use std::net::SocketAddr;
 
@@ -32,7 +30,7 @@ impl ConnectionManager {
                     (Some(peer), event) => Some(cm.receive(peer, event)),
                     _ => None,
                 })
-                .map(|cmds| iter(cmds.into_iter().map(|cmd| Ok(cmd))))
+                .map(|cmds| iter_ok(cmds.into_iter()))
                 .flatten(),
         ))
     }

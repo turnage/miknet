@@ -5,7 +5,6 @@ use event::Event;
 use futures::{Future, Sink, Stream};
 use futures::sync::mpsc::{UnboundedSender, unbounded};
 use gram::GramCodec;
-use std::io;
 use std::net::{SocketAddr, UdpSocket as StdUdpSocket};
 use tokio_core::net::UdpSocket;
 use tokio_core::reactor::Handle;
