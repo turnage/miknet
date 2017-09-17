@@ -43,7 +43,7 @@ impl ConnectionManager {
         let (conn, cmds) = self.conns
             .remove(&peer)
             .unwrap_or_else(|| Connection::new(self.key.clone()))
-            .gen_cmds(peer, event);
+            .step(peer, event);
         if conn.should_persist() {
             self.conns.insert(peer, conn);
         }

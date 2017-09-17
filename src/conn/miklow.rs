@@ -9,6 +9,7 @@ use crypto::mac::{Mac, MacResult};
 use crypto::sha3::Sha3;
 use event::{Api, Event};
 use gram::{Chunk, Gram};
+use itertools::{Either, Itertools};
 use rand::{OsRng, Rng};
 use rand::random;
 use std::net::SocketAddr;
@@ -97,28 +98,15 @@ impl Connection {
 
     /// Processes an event and returns the next state of the connection and any commands that
     /// should be executed as part of the transition.
-    pub fn gen_cmds(self, peer: SocketAddr, event: Event) -> (Self, Vec<(SocketAddr, Cmd)>) {
-        let (next, cmds) = self.step(peer, event);
-        let token = next.token();
-        (
-            next,
-            cmds.into_iter()
-                .map(|cmd| {
-                    (
-                        peer.clone(),
-                        match cmd {
-                            Cmd::Chunk(chunk) => {
-                                Cmd::Net(
-                                    serialize(&Gram { token, chunks: vec![chunk] }, Infinite)
-                                        .unwrap(),
-                                )
-                            }
-                            _ => cmd,
-                        },
-                    )
-                })
-                .collect(),
-        )
+    pub fn step(self, peer: SocketAddr, event: Event) -> (Self, Vec<(SocketAddr, Cmd)>) {
+        let (next, cmds) = self.handle_event(&peer, event);
+        let (chunks, mut cmds): (Vec<Chunk>, Vec<Cmd>) =
+            cmds.into_iter().partition_map(|cmd| match cmd {
+                Cmd::Chunk(chunk) => Either::Left(chunk),
+                cmd => Either::Right(cmd),
+            });
+        cmds.extend(next.build_grams(chunks));
+        (next, cmds.into_iter().map(|cmd| (peer.clone(), cmd)).collect())
     }
 
     /// Returns whether this connection should be persisted between events. For example, we do not
@@ -130,6 +118,18 @@ impl Connection {
             Connection::Failed => false,
             _ => true,
         }
+    }
+
+    /// Prepares chunks as net commands to write out grams.
+    fn build_grams(&self, chunks: Vec<Chunk>) -> Vec<Cmd> {
+        let token = self.token();
+        let grams = match *self {
+            _ => vec![Gram { token, chunks }],
+        };
+        grams
+            .into_iter()
+            .map(|gram| Cmd::Net(serialize(&gram, Infinite).unwrap()))
+            .collect()
     }
 
     /// Returns the token this connection should embed in all its grams for association.
@@ -146,22 +146,34 @@ impl Connection {
         }
     }
 
-    fn steps(self, peer: SocketAddr, events: Vec<Event>) -> (Self, Vec<Cmd>) {
+    /// Returns the token we expect in valid grams from our peer.
+    fn expected_token(&self) -> Option<u32> {
+        match *self {
+            Connection::InitSent { token, .. } => Some(token),
+            Connection::CookieEchoed { tcb, .. } => Some(tcb.our_token),
+            Connection::Established(tcb) => Some(tcb.our_token),
+            Connection::ShutdownSent { token, .. } => Some(token),
+            Connection::ShutdownAckSent { token, .. } => Some(token),
+            _ => None,
+        }
+    }
+
+    fn handle_events(self, peer: &SocketAddr, events: Vec<Event>) -> (Self, Vec<Cmd>) {
         events.into_iter().fold(
             (self, Vec::new()),
             |(conn, mut cmds), event| {
-                let (next_conn, more_cmds) = conn.step(peer.clone(), event);
+                let (next_conn, more_cmds) = conn.handle_event(peer, event);
                 cmds.extend(more_cmds);
                 (next_conn, cmds)
             },
         )
     }
 
-    fn step(self, peer: SocketAddr, event: Event) -> (Self, Vec<Cmd>) {
+    fn handle_event(self, peer: &SocketAddr, event: Event) -> (Self, Vec<Cmd>) {
         match (self, event) {
             (conn, Event::Gram(gram)) => {
                 let expected_token = conn.expected_token();
-                conn.steps(peer, gram.events(expected_token))
+                conn.handle_events(peer, gram.events(expected_token))
             } 
             (Connection::Listen { key },
              Event::Chunk(Chunk::Init { token: their_token, tsn: their_tsn })) => {
@@ -191,7 +203,7 @@ impl Connection {
                 )
             }
             (Connection::InitSent { .. }, Event::Timer(Timer::InitTimer)) => {
-                (Connection::Failed, vec![Cmd::User(MEvent::ConnectionAttemptTimedOut(peer))])
+                (Connection::Failed, vec![Cmd::User(MEvent::ConnectionAttemptTimedOut(*peer))])
             }
             (Connection::InitSent { token: our_token, tsn: our_tsn, queue },
              Event::Chunk(Chunk::InitAck { token: their_token, tsn: their_tsn, state_cookie })) => {
@@ -213,7 +225,7 @@ impl Connection {
                         tsn,
                         queue: queue
                             .into_iter()
-                            .chain(vec![(peer, ae)].into_iter())
+                            .chain(vec![(*peer, ae)].into_iter())
                             .collect(),
                     },
                     Vec::new(),
@@ -225,7 +237,7 @@ impl Connection {
                         tcb,
                         queue: queue
                             .into_iter()
-                            .chain(vec![(peer, ae)].into_iter())
+                            .chain(vec![(*peer, ae)].into_iter())
                             .collect(),
                     },
                     Vec::new(),
@@ -238,12 +250,12 @@ impl Connection {
                     .fold(
                         (Connection::Established(tcb), Vec::new()),
                         |(conn, mut cmds), (peer, ae)| {
-                            let (next_conn, more_cmds) = conn.step(peer, ae);
+                            let (next_conn, more_cmds) = conn.handle_event(&peer, ae);
                             cmds.extend(more_cmds);
                             (next_conn, cmds)
                         },
                     );
-                cmds.extend(vec![Cmd::User(MEvent::ConnectionEstablished(peer))]);
+                cmds.extend(vec![Cmd::User(MEvent::ConnectionEstablished(*peer))]);
                 (conn, cmds)
             }
             (Connection::Listen { ref key }, Event::Chunk(Chunk::CookieEcho(state_cookie)))
@@ -252,7 +264,7 @@ impl Connection {
                     Connection::Established(state_cookie.tcb()),
                     vec![
                         Cmd::Chunk(Chunk::CookieAck),
-                        Cmd::User(MEvent::ConnectionEstablished(peer)),
+                        Cmd::User(MEvent::ConnectionEstablished(*peer)),
                     ],
                 )
             }
@@ -278,37 +290,25 @@ impl Connection {
                 (
                     Connection::Shutdown { their_token },
                     vec![
-                        Cmd::User(MEvent::Disconnect(peer)),
+                        Cmd::User(MEvent::Disconnect(*peer)),
                         Cmd::Chunk(Chunk::ShutdownComplete),
                     ],
                 )
             }
             (Connection::ShutdownAckSent { their_token, .. },
              Event::Chunk(Chunk::ShutdownComplete)) => {
-                (Connection::Shutdown { their_token }, vec![Cmd::User(MEvent::Disconnect(peer))])
+                (Connection::Shutdown { their_token }, vec![Cmd::User(MEvent::Disconnect(*peer))])
             }
             (Connection::ShutdownAckSent { their_token, .. }, Event::Chunk(Chunk::ShutdownAck)) => {
                 (
                     Connection::Shutdown { their_token },
                     vec![
-                        Cmd::User(MEvent::Disconnect(peer)),
+                        Cmd::User(MEvent::Disconnect(*peer)),
                         Cmd::Chunk(Chunk::ShutdownComplete),
                     ],
                 )
             }
             (conn, _) => (conn, Vec::new()),
-        }
-    }
-
-    /// Returns the token we expect in valid grams from our peer.
-    fn expected_token(&self) -> Option<u32> {
-        match *self {
-            Connection::InitSent { token, .. } => Some(token),
-            Connection::CookieEchoed { tcb, .. } => Some(tcb.our_token),
-            Connection::Established(tcb) => Some(tcb.our_token),
-            Connection::ShutdownSent { token, .. } => Some(token),
-            Connection::ShutdownAckSent { token, .. } => Some(token),
-            _ => None,
         }
     }
 }
