@@ -3,7 +3,7 @@
 use {Error, MEvent, Result};
 use bincode::{Infinite, serialize};
 use cmd::Cmd;
-use conn::ConnectionManager;
+use conn::{Config, ConnectionManager};
 use event::{Api, Event};
 use futures::{Future, Sink, Stream};
 use futures::sync::mpsc::{UnboundedSender, unbounded};
@@ -22,23 +22,29 @@ pub struct Node {
 }
 
 impl Node {
-    pub fn new<T: ToSocketAddrs>(addrs: T) -> Result<(Self, Box<Iterator<Item = MEvent>>)> {
+    pub fn new<T: ToSocketAddrs>(
+        addrs: T,
+        cfg: Config,
+    ) -> Result<(Self, Box<Iterator<Item = MEvent>>)> {
         let (user_event_sink, user_event_stream) = unbounded();
         let (api_sink, api_stream) = unbounded();
         let socket = UdpSocket::bind(addrs)?;
         let addr = socket.local_addr()?;
 
-        spawn(
-            move || match Self::run(socket, api_stream.map_err(Error::from), user_event_sink.clone()) {
-                Ok(()) => {}
-                Err(e) => {
-                    user_event_sink
-                        .send(MEvent::Error(format!("{}", e)))
-                        .wait()
-                        .expect(&format!("Could not report error to user: {:?}", e));
-                }
-            },
-        );
+        spawn(move || match Self::run(
+            socket,
+            cfg,
+            api_stream.map_err(Error::from),
+            user_event_sink.clone(),
+        ) {
+            Ok(()) => {}
+            Err(e) => {
+                user_event_sink
+                    .send(MEvent::Error(format!("{}", e)))
+                    .wait()
+                    .expect(&format!("Could not report error to user: {:?}", e));
+            }
+        });
 
         Ok((
             Self { addr, api_sink },
@@ -68,7 +74,12 @@ impl Node {
         Ok(())
     }
 
-    fn run<AS, US>(socket: UdpSocket, api_stream: AS, user_event_sink: US) -> Result<()>
+    fn run<AS, US>(
+        socket: UdpSocket,
+        cfg: Config,
+        api_stream: AS,
+        user_event_sink: US,
+    ) -> Result<()>
     where
         AS: Stream<Item = (Option<SocketAddr>, Event), Error = Error>,
         US: Sink<SinkItem = MEvent> + Clone + 'static,
@@ -87,7 +98,7 @@ impl Node {
                 .map_err(Error::from)
                 .select(api_stream)
                 .select(timer_stream.map(|(addr, timer)| (Some(addr), Event::Timer(timer))));
-        let stream = ConnectionManager::pipe(sources)?.for_each(
+        let stream = ConnectionManager::pipe(cfg, sources)?.for_each(
             move |(peer, cmd)| {
                 match (peer, cmd) {
                     (peer, Cmd::Net(bytes)) => {
@@ -134,6 +145,8 @@ mod test {
     #[test]
     fn connection() {
         simulate(
+            Config::default(),
+            Config::default(),
             |n1, n2| {
                 n1.connect(&n2.addr)?;
                 n1.disconnect(&n2.addr)

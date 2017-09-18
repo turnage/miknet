@@ -1,20 +1,21 @@
 #![cfg(test)]
 
 use {Error, MEvent, Result};
+use conn::Config;
 use futures::Stream;
 use futures::stream::iter_ok;
 use node::Node;
 use std::net::SocketAddr;
 use tokio_core::reactor::Core;
 
-pub fn simulate<F, K, E>(setup: F, kill: &K, expectations: E)
+pub fn simulate<F, K, E>(cfg1: Config, cfg2: Config, setup: F, kill: &K, expectations: E)
 where
     F: Fn(&Node, &Node) -> Result<()>,
     K: Fn(&MEvent) -> bool,
     E: Fn(SocketAddr, SocketAddr) -> Vec<MEvent>,
 {
-    let (n1, stream1) = Node::new("127.0.0.1:0").expect("node 1");
-    let (n2, stream2) = Node::new("127.0.0.1:0").expect("node 2");
+    let (n1, stream1) = Node::new("127.0.0.1:0", cfg1).expect("node 1");
+    let (n2, stream2) = Node::new("127.0.0.1:0", cfg2).expect("node 2");
 
     let n1addr = n1.addr;
     let n2addr = n2.addr;

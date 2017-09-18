@@ -55,6 +55,7 @@ impl From<()> for Error {
 #[derive(Eq, Clone, Debug, PartialEq)]
 pub enum MEvent {
     ConnectionAttemptTimedOut(SocketAddr),
+    ConnectionCfgMismatch(SocketAddr),
     ConnectionEstablished(SocketAddr),
     Disconnect(SocketAddr),
     Error(String),
@@ -71,6 +72,9 @@ impl Display for MEvent {
             MEvent::Disconnect(addr) => write!(f, "Disconnect from {}", addr),
             MEvent::Error(ref e) => write!(f, "Miknet failed due to error: {}", e),
             MEvent::Shutdown => write!(f, "Miknet host shutdown."),
+            MEvent::ConnectionCfgMismatch(addr) => {
+                write!(f, "Miknet host {} had incompatible config.", addr)
+            }
         }
     }
 }

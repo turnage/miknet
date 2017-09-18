@@ -2,6 +2,7 @@
 
 use {Error, Result};
 use cmd::Cmd;
+use conn::Config;
 use conn::miklow::{Connection, Key};
 use event::{Api, Event};
 use futures::Stream;
@@ -12,15 +13,19 @@ use std::net::SocketAddr;
 
 pub struct ConnectionManager {
     key: Key,
+    cfg: Config,
     conns: HashMap<SocketAddr, Connection>,
 }
 
 impl ConnectionManager {
-    pub fn pipe<'a, S>(src: S) -> Result<Box<Stream<Item = (SocketAddr, Cmd), Error = Error> + 'a>>
+    pub fn pipe<'a, S>(
+        cfg: Config,
+        src: S,
+    ) -> Result<Box<Stream<Item = (SocketAddr, Cmd), Error = Error> + 'a>>
     where
         S: Stream<Item = (Option<SocketAddr>, Event), Error = Error> + 'a,
     {
-        let mut cm = Self::new()?;
+        let mut cm = Self::new(cfg)?;
         Ok(Box::new(
             src.take_while(|&(_, ref event)| match *event {
                 Event::Api(Api::Shutdown) => ok(false),
@@ -35,12 +40,14 @@ impl ConnectionManager {
         ))
     }
 
-    fn new() -> Result<Self> { Ok(Self { key: Key::new()?, conns: HashMap::new() }) }
+    fn new(cfg: Config) -> Result<Self> {
+        Ok(Self { key: Key::new()?, cfg, conns: HashMap::new() })
+    }
 
     fn receive(&mut self, peer: SocketAddr, event: Event) -> Vec<(SocketAddr, Cmd)> {
         let (conn, cmds) = self.conns
             .remove(&peer)
-            .unwrap_or_else(|| Connection::new(self.key.clone()))
+            .unwrap_or_else(|| Connection::new(self.key.clone(), self.cfg.clone()))
             .step(peer, event);
         if conn.should_persist() {
             self.conns.insert(peer, conn);
