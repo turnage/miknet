@@ -19,6 +19,7 @@ mod conn;
 mod timers;
 mod test_util;
 mod socket;
+mod random;
 
 pub use node::Node;
 

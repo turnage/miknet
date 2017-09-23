@@ -12,7 +12,7 @@ use event::{Api, Event};
 use gram::{Chunk, Gram};
 use itertools::{Either, Itertools};
 use rand::{OsRng, Rng};
-use rand::random;
+use random::random;
 use std::net::SocketAddr;
 use timers::Timer;
 
@@ -333,5 +333,39 @@ impl Connection {
             }
             (conn, _) => (conn, Vec::new()),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::str::FromStr;
+    use test_util::RAND_TEST_CONST;
+
+    fn test_config() -> Config { Default::default() }
+
+    fn expect(expectations: Vec<(Event, Vec<Cmd>)>) {
+        let peer_addr = SocketAddr::from_str("127.0.0.1:0").expect("any address");
+        let mut conn = Connection::new(Key::new().expect("key"), test_config());
+        for (event, expected_cmds) in expectations {
+            let (next_conn, cmds) = conn.handle_event(&peer_addr, event);
+            assert_eq!(cmds, expected_cmds);
+            conn = next_conn
+        }
+    }
+
+    #[test]
+    fn handshake() {
+        expect(vec![
+            (
+                Event::Api(Api::Conn),
+                vec![
+                    Cmd::Chunk(
+                        Chunk::Init { token: RAND_TEST_CONST, tsn: RAND_TEST_CONST, cfg: test_config() }
+                    ),
+                    Cmd::Timer(Timer::InitTimer),
+                ]
+            ),
+        ])
     }
 }

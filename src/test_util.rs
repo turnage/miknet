@@ -8,6 +8,11 @@ use node::Node;
 use std::net::SocketAddr;
 use tokio_core::reactor::Core;
 
+/// random() will always return this constant in test builds.
+pub const RAND_TEST_CONST: u32 = 100;
+
+pub fn random() -> u32 { RAND_TEST_CONST }
+
 pub fn simulate<F, K, E>(cfg1: Config, cfg2: Config, setup: F, kill: &K, expectations: E)
 where
     F: Fn(&Node, &Node) -> Result<()>,
