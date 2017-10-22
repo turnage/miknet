@@ -2,6 +2,7 @@
 
 use bincode::deserialize;
 use conn::Config;
+use conn::Segment;
 use conn::StateCookie;
 use event::Event;
 use std::io;
@@ -18,6 +19,8 @@ pub enum Chunk {
     ShutdownAck,
     ShutdownComplete,
     CfgMismatch,
+    Data { channel_id: u32, seg: Segment },
+    DataAck { channel_id: u32, seq: u32 },
 }
 
 impl Into<Event> for Chunk {
