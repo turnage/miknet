@@ -1,7 +1,6 @@
 //! gram defines the atomic unit of the miknet protocol.
 
 use bincode::deserialize;
-use conn::Config;
 use conn::Segment;
 use conn::StateCookie;
 use event::Event;
@@ -11,7 +10,7 @@ use tokio_core::net::UdpCodec;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Chunk {
-    Init { token: u32, tsn: u32, cfg: Config },
+    Init { token: u32, tsn: u32 },
     InitAck { token: u32, tsn: u32, state_cookie: StateCookie },
     CookieEcho(StateCookie),
     CookieAck,

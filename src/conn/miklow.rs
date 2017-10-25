@@ -4,7 +4,7 @@
 use {MEvent, Result};
 use bincode::{Infinite, serialize};
 use cmd::Cmd;
-use conn::mikhi::Config;
+use conn::mikhi::Mikhi;
 use crypto::hmac::Hmac;
 use crypto::mac::{Mac, MacResult};
 use crypto::sha3::Sha3;
@@ -63,7 +63,6 @@ pub struct Tcb {
     pub our_token: u32,
     pub their_tsn: u32,
     pub their_token: u32,
-    pub cfg: Config,
 }
 
 impl Tcb {
@@ -83,11 +82,11 @@ impl Tcb {
 /// SCTP.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Connection {
-    Listen { key: Key, cfg: Config },
-    InitSent { token: u32, tsn: u32, cfg: Config, queue: Vec<(SocketAddr, Api)> },
+    Listen { key: Key },
+    InitSent { token: u32, tsn: u32, queue: Vec<(SocketAddr, Api)> },
     InitAckSent { their_token: u32 },
     CookieEchoed { tcb: Tcb, queue: Vec<(SocketAddr, Api)> },
-    Established(Tcb),
+    Established(Mikhi),
     ShutdownSent { token: u32, their_token: u32 },
     ShutdownAckSent { token: u32, their_token: u32 },
     Shutdown { their_token: u32 },
@@ -96,7 +95,7 @@ pub enum Connection {
 
 impl Connection {
     /// Returns a connection using the given key to sign and verify state cookies.
-    pub fn new(key: Key, cfg: Config) -> Self { Connection::Listen { key, cfg } }
+    pub fn new(key: Key) -> Self { Connection::Listen { key } }
 
     /// Processes an event and returns the next state of the connection and any commands that
     /// should be executed as part of the transition.
@@ -140,7 +139,7 @@ impl Connection {
             Connection::InitAckSent { their_token } => their_token,
             Connection::InitSent { token, .. } => token,
             Connection::CookieEchoed { ref tcb, .. } => tcb.their_token,
-            Connection::Established(ref tcb) => tcb.their_token,
+            Connection::Established(ref mikhi) => mikhi.tcb.their_token,
             Connection::ShutdownSent { their_token, .. } => their_token,
             Connection::ShutdownAckSent { their_token, .. } => their_token,
             Connection::Shutdown { their_token } => their_token,
@@ -153,7 +152,7 @@ impl Connection {
         match *self {
             Connection::InitSent { token, .. } => Some(token),
             Connection::CookieEchoed { ref tcb, .. } => Some(tcb.our_token),
-            Connection::Established(ref tcb) => Some(tcb.our_token),
+            Connection::Established(ref mikhi) => Some(mikhi.tcb.our_token),
             Connection::ShutdownSent { token, .. } => Some(token),
             Connection::ShutdownAckSent { token, .. } => Some(token),
             _ => None,
@@ -177,72 +176,54 @@ impl Connection {
                 let expected_token = conn.expected_token();
                 conn.handle_events(peer, gram.events(expected_token))
             } 
-            (Connection::Listen { key, cfg },
-             Event::Chunk(Chunk::Init { token: their_token, tsn: their_tsn, cfg: their_cfg })) => {
+            (Connection::Listen { key },
+             Event::Chunk(Chunk::Init { token: their_token, tsn: their_tsn })) => {
                 let (our_tsn, our_token) = (random(), random());
-                if cfg == their_cfg {
-                    (
-                        Connection::InitAckSent { their_token },
-                        vec![
-                            Cmd::Chunk(Chunk::InitAck {
-                                tsn: our_tsn,
-                                token: our_token,
-                                state_cookie: StateCookie::new(
-                                    Tcb {
-                                        our_tsn,
-                                        our_token,
-                                        their_token,
-                                        their_tsn,
-                                        cfg,
-                                    },
-                                    &key,
-                                ),
-                            }),
-                        ],
-                    )
-                } else {
-                    (Connection::Listen { key, cfg }, vec![Cmd::Chunk(Chunk::CfgMismatch)])
-                }
+                (
+                    Connection::InitAckSent { their_token },
+                    vec![
+                        Cmd::Chunk(Chunk::InitAck {
+                            tsn: our_tsn,
+                            token: our_token,
+                            state_cookie: StateCookie::new(
+                                Tcb { our_tsn, our_token, their_token, their_tsn },
+                                &key,
+                            ),
+                        }),
+                    ],
+                )
             }
-            (Connection::Listen { cfg, .. }, Event::Api(Api::Conn)) => {
+            (Connection::Listen { .. }, Event::Api(Api::Conn)) => {
                 let (token, tsn) = (random(), random());
                 (
-                    Connection::InitSent { token, tsn, cfg: cfg.clone(), queue: Vec::new() },
+                    Connection::InitSent { token, tsn, queue: Vec::new() },
                     vec![
-                        Cmd::Chunk(Chunk::Init { token, tsn, cfg }),
+                        Cmd::Chunk(Chunk::Init { token, tsn }),
                         Cmd::Timer(Timer::InitTimer),
                     ],
                 )
             }
-            (Connection::InitSent { .. }, Event::Chunk(Chunk::CfgMismatch)) => {
-                (Connection::Failed, vec![Cmd::User(MEvent::ConnectionCfgMismatch(*peer))])
-            }
             (Connection::InitSent { .. }, Event::Timer(Timer::InitTimer)) => {
                 (Connection::Failed, vec![Cmd::User(MEvent::ConnectionAttemptTimedOut(*peer))])
             }
-            (Connection::InitSent { token: our_token, tsn: our_tsn, queue, cfg },
+            (Connection::InitSent { token: our_token, tsn: our_tsn, queue },
              Event::Chunk(Chunk::InitAck { token: their_token, tsn: their_tsn, state_cookie })) => {
-                if cfg == state_cookie.tcb.cfg {
-                    (
-                        Connection::CookieEchoed {
-                            tcb: Tcb { our_tsn, our_token, their_tsn, their_token, cfg },
-                            queue: queue,
-                        },
-                        vec![
-                            Cmd::Chunk(Chunk::CookieEcho(state_cookie)),
-                            Cmd::Timer(Timer::CookieSentTimer),
-                        ],
-                    )
-                } else {
-                    (Connection::Failed, vec![Cmd::User(MEvent::ConnectionCfgMismatch(*peer))])
-                }
+                (
+                    Connection::CookieEchoed {
+                        tcb: Tcb { our_tsn, our_token, their_tsn, their_token },
+                        queue: queue,
+                    },
+                    vec![
+                        Cmd::Chunk(Chunk::CookieEcho(state_cookie)),
+                        Cmd::Timer(Timer::CookieSentTimer),
+                    ],
+                )
             }
-            (Connection::InitSent { token, tsn, cfg, queue }, Event::Api(ae)) => {
+            (Connection::InitSent { token, tsn, queue }, Event::Api(ae)) => {
                 (
                     Connection::InitSent {
                         token,
                         tsn,
-                        cfg,
                         queue: queue
                             .into_iter()
                             .chain(vec![(*peer, ae)].into_iter())
@@ -268,7 +249,7 @@ impl Connection {
                     .into_iter()
                     .map(|(peer, ae)| (peer, Event::Api(ae)))
                     .fold(
-                        (Connection::Established(tcb), Vec::new()),
+                        (Connection::Established(Mikhi::new(tcb)), Vec::new()),
                         |(conn, mut cmds), (peer, ae)| {
                             let (next_conn, more_cmds) = conn.handle_event(&peer, ae);
                             cmds.extend(more_cmds);
@@ -278,26 +259,23 @@ impl Connection {
                 cmds.extend(vec![Cmd::User(MEvent::ConnectionEstablished(*peer))]);
                 (conn, cmds)
             }
-            (Connection::Listen { ref key, ref cfg },
+            (Connection::Listen { ref key, .. },
              Event::Chunk(Chunk::CookieEcho(ref state_cookie))) if state_cookie.valid(&key) => {
-                if *cfg != state_cookie.tcb.cfg {
-                    panic!("we signed an invalid config with our key, or our crypto broke");
-                }
                 (
-                    Connection::Established(state_cookie.tcb.clone()),
+                    Connection::Established(Mikhi::new(state_cookie.tcb.clone())),
                     vec![
                         Cmd::Chunk(Chunk::CookieAck),
                         Cmd::User(MEvent::ConnectionEstablished(*peer)),
                     ],
                 )
             }
-            (Connection::Established(tcb), Event::Api(Api::Disc)) => {
+            (Connection::Established(Mikhi { tcb, .. }), Event::Api(Api::Disc)) => {
                 (
                     Connection::ShutdownSent { token: tcb.our_token, their_token: tcb.their_token },
                     vec![Cmd::Chunk(Chunk::Shutdown)],
                 )
             }
-            (Connection::Established(tcb), Event::Chunk(Chunk::Shutdown)) => {
+            (Connection::Established(Mikhi { tcb, .. }), Event::Chunk(Chunk::Shutdown)) => {
                 (
                     Connection::ShutdownAckSent { token: tcb.our_token, their_token: tcb.their_token },
                     vec![Cmd::Chunk(Chunk::ShutdownAck)],
@@ -342,11 +320,9 @@ mod test {
     use std::str::FromStr;
     use test_util::RAND_TEST_CONST;
 
-    fn test_config() -> Config { Default::default() }
-
     fn expect(expectations: Vec<(Event, Vec<Cmd>)>) {
         let peer_addr = SocketAddr::from_str("127.0.0.1:0").expect("any address");
-        let mut conn = Connection::new(Key::new().expect("key"), test_config());
+        let mut conn = Connection::new(Key::new().expect("key"));
         for (event, expected_cmds) in expectations {
             let (next_conn, cmds) = conn.handle_event(&peer_addr, event);
             assert_eq!(cmds, expected_cmds);
@@ -360,9 +336,7 @@ mod test {
             (
                 Event::Api(Api::Conn),
                 vec![
-                    Cmd::Chunk(
-                        Chunk::Init { token: RAND_TEST_CONST, tsn: RAND_TEST_CONST, cfg: test_config() }
-                    ),
+                    Cmd::Chunk(Chunk::Init { token: RAND_TEST_CONST, tsn: RAND_TEST_CONST }),
                     Cmd::Timer(Timer::InitTimer),
                 ]
             ),

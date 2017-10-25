@@ -1,20 +1,23 @@
 //! mikhi is the high level component of the miknet protocol responsible for intraconnection logic.
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deserialize, Serialize)]
-pub enum Channel {
-    Reliable { sequenced: bool },
-    Unreliable,
-}
+use conn::miklow::Tcb;
 
-impl Default for Channel {
-    fn default() -> Self { Channel::Reliable { sequenced: true } }
-}
-
-#[derive(Clone, Eq, PartialEq, Debug, Deserialize, Serialize)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct Config {
-    channels: Vec<Channel>,
+    max_buffer: usize,
 }
 
 impl Default for Config {
-    fn default() -> Self { Self { channels: vec![Channel::default()] } }
+    fn default() -> Self { Self { max_buffer: 1024 * 1024 } }
+}
+
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub struct Mikhi {
+    pub tcb: Tcb,
+
+    cfg: Config,
+}
+
+impl Mikhi {
+    pub fn new(tcb: Tcb) -> Self { Self { tcb: tcb, cfg: Config::default() } }
 }

@@ -122,7 +122,7 @@ impl Sequence {
     pub fn acknowledge(&mut self, seq: u32) { self.outgoing.slots.remove(&seq); }
 
     // Gets any commands to send data segments this turn based on which ones are live and fit in
-    // available bandwidth. 
+    // available bandwidth.
     pub fn cmds(&mut self, round_trip: Duration, mut bandwidth_allowed: usize) -> (usize, Cmd) {
         match self.outgoing.slots.iter().next().map(|(seq, _)| *seq) {
             Some(lowest_unfinished) => {
