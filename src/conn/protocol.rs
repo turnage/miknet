@@ -3,6 +3,7 @@
 use bincode::serialize;
 use itertools::{Either, Itertools};
 use serde_derive::{Deserialize, Serialize};
+use std::fmt::Debug;
 use std::net::SocketAddr;
 use std::time::Duration;
 
@@ -62,7 +63,7 @@ impl Timer {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Api {
+pub enum ApiEvent {
     Tx(Vec<u8>),
     Disc,
     Conn,
@@ -71,7 +72,7 @@ pub enum Api {
 
 #[derive(Debug, PartialEq)]
 pub enum Event {
-    Api(Api),
+    Api(ApiEvent),
     Gram(Gram),
     Chunk(Chunk),
     Timer(Timer),
@@ -83,11 +84,18 @@ impl From<Chunk> for Event {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ApiCmd {
+    Disconnect,
+    ConnectionAttemptTimedOut,
+    ConnectionEstablished,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Cmd {
     Chunk(Chunk),
-    Net(Vec<u8>),
+    Net(Gram),
     Timer(Timer),
-    User(api::Event),
+    Api(ApiCmd),
 }
 
 pub trait Protocol: Sized {
@@ -98,21 +106,21 @@ pub trait Protocol: Sized {
 /// Connection is a relationship between two miknet nodes. Handshake and teardown based roughly on
 /// SCTP.
 #[derive(Clone, Debug, PartialEq)]
-pub enum Connection<P: Protocol> {
+pub enum Connection<P: Protocol + Debug> {
     Listen {
         key: Key,
     },
     InitSent {
         token: u32,
         tsn:   u32,
-        queue: Vec<(SocketAddr, Api)>,
+        queue: Vec<ApiEvent>,
     },
     InitAckSent {
         their_token: u32,
     },
     CookieEchoed {
         tcb:   Tcb,
-        queue: Vec<(SocketAddr, Api)>,
+        queue: Vec<ApiEvent>,
     },
     Established {
         tcb:      Tcb,
@@ -132,28 +140,23 @@ pub enum Connection<P: Protocol> {
     Failed,
 }
 
-impl<P: Protocol> Connection<P> {
+impl<P: Protocol + Debug> Connection<P> {
     /// Returns a connection using the given key to sign and verify state cookies.
     pub fn new(key: Key) -> Self { Connection::Listen { key } }
 
     /// Processes an event and returns the next state of the connection and any commands that
     /// should be executed as part of the transition.
-    pub fn step(
-        self,
-        peer: SocketAddr,
-        event: Event,
-    ) -> (Self, Vec<(SocketAddr, Cmd)>) {
-        let (next, cmds) = self.handle_event(&peer, event);
+    pub fn step(self, event: Event) -> (Self, Vec<Cmd>) {
+        let (next, cmds) = self.handle_event(event);
         let (chunks, mut cmds): (Vec<Chunk>, Vec<Cmd>) =
             cmds.into_iter().partition_map(|cmd| match cmd {
                 Cmd::Chunk(chunk) => Either::Left(chunk),
                 cmd => Either::Right(cmd),
             });
-        cmds.extend(next.build_grams(chunks));
-        (
-            next,
-            cmds.into_iter().map(|cmd| (peer.clone(), cmd)).collect(),
-        )
+        if !chunks.is_empty() {
+            cmds.extend(next.build_grams(chunks));
+        }
+        (next, cmds)
     }
 
     /// Returns whether this connection should be persisted between events. For example, we do not
@@ -173,10 +176,7 @@ impl<P: Protocol> Connection<P> {
         let grams = match *self {
             _ => vec![Gram { token, chunks }],
         };
-        grams
-            .into_iter()
-            .map(|gram| Cmd::Net(serialize(&gram).unwrap()))
-            .collect()
+        grams.into_iter().map(|gram| Cmd::Net(gram)).collect()
     }
 
     /// Returns the token this connection should embed in all its grams for association.
@@ -205,29 +205,24 @@ impl<P: Protocol> Connection<P> {
         }
     }
 
-    fn handle_events(
-        self,
-        peer: &SocketAddr,
-        events: Vec<Event>,
-    ) -> (Self, Vec<Cmd>) {
+    fn handle_events(self, events: Vec<Event>) -> (Self, Vec<Cmd>) {
         events.into_iter().fold(
             (self, Vec::new()),
             |(conn, mut cmds), event| {
-                let (next_conn, more_cmds) = conn.handle_event(peer, event);
+                let (next_conn, more_cmds) = conn.handle_event(event);
                 cmds.extend(more_cmds);
                 (next_conn, cmds)
             },
         )
     }
 
-    fn handle_event(self, peer: &SocketAddr, event: Event) -> (Self, Vec<Cmd>) {
+    fn handle_event(self, event: Event) -> (Self, Vec<Cmd>) {
         match (self, event) {
             (conn, Event::Gram(gram)) => match conn.expected_token() {
                 Some(expected_token) if gram.token != expected_token => {
-                    conn.handle_event(peer, Event::InvalidGram)
+                    conn.handle_event(Event::InvalidGram)
                 }
                 _ => conn.handle_events(
-                    peer,
                     gram.chunks.into_iter().map(Chunk::into).collect(),
                 ),
             },
@@ -256,7 +251,7 @@ impl<P: Protocol> Connection<P> {
                     })],
                 )
             }
-            (Connection::Listen { .. }, Event::Api(Api::Conn)) => {
+            (Connection::Listen { .. }, Event::Api(ApiEvent::Conn)) => {
                 let (token, tsn) = (random(), random());
                 (
                     Connection::InitSent {
@@ -269,84 +264,6 @@ impl<P: Protocol> Connection<P> {
                         Cmd::Timer(Timer::InitTimer),
                     ],
                 )
-            }
-            (Connection::InitSent { .. }, Event::Timer(Timer::InitTimer)) => (
-                Connection::Failed,
-                vec![Cmd::User(api::Event::ConnectionAttemptTimedOut(*peer))],
-            ),
-            (
-                Connection::InitSent {
-                    token: our_token,
-                    tsn: our_tsn,
-                    queue,
-                },
-                Event::Chunk(Chunk::InitAck {
-                    token: their_token,
-                    tsn: their_tsn,
-                    state_cookie,
-                }),
-            ) => (
-                Connection::CookieEchoed {
-                    tcb:   Tcb {
-                        our_tsn,
-                        our_token,
-                        their_tsn,
-                        their_token,
-                    },
-                    queue: queue,
-                },
-                vec![
-                    Cmd::Chunk(Chunk::CookieEcho(state_cookie)),
-                    Cmd::Timer(Timer::CookieSentTimer),
-                ],
-            ),
-            (Connection::InitSent { token, tsn, queue }, Event::Api(ae)) => (
-                Connection::InitSent {
-                    token,
-                    tsn,
-                    queue: queue
-                        .into_iter()
-                        .chain(vec![(*peer, ae)].into_iter())
-                        .collect(),
-                },
-                Vec::new(),
-            ),
-            (Connection::CookieEchoed { tcb, queue }, Event::Api(ae)) => (
-                Connection::CookieEchoed {
-                    tcb,
-                    queue: queue
-                        .into_iter()
-                        .chain(vec![(*peer, ae)].into_iter())
-                        .collect(),
-                },
-                Vec::new(),
-            ),
-            (
-                Connection::CookieEchoed { tcb, queue },
-                Event::Chunk(Chunk::CookieAck),
-            ) => {
-                let (conn, mut cmds) = queue
-                    .into_iter()
-                    .map(|(peer, ae)| (peer, Event::Api(ae)))
-                    .fold(
-                        (
-                            Connection::Established {
-                                tcb,
-                                protocol: P::establish(),
-                            },
-                            Vec::new(),
-                        ),
-                        |(conn, mut cmds), (peer, ae)| {
-                            let (next_conn, more_cmds) =
-                                conn.handle_event(&peer, ae);
-                            cmds.extend(more_cmds);
-                            (next_conn, cmds)
-                        },
-                    );
-                cmds.extend(vec![Cmd::User(
-                    api::Event::ConnectionEstablished(*peer),
-                )]);
-                (conn, cmds)
             }
             (
                 Connection::Listen { ref key, .. },
@@ -361,11 +278,94 @@ impl<P: Protocol> Connection<P> {
                     },
                     vec![
                         Cmd::Chunk(Chunk::CookieAck),
-                        Cmd::User(api::Event::ConnectionEstablished(*peer)),
+                        Cmd::Api(ApiCmd::ConnectionEstablished),
                     ],
                 )
             }
-            (Connection::Established { tcb, .. }, Event::Api(Api::Disc)) => (
+            (Connection::InitSent { .. }, Event::Timer(Timer::InitTimer)) => (
+                Connection::Failed,
+                vec![Cmd::Api(ApiCmd::ConnectionAttemptTimedOut)],
+            ),
+            (
+                Connection::InitSent {
+                    token: our_token,
+                    tsn: our_tsn,
+                    queue,
+                },
+                Event::Chunk(Chunk::InitAck {
+                    token: their_token,
+                    tsn: their_tsn,
+                    state_cookie,
+                }),
+            ) => (
+                Connection::CookieEchoed {
+                    tcb: Tcb {
+                        our_tsn,
+                        our_token,
+                        their_tsn,
+                        their_token,
+                    },
+                    queue,
+                },
+                vec![
+                    Cmd::Chunk(Chunk::CookieEcho(state_cookie)),
+                    Cmd::Timer(Timer::CookieSentTimer),
+                ],
+            ),
+            (
+                Connection::InitSent {
+                    token,
+                    tsn,
+                    mut queue,
+                },
+                Event::Api(ae),
+            ) => (
+                Connection::InitSent {
+                    token,
+                    tsn,
+                    queue: {
+                        queue.push(ae);
+                        queue
+                    },
+                },
+                Vec::new(),
+            ),
+            (Connection::CookieEchoed { tcb, queue }, Event::Api(ae)) => (
+                Connection::CookieEchoed {
+                    tcb,
+                    queue: queue
+                        .into_iter()
+                        .chain(vec![ae].into_iter())
+                        .collect(),
+                },
+                Vec::new(),
+            ),
+            (
+                Connection::CookieEchoed { tcb, queue },
+                Event::Chunk(Chunk::CookieAck),
+            ) => {
+                let (conn, mut cmds) = queue.into_iter().fold(
+                    (
+                        Connection::Established {
+                            tcb,
+                            protocol: P::establish(),
+                        },
+                        Vec::new(),
+                    ),
+                    |(conn, mut cmds), ae| {
+                        let (next_conn, more_cmds) =
+                            conn.handle_event(Event::Api(ae));
+                        cmds.extend(more_cmds);
+                        (next_conn, cmds)
+                    },
+                );
+                cmds.push(Cmd::Api(ApiCmd::ConnectionEstablished));
+                (conn, cmds)
+            }
+            (
+                Connection::Established { tcb, .. },
+                Event::Api(ApiEvent::Disc),
+            ) => (
                 Connection::ShutdownSent {
                     token:       tcb.our_token,
                     their_token: tcb.their_token,
@@ -395,7 +395,7 @@ impl<P: Protocol> Connection<P> {
             ) => (
                 Connection::Shutdown { their_token },
                 vec![
-                    Cmd::User(api::Event::Disconnect(*peer)),
+                    Cmd::Api(ApiCmd::Disconnect),
                     Cmd::Chunk(Chunk::ShutdownComplete),
                 ],
             ),
@@ -404,7 +404,7 @@ impl<P: Protocol> Connection<P> {
                 Event::Chunk(Chunk::ShutdownComplete),
             ) => (
                 Connection::Shutdown { their_token },
-                vec![Cmd::User(api::Event::Disconnect(*peer))],
+                vec![Cmd::Api(ApiCmd::Disconnect)],
             ),
             (
                 Connection::ShutdownAckSent { their_token, .. },
@@ -412,7 +412,7 @@ impl<P: Protocol> Connection<P> {
             ) => (
                 Connection::Shutdown { their_token },
                 vec![
-                    Cmd::User(api::Event::Disconnect(*peer)),
+                    Cmd::Api(ApiCmd::Disconnect),
                     Cmd::Chunk(Chunk::ShutdownComplete),
                 ],
             ),
@@ -425,39 +425,115 @@ impl<P: Protocol> Connection<P> {
 mod test {
     use super::*;
     use crate::random;
+    use failure::Error;
     use std::str::FromStr;
 
-    struct DummyProtocol;
+    #[derive(Debug)]
+    struct TumblerProtocol;
 
-    impl Protocol for DummyProtocol {
-        fn establish() -> Self { DummyProtocol {} }
+    impl Protocol for TumblerProtocol {
+        fn establish() -> Self { Self {} }
 
         fn step(self, event: Event) -> (Self, Vec<Cmd>) { (self, Vec::new()) }
     }
 
-    fn expect(expectations: Vec<(Event, Vec<Cmd>)>) {
-        let peer_addr =
-            SocketAddr::from_str("127.0.0.1:0").expect("any address");
-        let mut conn =
-            Connection::<DummyProtocol>::new(Key::new().expect("key"));
-        for (event, expected_cmds) in expectations {
-            let (next_conn, cmds) = conn.handle_event(&peer_addr, event);
-            assert_eq!(cmds, expected_cmds);
-            conn = next_conn
+    #[derive(Debug)]
+    struct Tumbler {
+        key1:    Key,
+        key2:    Key,
+        c1:      Connection<TumblerProtocol>,
+        c2:      Connection<TumblerProtocol>,
+        c1_cmds: Vec<Cmd>,
+    }
+
+    impl Tumbler {
+        fn new() -> Result<Self, Error> {
+            let key1 = Key::new()?;
+            let key2 = Key::new()?;
+            Ok(Self {
+                c1: Connection::new(key1.clone()),
+                c2: Connection::new(key2.clone()),
+                key1,
+                key2,
+                c1_cmds: Vec::new(),
+            })
+        }
+
+        fn start(self) -> Self {
+            let (c1, c1_cmds) = self.c1.step(Event::Api(ApiEvent::Conn));
+            Self {
+                c1,
+                c1_cmds,
+                ..self
+            }
+        }
+
+        fn established(&self) -> bool {
+            match (&self.c1, &self.c2) {
+                (
+                    Connection::Established { .. },
+                    Connection::Established { .. },
+                ) => true,
+                _ => false,
+            }
+        }
+
+        fn tumble(self) -> Self {
+            let (c2, c2_cmds) =
+                Tumbler::tumble_connection(self.c2, self.c1_cmds);
+            println!("c2 cmds: {:?}", c2_cmds);
+            let (c1, c1_cmds) = Tumbler::tumble_connection(self.c1, c2_cmds);
+            Self {
+                c1: if c1.should_persist() {
+                    c1
+                } else {
+                    Connection::new(self.key1.clone())
+                },
+                c2: if c2.should_persist() {
+                    c2
+                } else {
+                    Connection::new(self.key2.clone())
+                },
+                c1_cmds,
+                ..self
+            }
+        }
+
+        fn tumble_connection(
+            mut c: Connection<TumblerProtocol>,
+            cmds: Vec<Cmd>,
+        ) -> (Connection<TumblerProtocol>, Vec<Cmd>) {
+            let mut out_cmds = Vec::new();
+            for event in Tumbler::convert_cmds(cmds) {
+                let (next_c, mut next_cmds) = c.step(event);
+                c = next_c;
+                out_cmds.append(&mut next_cmds);
+            }
+            (c, out_cmds)
+        }
+
+        fn convert_cmds(cmds: Vec<Cmd>) -> Vec<Event> {
+            cmds.into_iter()
+                .filter_map(|cmd| match cmd {
+                    Cmd::Net(gram) => Some(Event::Gram(gram)),
+                    _ => None,
+                })
+                .collect()
         }
     }
 
     #[test]
-    fn handshake() {
-        expect(vec![(
-            Event::Api(Api::Conn),
-            vec![
-                Cmd::Chunk(Chunk::Init {
-                    token: random::RAND_TEST_CONST,
-                    tsn:   random::RAND_TEST_CONST,
-                }),
-                Cmd::Timer(Timer::InitTimer),
-            ],
-        )])
+    fn handshake() -> Result<(), Error> {
+        let mut tumbler = Tumbler::new()?;
+        tumbler = tumbler.start();
+        for i in 0..2 {
+            tumbler = tumbler.tumble();
+        }
+        if !tumbler.established() {
+            println!("Connection not established; states:");
+            println!("{:?}", tumbler);
+            panic!();
+        }
+        Ok(())
     }
 }
