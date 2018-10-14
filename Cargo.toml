@@ -2,15 +2,13 @@
 name = "miknet"
 version = "0.1.0"
 authors = ["Payton Turnage <paytonturnage@gmail.com>"]
+edition = "2018"
 
 [dependencies]
-bincode = "0.8"
-serde = "1.0"
-serde_derive = "1.0"
-error-chain = { git = "https://github.com/rust-lang-nursery/error-chain" }
-futures = "0.1.14"
-tokio-core = "0.1.9"
-rand = "0.3"
-rust-crypto = "^0.2"
-itertools = "0.6.2"
-tokio-timer = "0.1.2"
+serde = "1.0.79"
+serde_derive = "1.0.79"
+itertools = "0.7.8"
+bincode = "1.0.1"
+rust-crypto = "0.2.36"
+rand = "0.5.5"
+failure = "0.1.2"

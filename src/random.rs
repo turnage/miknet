@@ -9,9 +9,11 @@ mod prod {
 
 #[cfg(test)]
 pub use self::test::random;
+#[cfg(test)]
+pub const RAND_TEST_CONST: u32 = 100;
 
 #[cfg(test)]
 mod test {
-    use test_util;
-    pub fn random() -> u32 { test_util::random() }
+    use super::RAND_TEST_CONST;
+    pub fn random() -> u32 { RAND_TEST_CONST }
 }
