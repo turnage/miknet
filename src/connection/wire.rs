@@ -1,4 +1,4 @@
-//! gram defines the atomic unit of the miknet protocol.
+//! Connection manages the line beneath the miknet protocol.
 
 use bincode::serialize;
 use itertools::{Either, Itertools};
@@ -8,10 +8,11 @@ use std::net::SocketAddr;
 use std::time::Duration;
 
 use crate::api;
-use crate::conn::handshake::{Key, StateCookie, Tcb};
-use crate::conn::sequence::Segment;
+use crate::connection::sequence::Segment;
+use crate::connection::validation::{Key, StateCookie, Tcb};
 use crate::random::random;
 
+/// Chunks are control and data messages that can be packed in a gram.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Chunk {
     Init {
@@ -31,7 +32,7 @@ pub enum Chunk {
     CfgMismatch,
     Data {
         channel_id: u32,
-        seg:        Segment,
+        segment:    Segment,
     },
     DataAck {
         channel_id: u32,
@@ -98,15 +99,45 @@ pub enum Cmd {
     Api(ApiCmd),
 }
 
-pub trait Protocol: Sized {
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ProtocolUnit {
+    Segment {
+        channel_id: u32,
+        segment:    Segment,
+    },
+    SegmentAck {
+        channel_id: u32,
+        seq:        u32,
+    },
+}
+
+impl Into<Option<ProtocolUnit>> for Event {
+    fn into(self) -> Option<ProtocolUnit> {
+        match self {
+            Event::Chunk(Chunk::Data {
+                channel_id,
+                segment,
+            }) => Some(ProtocolUnit::Segment {
+                channel_id,
+                segment,
+            }),
+            Event::Chunk(Chunk::DataAck { channel_id, seq }) => {
+                Some(ProtocolUnit::SegmentAck { channel_id, seq })
+            }
+            _ => None,
+        }
+    }
+}
+
+pub trait Protocol: Sized + Debug {
     fn establish() -> Self;
-    fn step(self, event: Event) -> (Self, Vec<Cmd>);
+    fn step(self, event: ProtocolUnit) -> (Self, Vec<ProtocolUnit>);
 }
 
 /// Connection is a relationship between two miknet nodes. Handshake and teardown based roughly on
 /// SCTP.
 #[derive(Clone, Debug, PartialEq)]
-pub enum Connection<P: Protocol + Debug> {
+pub enum Connection<P: Protocol> {
     Listen {
         key: Key,
     },
@@ -140,7 +171,7 @@ pub enum Connection<P: Protocol + Debug> {
     Failed,
 }
 
-impl<P: Protocol + Debug> Connection<P> {
+impl<P: Protocol> Connection<P> {
     /// Returns a connection using the given key to sign and verify state cookies.
     pub fn new(key: Key) -> Self { Connection::Listen { key } }
 
@@ -434,7 +465,9 @@ mod test {
     impl Protocol for TumblerProtocol {
         fn establish() -> Self { Self {} }
 
-        fn step(self, event: Event) -> (Self, Vec<Cmd>) { (self, Vec::new()) }
+        fn step(self, event: ProtocolUnit) -> (Self, Vec<ProtocolUnit>) {
+            (self, Vec::new())
+        }
     }
 
     #[derive(Debug)]
