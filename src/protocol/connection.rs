@@ -3,14 +3,16 @@
 use bincode::serialize;
 use itertools::{Either, Itertools};
 use serde_derive::{Deserialize, Serialize};
-use std::fmt::Debug;
-use std::net::SocketAddr;
-use std::rc::Rc;
-use std::time::Duration;
+use std::{fmt::Debug, net::SocketAddr, rc::Rc, time::Duration};
 
-use crate::api;
-use crate::protocol::validation::{Key, StateCookie, Tcb};
-use crate::random::random;
+use crate::{
+    api,
+    protocol::{
+        transducer::Transducer,
+        validation::{Key, StateCookie, Tcb},
+    },
+    random::random,
+};
 
 /// Chunks are control and data messages that can be packed in a gram.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -65,7 +67,7 @@ pub enum ApiEvent {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum WireEvent {
+pub enum ConnectionEvent {
     Api(ApiEvent),
     Gram(Gram),
     Chunk(Chunk),
@@ -73,342 +75,429 @@ pub enum WireEvent {
     InvalidGram,
 }
 
-impl From<Chunk> for WireEvent {
-    fn from(chunk: Chunk) -> WireEvent { WireEvent::Chunk(chunk) }
+impl From<Chunk> for ConnectionEvent {
+    fn from(chunk: Chunk) -> ConnectionEvent { ConnectionEvent::Chunk(chunk) }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum ApiCmd {
+pub enum ApiAction {
     NotifyDisconnect,
     NotifyConnectionAttemptTimedOut,
     NotifyConnectionEstablished,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum WireCmd {
-    Net(Gram),
+pub enum ConnectionAction {
     Timer(Timer),
-    Api(ApiCmd),
-    Chunk(Chunk),
+    Api(ApiAction),
+    Chunk { token: u32, chunk: Chunk },
     Upstream(Vec<u8>),
+}
+
+trait ConnectionState {
+    fn expected_token(&self) -> Option<u32>;
+    fn transition(
+        self,
+        event: ConnectionEvent,
+    ) -> (
+        Option<Connection>,
+        Vec<ConnectionEvent>,
+        Vec<ConnectionAction>,
+    );
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct Listen {
+    key: Key,
+}
+
+impl ConnectionState for Listen {
+    fn expected_token(&self) -> Option<u32> { None }
+
+    fn transition(
+        self,
+        event: ConnectionEvent,
+    ) -> (
+        Option<Connection>,
+        Vec<ConnectionEvent>,
+        Vec<ConnectionAction>,
+    ) {
+        match event {
+            ConnectionEvent::Chunk(Chunk::Init {
+                token: their_token,
+                tsn: their_tsn,
+            }) => {
+                let (our_tsn, our_token) = (random(), random());
+                (
+                    None,
+                    vec![],
+                    vec![ConnectionAction::Chunk {
+                        token: their_token,
+                        chunk: Chunk::InitAck {
+                            tsn:          our_tsn,
+                            token:        our_token,
+                            state_cookie: StateCookie::new(
+                                Tcb {
+                                    our_tsn,
+                                    our_token,
+                                    their_token,
+                                    their_tsn,
+                                },
+                                &self.key,
+                            ),
+                        },
+                    }],
+                )
+            }
+            ConnectionEvent::Api(ApiEvent::Conn) => {
+                let (our_token, tsn) = (random(), random());
+                (
+                    Some(Connection::InitSent(InitSent {
+                        our_token,
+                        tsn,
+                        queue: Vec::new(),
+                    })),
+                    vec![],
+                    vec![
+                        ConnectionAction::Chunk {
+                            token: 0,
+                            chunk: Chunk::Init {
+                                token: our_token,
+                                tsn,
+                            },
+                        },
+                        ConnectionAction::Timer(Timer::InitTimer),
+                    ],
+                )
+            }
+            ConnectionEvent::Chunk(Chunk::CookieEcho(state_cookie))
+                if state_cookie.signed_by(&self.key) =>
+            {
+                (
+                    Some(Connection::Established(Established {
+                        tcb: state_cookie.tcb.clone(),
+                    })),
+                    vec![],
+                    vec![
+                        ConnectionAction::Chunk {
+                            token: state_cookie.tcb.their_token,
+                            chunk: Chunk::CookieAck,
+                        },
+                        ConnectionAction::Api(ApiAction::NotifyConnectionEstablished),
+                    ],
+                )
+            }
+            _ => (None, vec![], vec![]),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct InitSent {
+    our_token: u32,
+    tsn:       u32,
+    queue:     Vec<ApiEvent>,
+}
+
+impl ConnectionState for InitSent {
+    fn expected_token(&self) -> Option<u32> { Some(self.our_token) }
+
+    fn transition(
+        mut self,
+        event: ConnectionEvent,
+    ) -> (
+        Option<Connection>,
+        Vec<ConnectionEvent>,
+        Vec<ConnectionAction>,
+    ) {
+        match event {
+            ConnectionEvent::Timer(Timer::InitTimer) => (
+                None,
+                vec![],
+                vec![ConnectionAction::Api(
+                    ApiAction::NotifyConnectionAttemptTimedOut,
+                )],
+            ),
+            ConnectionEvent::Chunk(Chunk::InitAck {
+                token: their_token,
+                tsn: their_tsn,
+                state_cookie,
+            }) => (
+                Some(Connection::CookieEchoed(CookieEchoed {
+                    tcb:   Tcb {
+                        our_tsn: self.tsn,
+                        our_token: self.our_token,
+                        their_tsn,
+                        their_token,
+                    },
+                    queue: self.queue,
+                })),
+                vec![],
+                vec![
+                    ConnectionAction::Chunk {
+                        token: their_token,
+                        chunk: Chunk::CookieEcho(state_cookie),
+                    },
+                    ConnectionAction::Timer(Timer::CookieSentTimer),
+                ],
+            ),
+            ConnectionEvent::Api(api_event) => (
+                Some(Connection::InitSent(InitSent {
+                    queue: {
+                        self.queue.push(api_event);
+                        self.queue
+                    },
+                    ..self
+                })),
+                vec![],
+                vec![],
+            ),
+            _ => (Some(Connection::InitSent(self)), vec![], vec![]),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct CookieEchoed {
+    tcb:   Tcb,
+    queue: Vec<ApiEvent>,
+}
+
+impl ConnectionState for CookieEchoed {
+    fn expected_token(&self) -> Option<u32> { Some(self.tcb.our_token) }
+
+    fn transition(
+        mut self,
+        event: ConnectionEvent,
+    ) -> (
+        Option<Connection>,
+        Vec<ConnectionEvent>,
+        Vec<ConnectionAction>,
+    ) {
+        match event {
+            ConnectionEvent::Api(api_event) => (
+                Some(Connection::CookieEchoed(CookieEchoed {
+                    queue: {
+                        self.queue.push(api_event);
+                        self.queue
+                    },
+                    ..self
+                })),
+                vec![],
+                vec![],
+            ),
+            ConnectionEvent::Chunk(Chunk::CookieAck) => (
+                Some(Connection::Established(Established { tcb: self.tcb })),
+                self.queue
+                    .into_iter()
+                    .map(|api_event| ConnectionEvent::Api(api_event))
+                    .collect(),
+                vec![ConnectionAction::Api(
+                    ApiAction::NotifyConnectionEstablished,
+                )],
+            ),
+            _ => (Some(Connection::CookieEchoed(self)), vec![], vec![]),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct Established {
+    tcb: Tcb,
+}
+
+impl ConnectionState for Established {
+    fn expected_token(&self) -> Option<u32> { Some(self.tcb.our_token) }
+
+    fn transition(
+        self,
+        event: ConnectionEvent,
+    ) -> (
+        Option<Connection>,
+        Vec<ConnectionEvent>,
+        Vec<ConnectionAction>,
+    ) {
+        match event {
+            ConnectionEvent::Api(ApiEvent::Disc) => (
+                Some(Connection::ShutdownSent(ShutdownSent {
+                    our_token:   self.tcb.our_token,
+                    their_token: self.tcb.their_token,
+                })),
+                vec![],
+                vec![ConnectionAction::Chunk {
+                    token: self.tcb.their_token,
+                    chunk: Chunk::Shutdown,
+                }],
+            ),
+            ConnectionEvent::Chunk(Chunk::Shutdown) => (
+                Some(Connection::ShutdownAckSent(ShutdownAckSent {
+                    our_token:   self.tcb.our_token,
+                    their_token: self.tcb.their_token,
+                })),
+                vec![],
+                vec![ConnectionAction::Chunk {
+                    token: self.tcb.their_token,
+                    chunk: Chunk::ShutdownAck,
+                }],
+            ),
+            ConnectionEvent::Chunk(Chunk::Data(payload)) => (
+                Some(Connection::Established(self)),
+                vec![],
+                vec![ConnectionAction::Upstream(payload)],
+            ),
+            _ => (Some(Connection::Established(self)), vec![], vec![]),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct ShutdownSent {
+    our_token:   u32,
+    their_token: u32,
+}
+
+impl ConnectionState for ShutdownSent {
+    fn expected_token(&self) -> Option<u32> { Some(self.our_token) }
+
+    fn transition(
+        self,
+        event: ConnectionEvent,
+    ) -> (
+        Option<Connection>,
+        Vec<ConnectionEvent>,
+        Vec<ConnectionAction>,
+    ) {
+        match event {
+            ConnectionEvent::Chunk(Chunk::Shutdown) => (
+                Some(Connection::ShutdownAckSent(ShutdownAckSent {
+                    our_token:   self.our_token,
+                    their_token: self.their_token,
+                })),
+                vec![],
+                vec![ConnectionAction::Chunk {
+                    token: self.their_token,
+                    chunk: Chunk::ShutdownAck,
+                }],
+            ),
+            ConnectionEvent::Chunk(Chunk::ShutdownAck) => (
+                None,
+                vec![],
+                vec![
+                    ConnectionAction::Api(ApiAction::NotifyDisconnect),
+                    ConnectionAction::Chunk {
+                        token: self.their_token,
+                        chunk: Chunk::ShutdownComplete,
+                    },
+                ],
+            ),
+            _ => (Some(Connection::ShutdownSent(self)), vec![], vec![]),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct ShutdownAckSent {
+    our_token:   u32,
+    their_token: u32,
+}
+
+impl ConnectionState for ShutdownAckSent {
+    fn expected_token(&self) -> Option<u32> { Some(self.our_token) }
+
+    fn transition(
+        self,
+        event: ConnectionEvent,
+    ) -> (
+        Option<Connection>,
+        Vec<ConnectionEvent>,
+        Vec<ConnectionAction>,
+    ) {
+        match event {
+            ConnectionEvent::Chunk(Chunk::ShutdownComplete) => (
+                None,
+                vec![],
+                vec![ConnectionAction::Api(ApiAction::NotifyDisconnect)],
+            ),
+            ConnectionEvent::Chunk(Chunk::ShutdownAck) => (
+                None,
+                vec![],
+                vec![
+                    ConnectionAction::Api(ApiAction::NotifyDisconnect),
+                    ConnectionAction::Chunk {
+                        token: self.their_token,
+                        chunk: Chunk::ShutdownComplete,
+                    },
+                ],
+            ),
+            _ => (Some(Connection::ShutdownAckSent(self)), vec![], vec![]),
+        }
+    }
 }
 
 /// Connection is a relationship between two miknet nodes. Handshake and teardown based roughly on
 /// SCTP.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Connection {
-    Listen {
-        key: Key,
-    },
-    InitSent {
-        token: u32,
-        tsn:   u32,
-        queue: Vec<ApiEvent>,
-    },
-    InitAckSent {
-        their_token: u32,
-    },
-    CookieEchoed {
-        tcb:   Tcb,
-        queue: Vec<ApiEvent>,
-    },
-    Established {
-        tcb: Tcb,
-    },
-    ShutdownSent {
-        token:       u32,
-        their_token: u32,
-    },
-    ShutdownAckSent {
-        token:       u32,
-        their_token: u32,
-    },
-    Shutdown {
-        their_token: u32,
-    },
-    Failed,
+    Listen(Listen),
+    InitSent(InitSent),
+    CookieEchoed(CookieEchoed),
+    Established(Established),
+    ShutdownSent(ShutdownSent),
+    ShutdownAckSent(ShutdownAckSent),
+}
+
+impl Transducer for Connection {
+    type Action = ConnectionAction;
+    type Event = ConnectionEvent;
+
+    fn transition(
+        self,
+        event: ConnectionEvent,
+    ) -> (Option<Self>, Vec<ConnectionEvent>, Vec<ConnectionAction>) {
+        match event {
+            ConnectionEvent::Gram(gram) => {
+                let expected_token = match self {
+                    Connection::Listen(ref listen) => listen.expected_token(),
+                    Connection::InitSent(ref init_sent) => init_sent.expected_token(),
+                    Connection::CookieEchoed(ref cookie_echoed) => cookie_echoed.expected_token(),
+                    Connection::Established(ref established) => established.expected_token(),
+                    Connection::ShutdownSent(ref shutdown_sent) => shutdown_sent.expected_token(),
+                    Connection::ShutdownAckSent(ref shutdown_ack_sent) => {
+                        shutdown_ack_sent.expected_token()
+                    }
+                };
+                (
+                    Some(self),
+                    Connection::events_from_gram(expected_token, gram),
+                    vec![],
+                )
+            }
+            event => match self {
+                Connection::Listen(listen) => listen.transition(event),
+                Connection::InitSent(init_sent) => init_sent.transition(event),
+                Connection::CookieEchoed(cookie_echoed) => cookie_echoed.transition(event),
+                Connection::Established(established) => established.transition(event),
+                Connection::ShutdownSent(shutdown_sent) => shutdown_sent.transition(event),
+                Connection::ShutdownAckSent(shutdown_ack_sent) => {
+                    shutdown_ack_sent.transition(event)
+                }
+            },
+        }
+    }
 }
 
 impl Connection {
     /// Returns a connection using the given key to sign and verify state cookies.
-    pub fn new(key: Key) -> Self { Connection::Listen { key } }
+    pub fn new(key: Key) -> Self { Connection::Listen(Listen { key }) }
 
-    /// Processes an event and returns the next state of the connection and any commands that
-    /// should be executed as part of the transition.
-    pub fn step(self, event: WireEvent) -> (Self, Vec<WireCmd>) {
-        let (next, cmds) = self.handle_event(event);
-        let (chunks, mut cmds): (Vec<Chunk>, Vec<WireCmd>) =
-            cmds.into_iter().partition_map(|cmd| match cmd {
-                WireCmd::Chunk(chunk) => Either::Left(chunk),
-                cmd => Either::Right(cmd),
-            });
-        if !chunks.is_empty() {
-            cmds.extend(next.build_grams(chunks));
-        }
-        (next, cmds)
-    }
-
-    /// Returns whether this connection should be persisted between events. For example, we do not
-    /// keep an InitAckSent state between events to prevent DOS attacks.
-    pub fn should_persist(&self) -> bool {
-        match *self {
-            Connection::Listen { .. } => false,
-            Connection::InitAckSent { .. } => false,
-            Connection::Failed => false,
-            _ => true,
-        }
-    }
-
-    /// Prepares chunks as net commands to write out grams.
-    fn build_grams(&self, chunks: Vec<Chunk>) -> Vec<WireCmd> {
-        let token = self.token();
-        let grams = match *self {
-            _ => vec![Gram { token, chunks }],
-        };
-        grams.into_iter().map(|gram| WireCmd::Net(gram)).collect()
-    }
-
-    /// Returns the token this connection should embed in all its grams for association.
-    fn token(&self) -> u32 {
-        match *self {
-            Connection::InitAckSent { their_token } => their_token,
-            Connection::InitSent { token, .. } => token,
-            Connection::CookieEchoed { ref tcb, .. } => tcb.their_token,
-            Connection::Established { ref tcb, .. } => tcb.their_token,
-            Connection::ShutdownSent { their_token, .. } => their_token,
-            Connection::ShutdownAckSent { their_token, .. } => their_token,
-            Connection::Shutdown { their_token } => their_token,
-            _ => 0,
-        }
-    }
-
-    /// Returns the token we expect in valid grams from our peer.
-    fn expected_token(&self) -> Option<u32> {
-        match *self {
-            Connection::InitSent { token, .. } => Some(token),
-            Connection::CookieEchoed { ref tcb, .. } => Some(tcb.our_token),
-            Connection::Established { ref tcb, .. } => Some(tcb.our_token),
-            Connection::ShutdownSent { token, .. } => Some(token),
-            Connection::ShutdownAckSent { token, .. } => Some(token),
-            _ => None,
-        }
-    }
-
-    fn handle_events(self, events: Vec<WireEvent>) -> (Self, Vec<WireCmd>) {
-        events.into_iter().fold(
-            (self, Vec::new()),
-            |(conn, mut cmds), event| {
-                let (next_conn, more_cmds) = conn.handle_event(event);
-                cmds.extend(more_cmds);
-                (next_conn, cmds)
-            },
-        )
-    }
-
-    fn handle_event(self, event: WireEvent) -> (Self, Vec<WireCmd>) {
-        match (self, event) {
-            (conn, WireEvent::Gram(gram)) => match conn.expected_token() {
-                Some(expected_token) if gram.token != expected_token => {
-                    conn.handle_event(WireEvent::InvalidGram)
-                }
-                _ => conn.handle_events(
-                    gram.chunks.into_iter().map(Chunk::into).collect(),
-                ),
-            },
-            (
-                Connection::Listen { key, .. },
-                WireEvent::Chunk(Chunk::Init {
-                    token: their_token,
-                    tsn: their_tsn,
-                }),
-            ) => {
-                let (our_tsn, our_token) = (random(), random());
-                (
-                    Connection::InitAckSent { their_token },
-                    vec![WireCmd::Chunk(Chunk::InitAck {
-                        tsn:          our_tsn,
-                        token:        our_token,
-                        state_cookie: StateCookie::new(
-                            Tcb {
-                                our_tsn,
-                                our_token,
-                                their_token,
-                                their_tsn,
-                            },
-                            &key,
-                        ),
-                    })],
-                )
-            }
-            (Connection::Listen { .. }, WireEvent::Api(ApiEvent::Conn)) => {
-                let (token, tsn) = (random(), random());
-                (
-                    Connection::InitSent {
-                        token,
-                        tsn,
-                        queue: Vec::new(),
-                    },
-                    vec![
-                        WireCmd::Chunk(Chunk::Init { token, tsn }),
-                        WireCmd::Timer(Timer::InitTimer),
-                    ],
-                )
-            }
-            (
-                Connection::Listen { key },
-                WireEvent::Chunk(Chunk::CookieEcho(state_cookie)),
-            )
-                if state_cookie.signed_by(&key) =>
-            {
-                (
-                    Connection::Established {
-                        tcb: state_cookie.tcb.clone(),
-                    },
-                    vec![
-                        WireCmd::Chunk(Chunk::CookieAck),
-                        WireCmd::Api(ApiCmd::NotifyConnectionEstablished),
-                    ],
-                )
-            }
-            (
-                Connection::InitSent { .. },
-                WireEvent::Timer(Timer::InitTimer),
-            ) => (
-                Connection::Failed,
-                vec![WireCmd::Api(ApiCmd::NotifyConnectionAttemptTimedOut)],
-            ),
-            (
-                Connection::InitSent {
-                    token: our_token,
-                    tsn: our_tsn,
-                    queue,
-                },
-                WireEvent::Chunk(Chunk::InitAck {
-                    token: their_token,
-                    tsn: their_tsn,
-                    state_cookie,
-                }),
-            ) => (
-                Connection::CookieEchoed {
-                    tcb: Tcb {
-                        our_tsn,
-                        our_token,
-                        their_tsn,
-                        their_token,
-                    },
-                    queue,
-                },
-                vec![
-                    WireCmd::Chunk(Chunk::CookieEcho(state_cookie)),
-                    WireCmd::Timer(Timer::CookieSentTimer),
-                ],
-            ),
-            (
-                Connection::InitSent {
-                    token,
-                    tsn,
-                    mut queue,
-                },
-                WireEvent::Api(ae),
-            ) => (
-                Connection::InitSent {
-                    token,
-                    tsn,
-                    queue: {
-                        queue.push(ae);
-                        queue
-                    },
-                },
-                Vec::new(),
-            ),
-            (Connection::CookieEchoed { tcb, queue }, WireEvent::Api(ae)) => (
-                Connection::CookieEchoed {
-                    tcb,
-                    queue: queue
-                        .into_iter()
-                        .chain(vec![ae].into_iter())
-                        .collect(),
-                },
-                Vec::new(),
-            ),
-            (
-                Connection::CookieEchoed { tcb, queue },
-                WireEvent::Chunk(Chunk::CookieAck),
-            ) => {
-                let (conn, mut cmds) = queue.into_iter().fold(
-                    (Connection::Established { tcb }, Vec::new()),
-                    |(conn, mut cmds), ae| {
-                        let (next_conn, more_cmds) =
-                            conn.handle_event(WireEvent::Api(ae));
-                        cmds.extend(more_cmds);
-                        (next_conn, cmds)
-                    },
-                );
-                cmds.push(WireCmd::Api(ApiCmd::NotifyConnectionEstablished));
-                (conn, cmds)
-            }
-            (
-                Connection::Established { tcb, .. },
-                WireEvent::Api(ApiEvent::Disc),
-            ) => (
-                Connection::ShutdownSent {
-                    token:       tcb.our_token,
-                    their_token: tcb.their_token,
-                },
-                vec![WireCmd::Chunk(Chunk::Shutdown)],
-            ),
-            (
-                Connection::Established { tcb, .. },
-                WireEvent::Chunk(Chunk::Shutdown),
-            ) => (
-                Connection::ShutdownAckSent {
-                    token:       tcb.our_token,
-                    their_token: tcb.their_token,
-                },
-                vec![WireCmd::Chunk(Chunk::ShutdownAck)],
-            ),
-            (
-                Connection::Established { tcb },
-                WireEvent::Chunk(Chunk::Data(payload)),
-            ) => (
-                Connection::Established { tcb },
-                vec![WireCmd::Upstream(payload)],
-            ),
-            (
-                Connection::ShutdownSent { token, their_token },
-                WireEvent::Chunk(Chunk::Shutdown),
-            ) => (
-                Connection::ShutdownAckSent { token, their_token },
-                vec![WireCmd::Chunk(Chunk::ShutdownAck)],
-            ),
-            (
-                Connection::ShutdownSent { their_token, .. },
-                WireEvent::Chunk(Chunk::ShutdownAck),
-            ) => (
-                Connection::Shutdown { their_token },
-                vec![
-                    WireCmd::Api(ApiCmd::NotifyDisconnect),
-                    WireCmd::Chunk(Chunk::ShutdownComplete),
-                ],
-            ),
-            (
-                Connection::ShutdownAckSent { their_token, .. },
-                WireEvent::Chunk(Chunk::ShutdownComplete),
-            ) => (
-                Connection::Shutdown { their_token },
-                vec![WireCmd::Api(ApiCmd::NotifyDisconnect)],
-            ),
-            (
-                Connection::ShutdownAckSent { their_token, .. },
-                WireEvent::Chunk(Chunk::ShutdownAck),
-            ) => (
-                Connection::Shutdown { their_token },
-                vec![
-                    WireCmd::Api(ApiCmd::NotifyDisconnect),
-                    WireCmd::Chunk(Chunk::ShutdownComplete),
-                ],
-            ),
-            (conn, _) => (conn, Vec::new()),
+    fn events_from_gram(expected_token: Option<u32>, gram: Gram) -> Vec<ConnectionEvent> {
+        if !gram.chunks.is_empty() && expected_token.map(|t| t == gram.token).unwrap_or(true) {
+            gram.chunks
+                .into_iter()
+                .map(|chunk| ConnectionEvent::Chunk(chunk))
+                .collect()
+        } else {
+            vec![ConnectionEvent::InvalidGram]
         }
     }
 }

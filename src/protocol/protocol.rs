@@ -1,9 +1,9 @@
-use crate::protocol::connection::WireCmd;
+use crate::protocol::connection::ConnectionAction;
 
 pub struct Protocol;
 
 impl Protocol {
-    pub fn step(self) -> (Self, Vec<WireCmd>) { (self, vec![]) }
+    pub fn step(self) -> (Self, Vec<ConnectionAction>) { (self, vec![]) }
 }
 
 pub struct ProtocolBuilder {}
