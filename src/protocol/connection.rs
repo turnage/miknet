@@ -1,6 +1,7 @@
 //! Connection manages the line beneath the miknet upstream.
 
 use bincode::serialize;
+use crate::api::ApiCall;
 use itertools::{Either, Itertools};
 use std::{fmt::Debug, net::SocketAddr, rc::Rc, time::Duration};
 
@@ -29,17 +30,9 @@ impl Timer {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum ApiEvent {
-    Tx(Vec<u8>),
-    Disc,
-    Conn,
-    Shutdown,
-}
-
 #[derive(Debug, PartialEq)]
 pub enum ConnectionEvent {
-    Api(ApiEvent),
+    Api(ApiCall),
     Gram(Gram),
     Chunk(Chunk),
     Timer(Timer),
@@ -120,7 +113,7 @@ impl ConnectionState for Listen {
                     }],
                 )
             }
-            ConnectionEvent::Api(ApiEvent::Conn) => {
+            ConnectionEvent::Api(ApiCall::Conn) => {
                 let (our_token, tsn) = (random(), random());
                 (
                     Some(Connection::InitSent(InitSent {
@@ -167,7 +160,7 @@ impl ConnectionState for Listen {
 struct InitSent {
     our_token: u32,
     tsn:       u32,
-    queue:     Vec<ApiEvent>,
+    queue:     Vec<ApiCall>,
 }
 
 impl ConnectionState for InitSent {
@@ -212,10 +205,10 @@ impl ConnectionState for InitSent {
                     ConnectionAction::Timer(Timer::CookieSentTimer),
                 ],
             ),
-            ConnectionEvent::Api(api_event) => (
+            ConnectionEvent::Api(api_call) => (
                 Some(Connection::InitSent(InitSent {
                     queue: {
-                        self.queue.push(api_event);
+                        self.queue.push(api_call);
                         self.queue
                     },
                     ..self
@@ -231,7 +224,7 @@ impl ConnectionState for InitSent {
 #[derive(Clone, Debug, PartialEq)]
 struct CookieEchoed {
     tcb:   Tcb,
-    queue: Vec<ApiEvent>,
+    queue: Vec<ApiCall>,
 }
 
 impl ConnectionState for CookieEchoed {
@@ -246,10 +239,10 @@ impl ConnectionState for CookieEchoed {
         Vec<ConnectionAction>,
     ) {
         match event {
-            ConnectionEvent::Api(api_event) => (
+            ConnectionEvent::Api(api_call) => (
                 Some(Connection::CookieEchoed(CookieEchoed {
                     queue: {
-                        self.queue.push(api_event);
+                        self.queue.push(api_call);
                         self.queue
                     },
                     ..self
@@ -261,7 +254,7 @@ impl ConnectionState for CookieEchoed {
                 Some(Connection::Established(Established { tcb: self.tcb })),
                 self.queue
                     .into_iter()
-                    .map(|api_event| ConnectionEvent::Api(api_event))
+                    .map(|api_call| ConnectionEvent::Api(api_call))
                     .collect(),
                 vec![ConnectionAction::Api(
                     ApiAction::NotifyConnectionEstablished,
@@ -289,7 +282,7 @@ impl ConnectionState for Established {
         Vec<ConnectionAction>,
     ) {
         match event {
-            ConnectionEvent::Api(ApiEvent::Disc) => (
+            ConnectionEvent::Api(ApiCall::Disc) => (
                 Some(Connection::ShutdownSent(ShutdownSent {
                     our_token:   self.tcb.our_token,
                     their_token: self.tcb.their_token,

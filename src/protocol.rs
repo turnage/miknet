@@ -1,7 +1,6 @@
 mod connection;
-mod executor;
-mod host;
-mod protocol;
+pub mod peer;
+pub mod protocol;
 mod sequence;
 mod transducer;
 mod validation;
