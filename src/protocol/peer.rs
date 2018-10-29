@@ -6,7 +6,7 @@ use crate::{
     api::ApiCall,
     protocol::{
         connection::{Connection, ConnectionAction, ConnectionEvent},
-        protocol::{Protocol, ProtocolBuilder},
+        protocol::Protocol,
         transducer::Transducer,
         validation::Key,
     },

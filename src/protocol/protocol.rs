@@ -6,10 +6,9 @@ impl Protocol {
     pub fn step(self) -> (Self, Vec<ConnectionAction>) { (self, vec![]) }
 }
 
-pub struct ProtocolBuilder {}
-
-impl ProtocolBuilder {
-    pub fn new() -> Self { Self {} }
-
-    pub fn build(&self) -> Protocol { Protocol {} }
+impl From<ProtocolConfig> for Protocol {
+    fn from(config: ProtocolConfig) -> Self { Self {} }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ProtocolConfig;

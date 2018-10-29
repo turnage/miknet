@@ -1,7 +1,14 @@
 //! wire defines on-the-wire representations of data used in miknet protocol.
 
 use crate::protocol::validation::StateCookie;
+use serde::{Deserialize, Serialize};
 use serde_derive::{Deserialize, Serialize};
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Channel(u8);
+
+/// A type implementing the Message trait may be transmitted over the wire.
+pub trait Message: 'static + Deserialize<'static> + Serialize {}
 
 /// Chunks are control and data messages that can be packed in a gram.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

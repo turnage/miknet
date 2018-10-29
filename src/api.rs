@@ -1,10 +1,11 @@
 //! User api.
 
+use crate::protocol::wire::Channel;
 use std::net::SocketAddr;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ApiCall {
-    Tx(Vec<u8>),
+    Tx { payload: Vec<u8>, channel: Channel },
     Disc,
     Conn,
     Shutdown,
