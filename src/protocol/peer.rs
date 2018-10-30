@@ -1,3 +1,4 @@
+use crate::error::Result;
 use failure::Error;
 use itertools::{Either, Itertools};
 use std::{collections::hash_map::HashMap, net::SocketAddr};
@@ -20,7 +21,7 @@ pub struct Peer {
 }
 
 impl Peer {
-    pub fn new(protocol: Protocol) -> Result<Self, Error> {
+    pub fn new(protocol: Protocol) -> Result<Self> {
         Ok(Self {
             key: Key::new()?,
             connection: None,

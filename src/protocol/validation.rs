@@ -1,12 +1,28 @@
 //! handshake math.
 
 use bincode::serialize;
-use crypto::hmac::Hmac;
-use crypto::mac::{Mac, MacResult};
-use crypto::sha3::Sha3;
-use failure::Error;
+use crate::error::Error;
+use crypto::{
+    hmac::Hmac,
+    mac::{Mac, MacResult},
+    sha3::Sha3,
+};
+use failure_derive::Fail;
 use rand::{OsRng, RngCore};
 use serde_derive::{Deserialize, Serialize};
+use std::io;
+
+#[derive(Fail, Debug)]
+pub enum ValidationError {
+    #[fail(
+        display = "Failed to create rng to generate a key for future validations: {:?}",
+        rng_creation_error
+    )]
+    RngCreation {
+        #[cause]
+        rng_creation_error: rand::Error,
+    },
+}
 
 /// Key is a crytographic key used to authenticate state cookies.
 #[derive(Clone, Debug, PartialEq)]
@@ -18,8 +34,9 @@ impl Key {
     const BYTES: usize = 32;
 
     /// Returns a new key using random bytes from the OS Rng.
-    pub fn new() -> Result<Self, Error> {
-        let mut rng = OsRng::new()?;
+    pub fn new() -> Result<Self, ValidationError> {
+        let mut rng = OsRng::new()
+            .map_err(|rng_creation_error| ValidationError::RngCreation { rng_creation_error })?;
         let mut bytes = [0; Key::BYTES];
         rng.fill_bytes(&mut bytes);
         Ok(Key { bytes })
