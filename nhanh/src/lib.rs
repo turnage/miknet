@@ -2,6 +2,15 @@
 //!
 //! ## Concepts
 //!
+//! These api is composed of the following concepts. Implementation details
+//! will vary across implementers.
+//!
+//! ### Connection
+//!
+//! A connection is some maintained communication between two UDP sockets.
+//! Implementers may build this on UDP in different ways, but all are expected
+//! to ensure that the peer is present for the lifetime of the connection.
+//!
 //! ### Endpoint
 //!
 //! An endpoint is a client of some implementation of this api. A connection
@@ -44,6 +53,8 @@
 //! older datagram before surfacing new ones should have no effect on other
 //! ordered streams.
 
+use futures::stream::TryStream;
+
 /// An identifier for a stream.
 ///
 /// Stream identifiers are unique on a connection.
@@ -58,65 +69,74 @@ pub struct StreamId(u8);
 /// A position of a datagram in a stream.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct StreamPosition {
-  /// An identifier for the stream in which the datagram arrived.
-  pub stream_id: StreamId,
-  pub index: StreamIndex,
+    /// An identifier for the stream in which the datagram arrived.
+    pub stream_id: StreamId,
+    pub index: StreamIndex,
 }
 
 /// A position in a datagram stream.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum StreamIndex {
-  /// The ordinal number of a datagram which arrived in a strictly
-  /// ordered stream. Ordinal indices are gauranteed to count up
-  /// by steps of `1`.
-  Ordinal(u32),
-  /// The sequence number of a datagram which arrived in a
-  /// sequenced stream. Sequential indices are gauranteed to be
-  /// larger than preceding indices.
-  Sequence(u32)
+    /// The ordinal number of a datagram which arrived in a strictly
+    /// ordered stream. Ordinal indices are gauranteed to count up
+    /// by steps of `1`.
+    Ordinal(u32),
+    /// The sequence number of a datagram which arrived in a
+    /// sequenced stream. Sequential indices are gauranteed to be
+    /// larger than preceding indices.
+    Sequence(u32),
 }
 
 /// The stream on which to deliver a datagram.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum DeliveryMode {
-  /// Delivers a datagram on the ordered stream identified by `StreamId`.
-  ///
-  /// Datagrams delivered in this mode are gauranteed to surface at the
-  /// receiving endpoint exactly once, in order.
-  ReliableOrdered(StreamId),
-  /// Delivers a datagram on the sequenced stream identified by `StreamId`.
-  ///
-  /// Datagrams delivered in this mode are gauranteed to surface at the
-  /// receiving endpoint at most once, and not after any newer datagrams.
-  ///
-  /// Datagrams are guaranteed to arrive, but are not gauranteed to surface.
-  ReliableSequenced(StreamId),
-  /// Delivers a datagram on the connection's unordered stream.
-  ///
-  /// Datagrams delivered in this mode are gauranteed to surface at the
-  /// receiving endpoint exactly once.
-  ReliableUnordered,
-  /// Delivers a datagram on the sequenced stream identified by `StreamId`.
-  ///
-  /// Datagrams delivered in this mode are gauranteed to surface at the
-  /// receiving endpoint at most once, and not after any newer datagrams.
-  UnreliableSequenced(StreamId),
-  /// Delivers a datagram on the connection's unordered stream.
-  ///
-  /// Datagrams delivered in this mode are gauranteed to surface at the
-  /// receiving endpoint at most once.
-  UnreliableUnordered
+    /// Delivers a datagram on the ordered stream identified by `StreamId`.
+    ///
+    /// Datagrams delivered in this mode are gauranteed to surface at the
+    /// receiving endpoint exactly once, in order.
+    ReliableOrdered(StreamId),
+    /// Delivers a datagram on the sequenced stream identified by `StreamId`.
+    ///
+    /// Datagrams delivered in this mode are gauranteed to surface at the
+    /// receiving endpoint at most once, and not after any newer datagrams.
+    ///
+    /// Datagrams are guaranteed to arrive, but are not gauranteed to surface.
+    ReliableSequenced(StreamId),
+    /// Delivers a datagram on the connection's unordered stream.
+    ///
+    /// Datagrams delivered in this mode are gauranteed to surface at the
+    /// receiving endpoint exactly once.
+    ReliableUnordered,
+    /// Delivers a datagram on the sequenced stream identified by `StreamId`.
+    ///
+    /// Datagrams delivered in this mode are gauranteed to surface at the
+    /// receiving endpoint at most once, and not after any newer datagrams.
+    UnreliableSequenced(StreamId),
+    /// Delivers a datagram on the connection's unordered stream.
+    ///
+    /// Datagrams delivered in this mode are gauranteed to surface at the
+    /// receiving endpoint at most once.
+    UnreliableUnordered,
 }
 
 /// A block of bytes received from the connected endpoint.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Datagram {
-  /// The position of the datagram in the stream in which it was delivered. This
-  /// is present if the datagram was sent in a sequenced or ordered stream. If
-  /// the datagram was sent on the unordered stream, this will be `None`.
-  pub stream_position: Option<StreamPosition>,
-  /// The bytes the other endpoint sent.
-  pub data: Vec<u8>,
+    /// The position of the datagram in the stream in which it was delivered. This
+    /// is present if the datagram was sent in a sequenced or ordered stream. If
+    /// the datagram was sent on the unordered stream, this will be `None`.
+    pub stream_position: Option<StreamPosition>,
+    /// The bytes the other endpoint sent.
+    pub data: Vec<u8>,
+}
+
+/// An api for a bound port, waiting to receive connections.
+///
+/// The bound port is a stream of new connections. The stream will emit an
+/// error and immediately end if there is an error operating the socket.
+pub trait Server<Connection: crate::Connection>:
+    TryStream<Ok = Connection, Error = Box<dyn std::error::Error>>
+{
 }
 
 /// An api for communicating with the remote endpoint on a connection.
@@ -130,9 +150,11 @@ pub struct Datagram {
 /// If the connection closes, the stream of datagrams will end. An error will
 /// be emitted from the stream before close if the disconnection was not
 /// correct according to the implementer's protocol.
-pub trait Connection: futures::stream::TryStream<Ok=Datagram, Error=anyhow::Error> {
-  /// Sends a datagram to the remote endpoint.
-  ///
-  /// The actual send is performed asynchronously.
-  fn send(&mut self, data: &dyn std::io::Read, delivery_mode: DeliveryMode);
+pub trait Connection:
+    TryStream<Ok = Datagram, Error = Box<dyn std::error::Error>>
+{
+    /// Sends a datagram to the remote endpoint.
+    ///
+    /// The actual send is performed asynchronously.
+    fn send(&mut self, data: &dyn std::io::Read, delivery_mode: DeliveryMode);
 }
