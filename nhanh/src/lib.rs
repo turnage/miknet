@@ -53,7 +53,10 @@
 //! older datagram before surfacing new ones should have no effect on other
 //! ordered streams.
 
-use futures::stream::TryStream;
+use futures::stream::{FusedStream, Stream};
+use serde::{Serialize, Deserialize};
+
+pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 /// An identifier for a stream.
 ///
@@ -63,11 +66,11 @@ use futures::stream::TryStream;
 /// can be sent on an ordered stream identified by `StreamId(9)` and other
 /// datagrams can be sent on a sequenced stream identified by `StreamId(9)`
 /// without conflict.
-#[derive(Copy, Clone, Debug, Eq, PartialOrd, Ord, PartialEq, Hash)]
-pub struct StreamId(u8);
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialOrd, Ord, PartialEq, Hash)]
+pub struct StreamId(pub u8);
 
 /// A position of a datagram in a stream.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct StreamPosition {
     /// An identifier for the stream in which the datagram arrived.
     pub stream_id: StreamId,
@@ -75,7 +78,7 @@ pub struct StreamPosition {
 }
 
 /// A position in a datagram stream.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub enum StreamIndex {
     /// The ordinal number of a datagram which arrived in a strictly
     /// ordered stream. Ordinal indices are gauranteed to count up
@@ -88,7 +91,7 @@ pub enum StreamIndex {
 }
 
 /// The stream on which to deliver a datagram.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub enum DeliveryMode {
     /// Delivers a datagram on the ordered stream identified by `StreamId`.
     ///
@@ -135,7 +138,7 @@ pub struct Datagram {
 /// The bound port is a stream of new connections. The stream will emit an
 /// error and immediately end if there is an error operating the socket.
 pub trait Server<Connection: crate::Connection>:
-    TryStream<Ok = Connection, Error = Box<dyn std::error::Error>>
+    Stream<Item=Result<Connection>> + FusedStream
 {
 }
 
@@ -150,9 +153,7 @@ pub trait Server<Connection: crate::Connection>:
 /// If the connection closes, the stream of datagrams will end. An error will
 /// be emitted from the stream before close if the disconnection was not
 /// correct according to the implementer's protocol.
-pub trait Connection:
-    TryStream<Ok = Datagram, Error = Box<dyn std::error::Error>>
-{
+pub trait Connection: Stream<Item=Result<Datagram>> + FusedStream {
     /// Sends a datagram to the remote endpoint.
     ///
     /// The actual send is performed asynchronously.
