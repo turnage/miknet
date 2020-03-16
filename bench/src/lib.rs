@@ -1,6 +1,11 @@
+#[macro_use]
+extern crate rental;
+
 use nhanh::*;
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
+
+mod tcp;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BenchmarkDatagram {

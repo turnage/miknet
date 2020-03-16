@@ -1,9 +1,9 @@
 use anyhow::anyhow;
+use async_std::prelude::*;
 use bench::*;
 use bincode::deserialize;
 use futures::prelude::*;
 use nhanh::*;
-use async_std::prelude::*;
 
 async fn run<C>(mut server: impl Server<C> + Unpin) -> Result<()>
 where
@@ -24,5 +24,6 @@ where
 
     Ok(())
 }
+
 #[async_std::main]
 async fn main() {}

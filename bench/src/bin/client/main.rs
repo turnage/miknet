@@ -1,6 +1,7 @@
 #![recursion_limit = "256"]
 
 use anyhow::{anyhow, bail};
+use async_std::prelude::*;
 use bench::*;
 use bincode::deserialize;
 use futures::{
@@ -12,10 +13,9 @@ use futures::{
 use futures_timer::Delay;
 use nhanh::*;
 use std::time::{Duration, Instant};
-use async_std::{prelude::*};
 
 pub struct Report {
-    trip_times: Vec<TripTimes>
+    trip_times: Vec<TripTimes>,
 }
 
 struct TripTimes {
@@ -66,9 +66,7 @@ async fn run(mut client: impl Connection + Unpin) -> Result<Report> {
         }
     }
 
-    Ok(Report {
-        trip_times
-    })
+    Ok(Report { trip_times })
 }
 
 #[async_std::main]
