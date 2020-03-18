@@ -54,7 +54,7 @@
 //! ordered streams.
 
 use futures::stream::{FusedStream, Stream};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -66,7 +66,18 @@ pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 /// can be sent on an ordered stream identified by `StreamId(9)` and other
 /// datagrams can be sent on a sequenced stream identified by `StreamId(9)`
 /// without conflict.
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialOrd, Ord, PartialEq, Hash)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+    Eq,
+    PartialOrd,
+    Ord,
+    PartialEq,
+    Hash,
+)]
 pub struct StreamId(pub u8);
 
 /// A position of a datagram in a stream.
@@ -123,7 +134,7 @@ pub enum DeliveryMode {
 }
 
 /// A block of bytes received from the connected endpoint.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Datagram {
     /// The position of the datagram in the stream in which it was delivered. This
     /// is present if the datagram was sent in a sequenced or ordered stream. If
@@ -138,7 +149,7 @@ pub struct Datagram {
 /// The bound port is a stream of new connections. The stream will emit an
 /// error and immediately end if there is an error operating the socket.
 pub trait Server<Connection: crate::Connection>:
-    Stream<Item=Result<Connection>> + FusedStream
+    Stream<Item = Result<Connection>> + FusedStream
 {
 }
 
@@ -153,7 +164,7 @@ pub trait Server<Connection: crate::Connection>:
 /// If the connection closes, the stream of datagrams will end. An error will
 /// be emitted from the stream before close if the disconnection was not
 /// correct according to the implementer's protocol.
-pub trait Connection: Stream<Item=Result<Datagram>> + FusedStream {
+pub trait Connection: Stream<Item = Result<Datagram>> + FusedStream {
     /// Sends a datagram to the remote endpoint.
     ///
     /// The actual send is performed asynchronously.

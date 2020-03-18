@@ -12,5 +12,8 @@ serde = { version = "1.0", features = ["derive"] }
 bincode = "1.2.1"
 futures-timer = "3.0.2"
 async-std = { version = "1.0", features = ["attributes"] }
-rental = "0.5.5"
+rental = "0.5"
 thiserror = "1.0.11"
+tokio-util = { version = "0.3.0", features = ["codec", "compat"] }
+bytes = "0.5.4"
+tokio-serde = { version = "0.6", features = ["bincode"] }

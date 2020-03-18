@@ -4,66 +4,39 @@ use crate::*;
 use async_std::{
     io::ReadExt,
     net::*,
-    task::{Context, Poll},
+    task::{Context, Poll}
 };
 use futures::{
-    future::{FutureExt, TryFutureExt},
-    stream::{FusedStream, StreamExt, TryStreamExt},
+    future::{FutureExt, TryFutureExt, LocalBoxFuture},
+    stream::{FusedStream, StreamExt, TryStreamExt, Fuse},
     Stream,
 };
 use nhanh::*;
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
 use thiserror::Error;
-
-rental! {
-    pub mod rentals {
-        use futures::{future::LocalBoxFuture, stream::{LocalBoxStream}};
-
-        #[rental_mut]
-        pub struct Incoming {
-            listener: Box<super::TcpListener>,
-            incoming: LocalBoxStream<'listener, super::Result<super::TcpConnection>>
-        }
-
-        #[rental]
-        pub struct StreamRead {
-            stream: Box<super::TcpStream>,
-            read: Option<LocalBoxFuture<'stream, super::Result<Vec<u8>>>>
-        }
-    }
-}
-
-#[derive(Debug, Error)]
-pub enum TcpError {
-    #[error("Rental construction: {:?}", .0)]
-    Rental(()),
-}
+use bincode::{deserialize, serialize};
+use tokio_util::{compat::*, codec::*};
+use tokio_serde::{SymmetricallyFramed, formats::*};
 
 struct TcpServer {
-    incoming: rentals::Incoming,
+    incoming: Fuse<Incoming<'static>>
 }
 
 impl TcpServer {
     pub async fn new(addrs: impl ToSocketAddrs) -> Result<TcpServer> {
+        let listener = TcpListener::bind(addrs).await?;
+        let listener = Box::leak(Box::new(listener));
+
         Ok(Self {
-            incoming: rentals::Incoming::new(
-                Box::new(TcpListener::bind(addrs).await?),
-                |listener| {
-                    listener
-                        .incoming()
-                        .err_into()
-                        .map_ok(TcpConnection::from)
-                        .boxed_local()
-                },
-            ),
+            incoming: listener.incoming().fuse()
         })
     }
 }
 
 impl FusedStream for TcpServer {
     fn is_terminated(&self) -> bool {
-        false
+        self.incoming.is_terminated()
     }
 }
 
@@ -75,51 +48,32 @@ impl Stream for TcpServer {
         mut self: Pin<&mut Self>,
         ctx: &mut Context,
     ) -> Poll<Option<Self::Item>> {
-        self.incoming
-            .rent_mut(|server| Pin::new(server).poll_next(ctx))
+        match Pin::new(&mut self.incoming).poll_next(ctx) {
+            Poll::Ready(Some(Ok(tcp_stream))) => {
+                Poll::Ready(None)
+            }
+            Poll::Ready(Some(Err(e))) => {
+                Poll::Ready(Some(Err(e.into())))
+            }
+            Poll::Ready(None) => Poll::Ready(None),
+            Poll::Pending => Poll::Pending
+        }
     }
-}
-
-#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
-pub struct Delimeter(u64);
-
-impl Delimeter {
-    fn coded_size() -> usize {
-        bincode::serialize(&Delimeter(0))
-            .expect("Serialize constant")
-            .len()
-    }
-}
-
-struct WriteJob {
-    payload: Vec<u8>,
-    position: usize,
 }
 
 pub struct TcpConnection {
-    stream_read: rentals::StreamRead,
-    // write_jobs: Vec<WriteJob>,
+    stream: SymmetricallyFramed<Framed<Compat<TcpStream>, LengthDelimitedCodec>, Datagram, SymmetricalBincode<Datagram>>,
 }
 
 impl From<TcpStream> for TcpConnection {
     fn from(stream: TcpStream) -> Self {
+        let framer = LengthDelimitedCodec::new();
+        let stream = Framed::new(stream.compat(), framer);
+        let codec = SymmetricalBincode::default();
+        let stream = SymmetricallyFramed::new(stream, codec);
+
         Self {
-            stream_read: rentals::StreamRead::new(
-                Box::new(stream),
-                |mut stream| {
-                    let mut buffer = vec![0; Delimeter::coded_size()];
-                    Some(
-                        async move {
-                            stream
-                                .read_exact(buffer.as_mut_slice())
-                                .err_into()
-                                .await
-                                .map(|_| buffer)
-                        }
-                        .boxed_local(),
-                    )
-                },
-            ),
+            stream
         }
     }
 }
