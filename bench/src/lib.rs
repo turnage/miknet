@@ -5,7 +5,7 @@ use nhanh::*;
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
 
-mod tcp;
+pub mod tcp;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BenchmarkDatagram {

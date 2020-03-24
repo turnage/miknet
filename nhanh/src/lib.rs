@@ -53,8 +53,13 @@
 //! older datagram before surfacing new ones should have no effect on other
 //! ordered streams.
 
-use futures::stream::{FusedStream, Stream};
+use futures::{
+    sink::Sink,
+    stream::{FusedStream, Stream},
+};
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use std::{io, marker::PhantomData};
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -144,6 +149,26 @@ pub struct Datagram {
     pub data: Vec<u8>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SendCmd {
+    pub data: Vec<u8>,
+    pub delivery_mode: DeliveryMode,
+    #[doc(hidden)]
+    pub ___non_exhaustive: PhantomData<()>,
+}
+
+const EMPTY: Lazy<io::Empty> = Lazy::new(|| io::empty());
+
+impl Default for SendCmd {
+    fn default() -> Self {
+        Self {
+            data: vec![],
+            delivery_mode: DeliveryMode::UnreliableUnordered,
+            ___non_exhaustive: PhantomData::default(),
+        }
+    }
+}
+
 /// An api for a bound port, waiting to receive connections.
 ///
 /// The bound port is a stream of new connections. The stream will emit an
@@ -155,18 +180,18 @@ pub trait Server<Connection: crate::Connection>:
 
 /// An api for communicating with the remote endpoint on a connection.
 ///
-/// `Connection` is a stream of the datagrams from the remote endpoint, and an
-/// api for sending datagrams.
+/// `Connection` is a stream of the datagrams from the remote endpoint, and a
+/// sink for sending datagrams.
 ///
-/// The stream *must be polled* for the connection to make progress and send
-/// datagrams.
+/// The stream must be polled to receive datagrams, and the sink sends must be
+/// completed to send datagrams.
 ///
 /// If the connection closes, the stream of datagrams will end. An error will
 /// be emitted from the stream before close if the disconnection was not
 /// correct according to the implementer's protocol.
-pub trait Connection: Stream<Item = Result<Datagram>> + FusedStream {
-    /// Sends a datagram to the remote endpoint.
-    ///
-    /// The actual send is performed asynchronously.
-    fn send(&mut self, data: &dyn std::io::Read, delivery_mode: DeliveryMode);
+pub trait Connection:
+    Stream<Item = Result<Datagram>>
+    + FusedStream
+    + Sink<SendCmd, Error = Box<dyn std::error::Error>>
+{
 }
