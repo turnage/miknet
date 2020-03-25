@@ -76,7 +76,7 @@ async fn run(mut client: impl Connection + Unpin) -> Result<Report> {
                 });
                 client_sink.send(SendCmd {
                     data: bincode::serialize(&benchmark_datagram)?,
-                    delivery_mode, ..SendCmd::default()});
+                    delivery_mode, ..SendCmd::default()}).await;
             }
         }
     }

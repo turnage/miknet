@@ -1,5 +1,6 @@
 //! TCP implementation of the nhanh API
 
+use anyhow::anyhow;
 use crate::*;
 use async_std::{
     io::ReadExt,
@@ -9,14 +10,14 @@ use async_std::{
 use bincode::{deserialize, serialize};
 use futures::channel::mpsc;
 use futures::{
-    future::{self, FutureExt, LocalBoxFuture, TryFutureExt},
+    future::{self, FutureExt, TryFutureExt},
     sink::SinkExt,
-    stream::{select, Fuse, FusedStream, StreamExt, TryStreamExt},
+    stream::{self, LocalBoxStream, Fuse, FusedStream, StreamExt, TryStreamExt},
     Sink, Stream,
 };
 use nhanh::*;
 use serde::{Deserialize, Serialize};
-use std::pin::Pin;
+use std::{marker::Unpin, pin::Pin};
 use thiserror::Error;
 use tokio_serde::{formats::*, SymmetricallyFramed};
 use tokio_util::{codec::*, compat::*};
@@ -27,8 +28,6 @@ type DatagramStream = SymmetricallyFramed<
     Datagram,
     SymmetricalBincode<Datagram>,
 >;
-
-type Task = LocalBoxFuture<'static, Result<()>>;
 
 pub struct TcpServer {
     incoming: Fuse<Incoming<'static>>,
@@ -69,9 +68,8 @@ impl Stream for TcpServer {
 }
 
 pub struct TcpConnection {
-    task: Task,
-    receiver: mpsc::Receiver<Result<Datagram>>,
-    sender: mpsc::Sender<SendCmd>,
+    receiver: LocalBoxStream<'static, Result<Datagram>>,
+    sender: Pin<Box<dyn Sink<SendCmd, Error=Box<dyn std::error::Error>> + Unpin>>,
 }
 
 impl TcpConnection {
@@ -80,59 +78,28 @@ impl TcpConnection {
         Ok(TcpConnection::from(tcp_stream))
     }
 
-    async fn new_task(
-        wire: DatagramStream,
-        mut user_sink: mpsc::Sender<Result<Datagram>>,
-        user_stream: mpsc::Receiver<SendCmd>,
-    ) -> Result<()> {
-        let box_error =
-            |e: std::io::Error| -> Box<dyn std::error::Error> { Box::new(e) };
-
-        let (mut wire_sink, wire_stream) =
-            wire.sink_map_err(&box_error).map_err(&box_error).split();
-
-        enum Input {
-            Wire(Result<Datagram>),
-            User(SendCmd),
-        }
-
-        let mut wire_stream = wire_stream.map(Input::Wire);
-        let mut user_stream = user_stream.map(Input::User);
-        let mut stream = select(wire_stream, user_stream);
+    fn send_gate() -> impl FnMut(SendCmd) -> stream::Iter<<Option<Result<Datagram>> as IntoIterator>::IntoIter> {
 
         let mut total_sent = 0;
-
-        while let Some(input) = stream.next().await {
-            match input {
-                Input::Wire(result) => {
-                    user_sink.send(Ok(result?)).await;
-                }
-                Input::User(SendCmd {
-                    data,
-                    delivery_mode,
-                    ..
-                }) => match delivery_mode {
-                    DeliveryMode::ReliableOrdered(stream_id) => {
-                        let datagram = Datagram {
-                            data,
-                            stream_position: Some(StreamPosition {
-                                stream_id,
-                                index: StreamIndex::Ordinal(total_sent),
-                            }),
-                        };
-
-                        wire_sink.send(datagram).await;
-                        total_sent += 1;
+        move |send_cmd: SendCmd| {
+            println!("Sending datagram of: {:?}", send_cmd);
+                stream::iter(
+                    match send_cmd.delivery_mode {
+                        DeliveryMode::ReliableOrdered(stream_id) => {
+                            total_sent += 1;
+                            Some(Ok(Datagram {
+                                data: send_cmd.data,
+                                stream_position: Some(StreamPosition {
+                                    stream_id, 
+                                    index: StreamIndex::Ordinal(total_sent),
+                                })
+                            }))
+                        }
+                        _ => None,
                     }
-                    unsupported => {
-                        eprintln!("Dropping payload with send mode {:?}; TCP benchmark impl does not support it.", unsupported);
-                    }
-                },
-            }
-        }
+                )
+    }}
 
-        Ok(())
-    }
 }
 
 impl From<TcpStream> for TcpConnection {
@@ -140,20 +107,22 @@ impl From<TcpStream> for TcpConnection {
         let framer = LengthDelimitedCodec::new();
         let stream = Framed::new(stream.compat(), framer);
         let codec = SymmetricalBincode::default();
+
         let wire = SymmetricallyFramed::new(stream, codec);
+        let wire = wire.sink_map_err(Into::into);
+        let wire = wire.map_err(Into::into);
+        let (wire_sink, wire_stream) = wire.split();
 
-        let (user_sink, receiver) = mpsc::channel(0);
-        let (sender, user_stream) = mpsc::channel(0);
-
-        let task = Self::new_task(wire, user_sink, user_stream).boxed_local();
+        let wire_sink = wire_sink.with_flat_map(Box::new(Self::send_gate()));
 
         Self {
-            task,
-            receiver,
-            sender,
+            receiver: wire_stream.boxed_local(),
+            sender: Pin::new(Box::new(wire_sink)),
         }
     }
 }
+
+
 
 impl Connection for TcpConnection {}
 
@@ -168,6 +137,7 @@ impl Sink<SendCmd> for TcpConnection {
             .map_err(Into::into)
     }
     fn start_send(mut self: Pin<&mut Self>, item: SendCmd) -> Result<()> {
+        println!("Sending imm");
         Pin::new(&mut self.sender)
             .start_send(item)
             .map_err(Into::into)
@@ -196,10 +166,6 @@ impl Stream for TcpConnection {
         mut self: Pin<&mut Self>,
         ctx: &mut Context,
     ) -> Poll<Option<Self::Item>> {
-        if let Poll::Ready(result) = self.task.as_mut().poll(ctx) {
-            return Poll::Ready(None);
-        }
-
         Pin::new(&mut self.receiver).poll_next(ctx)
     }
 }
