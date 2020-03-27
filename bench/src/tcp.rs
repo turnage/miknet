@@ -82,7 +82,6 @@ impl TcpConnection {
 
         let mut total_sent = 0;
         move |send_cmd: SendCmd| {
-            println!("Sending datagram of: {:?}", send_cmd);
                 stream::iter(
                     match send_cmd.delivery_mode {
                         DeliveryMode::ReliableOrdered(stream_id) => {
@@ -137,7 +136,6 @@ impl Sink<SendCmd> for TcpConnection {
             .map_err(Into::into)
     }
     fn start_send(mut self: Pin<&mut Self>, item: SendCmd) -> Result<()> {
-        println!("Sending imm");
         Pin::new(&mut self.sender)
             .start_send(item)
             .map_err(Into::into)

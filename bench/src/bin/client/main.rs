@@ -12,19 +12,19 @@ use futures::{
 };
 use futures_timer::Delay;
 use nhanh::*;
-use std::time::{Duration, Instant};
+use std::{
+    collections::HashMap,
+    time::{Duration, Instant}};
 use structopt::StructOpt;
+use serde::Serialize;
 
-pub struct Report {
-    trip_times: Vec<TripTimes>,
+#[derive(Serialize)]
+struct TripReport {
+    index: u64,
+    round_trip: u128,
 }
 
-struct TripTimes {
-    sent: Instant,
-    returned: Option<Instant>,
-}
-
-async fn run(mut client: impl Connection + Unpin) -> Result<Report> {
+async fn run(mut client: impl Connection + Unpin) -> Vec<TripReport> {
     let bench_seconds = 10;
 
     let tick_ps = 60;
@@ -33,8 +33,9 @@ async fn run(mut client: impl Connection + Unpin) -> Result<Report> {
 
     let payload_size = 200;
     let total_datagrams = tick_ps * bench_seconds;
-    let mut remaining = total_datagrams;
-    let mut trip_times: Vec<TripTimes> = vec![];
+    let mut remaining_to_send = total_datagrams;
+    let mut live = HashMap::new(); 
+    let mut trip_reports = vec![];
 
     enum Input {
         Tick,
@@ -46,42 +47,44 @@ async fn run(mut client: impl Connection + Unpin) -> Result<Report> {
     let ticks = ticker.map(|_| Input::Tick);
     let mut input_stream = select(returned_datagrams, ticks);
 
-    while let Some(input) = input_stream.next().await.filter(|_| remaining  > 0) {
-        println!("{:?} datagrams remain", remaining);
+    loop {
+        let input = input_stream.next().await.unwrap();
         match input {
             Input::Wire(returned_datagram) => {
-                let returned_datagram: Datagram = returned_datagram?;
-                let benchmark_datagram = bincode::deserialize::<BenchmarkDatagram>(returned_datagram.data.as_slice())?;
-                let mut report = trip_times.get_mut(benchmark_datagram.id as usize).ok_or(anyhow!("Server returned datagram with id {:?}, but we did not send a datagram with that id", benchmark_datagram.id))?;
-                if let Some(return_timestamp) = report.returned {
-                    Err(anyhow!("Server returned datagram {:?}, but it already returned a datagram with the same id at {:?}", benchmark_datagram.id, return_timestamp))?;
+                let returned_datagram: Datagram = returned_datagram.expect("datagram");
+                let benchmark_datagram = bincode::deserialize::<BenchmarkDatagram>(returned_datagram.data.as_slice()).expect("deserializing");
+
+                let return_time = Instant::now();
+                let send_time = live.remove(&benchmark_datagram.id).unwrap();
+                let round_trip = return_time.duration_since(send_time);
+                trip_reports.push(TripReport {
+                    index: benchmark_datagram.id,
+                    round_trip: round_trip.as_nanos(),
+                });
+
+                if remaining_to_send == 0 && live.is_empty() {
+                    return trip_reports;
                 }
-
-                remaining -= 1;
-
             }
             Input::Tick => {
-                println!("Tick; sending packet");
                 let delivery_mode = DeliveryMode::ReliableOrdered(StreamId(0));
                 let data = vec![0; payload_size];
+                let id = (total_datagrams - remaining_to_send) as u64;
                 let benchmark_datagram = BenchmarkDatagram {
                     delivery_mode,
-                    id: trip_times.len() as u64,
+                    id,
                     data,
                 };
 
-                trip_times.push(TripTimes {
-                    sent: Instant::now(),
-                    returned: None,
-                });
+                live.insert(id, Instant::now());
                 client_sink.send(SendCmd {
-                    data: bincode::serialize(&benchmark_datagram)?,
+                    data: bincode::serialize(&benchmark_datagram).expect("serializing"),
                     delivery_mode, ..SendCmd::default()}).await;
+
+                remaining_to_send -= 1;
             }
         }
     }
-
-    Ok(Report { trip_times })
 }
 
 #[derive(Debug, StructOpt)]
@@ -89,6 +92,9 @@ struct Options {
     /// Address of the server to run the benchmark against;
     #[structopt(short = "a")]
     address: SocketAddr,
+    /// Path to write the report csv to.
+    #[structopt(short = "o")]
+    output: String,
 }
 
 #[async_std::main]
@@ -97,5 +103,10 @@ async fn main() {
 
     let connection = tcp::TcpConnection::connect(options.address).await.expect("Opening connection to benchmark server");     
 
-    run(connection).await.expect("Running benchmark");
+    let report = run(connection).await;
+    let mut writer = csv::Writer::from_path(options.output).expect("Creating csv writer");
+    report.into_iter().for_each(|trip_report| {
+        writer.serialize(trip_report).expect("Writing record to csv");
+    });
+
 }

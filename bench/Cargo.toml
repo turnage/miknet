@@ -18,3 +18,4 @@ tokio-util = { version = "0.3.0", features = ["codec", "compat"] }
 bytes = "0.5.4"
 tokio-serde = { version = "0.6", features = ["bincode"] }
 structopt = "0.3.12"
+csv = "1.1.3"
