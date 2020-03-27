@@ -5,6 +5,7 @@ use nhanh::*;
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
 
+pub mod enet;
 pub mod tcp;
 
 #[derive(Debug, Serialize, Deserialize)]
