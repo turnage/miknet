@@ -8,15 +8,16 @@ use futures::{
     self,
     future::FusedFuture,
     sink::SinkExt,
-    stream::{self, select, FuturesUnordered, StreamExt },
+    stream::{self, select, FuturesUnordered, StreamExt},
 };
 use futures_timer::Delay;
 use nhanh::*;
+use serde::Serialize;
 use std::{
     collections::HashMap,
-    time::{Duration, Instant}};
+    time::{Duration, Instant},
+};
 use structopt::StructOpt;
-use serde::Serialize;
 
 #[derive(Serialize)]
 struct TripReport {
@@ -34,15 +35,15 @@ async fn run(mut client: impl Connection + Unpin) -> Vec<TripReport> {
     let payload_size = 200;
     let total_datagrams = tick_ps * bench_seconds;
     let mut remaining_to_send = total_datagrams;
-    let mut live = HashMap::new(); 
+    let mut live = HashMap::new();
     let mut trip_reports = vec![];
 
     enum Input {
         Tick,
-        Wire(Result<Datagram>)
+        Wire(Result<Datagram>),
     }
 
-    let (mut client_sink, client_stream) = client.split();    
+    let (mut client_sink, client_stream) = client.split();
     let returned_datagrams = client_stream.map(Input::Wire);
     let ticks = ticker.map(|_| Input::Tick);
     let mut input_stream = select(returned_datagrams, ticks);
@@ -51,8 +52,13 @@ async fn run(mut client: impl Connection + Unpin) -> Vec<TripReport> {
         let input = input_stream.next().await.unwrap();
         match input {
             Input::Wire(returned_datagram) => {
-                let returned_datagram: Datagram = returned_datagram.expect("datagram");
-                let benchmark_datagram = bincode::deserialize::<BenchmarkDatagram>(returned_datagram.data.as_slice()).expect("deserializing");
+                let returned_datagram: Datagram =
+                    returned_datagram.expect("datagram");
+                let benchmark_datagram =
+                    bincode::deserialize::<BenchmarkDatagram>(
+                        returned_datagram.data.as_slice(),
+                    )
+                    .expect("deserializing");
 
                 let return_time = Instant::now();
                 let send_time = live.remove(&benchmark_datagram.id).unwrap();
@@ -77,14 +83,25 @@ async fn run(mut client: impl Connection + Unpin) -> Vec<TripReport> {
                 };
 
                 live.insert(id, Instant::now());
-                client_sink.send(SendCmd {
-                    data: bincode::serialize(&benchmark_datagram).expect("serializing"),
-                    delivery_mode, ..SendCmd::default()}).await;
+                client_sink
+                    .send(SendCmd {
+                        data: bincode::serialize(&benchmark_datagram)
+                            .expect("serializing"),
+                        delivery_mode,
+                        ..SendCmd::default()
+                    })
+                    .await;
 
                 remaining_to_send -= 1;
             }
         }
     }
+}
+
+#[derive(Debug, StructOpt)]
+enum Protocol {
+    Tcp,
+    Enet,
 }
 
 #[derive(Debug, StructOpt)]
@@ -95,18 +112,25 @@ struct Options {
     /// Path to write the report csv to.
     #[structopt(short = "o")]
     output: String,
+    /// The protocol to benchmark.
+    #[structopt(subcommand)]
+    protocol: Protocol,
 }
 
 #[async_std::main]
 async fn main() {
     let options = Options::from_args();
 
-    let connection = tcp::TcpConnection::connect(options.address).await.expect("Opening connection to benchmark server");     
+    let connection = tcp::TcpConnection::connect(options.address)
+        .await
+        .expect("Opening connection to benchmark server");
 
     let report = run(connection).await;
-    let mut writer = csv::Writer::from_path(options.output).expect("Creating csv writer");
+    let mut writer =
+        csv::Writer::from_path(options.output).expect("Creating csv writer");
     report.into_iter().for_each(|trip_report| {
-        writer.serialize(trip_report).expect("Writing record to csv");
+        writer
+            .serialize(trip_report)
+            .expect("Writing record to csv");
     });
-
 }

@@ -1,7 +1,7 @@
 //! TCP implementation of the nhanh API
 
-use anyhow::anyhow;
 use crate::*;
+use anyhow::anyhow;
 use async_std::{
     io::ReadExt,
     net::*,
@@ -12,7 +12,9 @@ use futures::channel::mpsc;
 use futures::{
     future::{self, FutureExt, TryFutureExt},
     sink::SinkExt,
-    stream::{self, LocalBoxStream, Fuse, FusedStream, StreamExt, TryStreamExt},
+    stream::{
+        self, Fuse, FusedStream, LocalBoxStream, StreamExt, TryStreamExt,
+    },
     Sink, Stream,
 };
 use nhanh::*;
@@ -59,7 +61,9 @@ impl Stream for TcpServer {
         ctx: &mut Context,
     ) -> Poll<Option<Self::Item>> {
         match Pin::new(&mut self.incoming).poll_next(ctx) {
-            Poll::Ready(Some(Ok(tcp_stream))) => Poll::Ready(Some(Ok(TcpConnection::from(tcp_stream)))),
+            Poll::Ready(Some(Ok(tcp_stream))) => {
+                Poll::Ready(Some(Ok(TcpConnection::from(tcp_stream))))
+            }
             Poll::Ready(Some(Err(e))) => Poll::Ready(Some(Err(e.into()))),
             Poll::Ready(None) => Poll::Ready(None),
             Poll::Pending => Poll::Pending,
@@ -69,7 +73,8 @@ impl Stream for TcpServer {
 
 pub struct TcpConnection {
     receiver: LocalBoxStream<'static, Result<Datagram>>,
-    sender: Pin<Box<dyn Sink<SendCmd, Error=Box<dyn std::error::Error>> + Unpin>>,
+    sender:
+        Pin<Box<dyn Sink<SendCmd, Error = Box<dyn std::error::Error>> + Unpin>>,
 }
 
 impl TcpConnection {
@@ -78,27 +83,28 @@ impl TcpConnection {
         Ok(TcpConnection::from(tcp_stream))
     }
 
-    fn send_gate() -> impl FnMut(SendCmd) -> stream::Iter<<Option<Result<Datagram>> as IntoIterator>::IntoIter> {
-
+    fn send_gate() -> impl FnMut(
+        SendCmd,
+    ) -> stream::Iter<
+        <Option<Result<Datagram>> as IntoIterator>::IntoIter,
+    > {
         let mut total_sent = 0;
         move |send_cmd: SendCmd| {
-                stream::iter(
-                    match send_cmd.delivery_mode {
-                        DeliveryMode::ReliableOrdered(stream_id) => {
-                            total_sent += 1;
-                            Some(Ok(Datagram {
-                                data: send_cmd.data,
-                                stream_position: Some(StreamPosition {
-                                    stream_id, 
-                                    index: StreamIndex::Ordinal(total_sent),
-                                })
-                            }))
-                        }
-                        _ => None,
-                    }
-                )
-    }}
-
+            stream::iter(match send_cmd.delivery_mode {
+                DeliveryMode::ReliableOrdered(stream_id) => {
+                    total_sent += 1;
+                    Some(Ok(Datagram {
+                        data: send_cmd.data,
+                        stream_position: Some(StreamPosition {
+                            stream_id,
+                            index: StreamIndex::Ordinal(total_sent),
+                        }),
+                    }))
+                }
+                _ => None,
+            })
+        }
+    }
 }
 
 impl From<TcpStream> for TcpConnection {
@@ -120,8 +126,6 @@ impl From<TcpStream> for TcpConnection {
         }
     }
 }
-
-
 
 impl Connection for TcpConnection {}
 

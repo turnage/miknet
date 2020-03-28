@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use async_std::{net::SocketAddr };
+use async_std::net::SocketAddr;
 use bench::*;
 use bincode::deserialize;
 use futures::prelude::*;
@@ -30,19 +30,35 @@ where
 }
 
 #[derive(Debug, StructOpt)]
+enum Protocol {
+    Tcp,
+    Enet,
+}
+
+#[derive(Debug, StructOpt)]
 struct Options {
     /// Address to serve the benchmark on.
     #[structopt(short = "a")]
     address: SocketAddr,
+    /// The protocol to benchmark.
+    #[structopt(subcommand)]
+    protocol: Protocol,
 }
 
 #[async_std::main]
 async fn main() {
     let options = Options::from_args();
 
-    let server = tcp::TcpServer::bind(options.address)
-        .await
-        .expect("Binding to server address");
-
-    run(server).await.expect("Running benchmark server");
+    let server = match options.protocol {
+        Protocol::Tcp => {
+            run(tcp::TcpServer::bind(options.address)
+                .await
+                .expect("binding to tcp server address"))
+            .await
+        }
+        Protocol::Enet => {
+            run(enet::EnetServer::bind(options.address).await).await
+        }
+    }
+    .expect("running benchmark server");
 }
