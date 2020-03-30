@@ -25,14 +25,20 @@ struct TripReport {
     round_trip: u128,
 }
 
-async fn run(mut client: impl Connection + Unpin) -> Vec<TripReport> {
+struct Config {
+    payload_size: usize,
+}
+
+async fn run(
+    config: Config,
+    mut client: impl Connection + Unpin,
+) -> Vec<TripReport> {
     let bench_seconds = 10;
 
     let tick_ps = 60;
     let tick_rate = Duration::from_secs(1) / tick_ps;
     let mut ticker = stream::repeat(0u8).then(|_| Delay::new(tick_rate));
 
-    let payload_size = 200;
     let total_datagrams = tick_ps * bench_seconds;
     let mut remaining_to_send = total_datagrams;
     let mut live = HashMap::new();
@@ -74,7 +80,7 @@ async fn run(mut client: impl Connection + Unpin) -> Vec<TripReport> {
             }
             Input::Tick => {
                 let delivery_mode = DeliveryMode::ReliableOrdered(StreamId(0));
-                let data = vec![0; payload_size];
+                let data = vec![0; config.payload_size];
                 let id = (total_datagrams - remaining_to_send) as u64;
                 let benchmark_datagram = BenchmarkDatagram {
                     delivery_mode,
@@ -82,7 +88,6 @@ async fn run(mut client: impl Connection + Unpin) -> Vec<TripReport> {
                     data,
                 };
 
-                live.insert(id, Instant::now());
                 client_sink
                     .send(SendCmd {
                         data: bincode::serialize(&benchmark_datagram)
@@ -92,7 +97,11 @@ async fn run(mut client: impl Connection + Unpin) -> Vec<TripReport> {
                     })
                     .await;
 
-                remaining_to_send -= 1;
+                let old = remaining_to_send;
+                remaining_to_send = remaining_to_send.saturating_sub(1);
+                if old != remaining_to_send {
+                    live.insert(id, Instant::now());
+                }
             }
         }
     }
@@ -107,27 +116,51 @@ enum Protocol {
 #[derive(Debug, StructOpt)]
 struct Options {
     /// Address of the server to run the benchmark against;
-    #[structopt(short = "a")]
+    #[structopt(short = "a", default_value = "127.0.0.1:33333")]
     address: SocketAddr,
     /// Path to write the report csv to.
     #[structopt(short = "o")]
-    output: String,
+    output: Option<String>,
     /// The protocol to benchmark.
     #[structopt(subcommand)]
     protocol: Protocol,
+    #[structopt(short = "d", default_value = "200")]
+    payload_size: usize,
 }
 
 #[async_std::main]
 async fn main() {
     let options = Options::from_args();
 
-    let connection = tcp::TcpConnection::connect(options.address)
-        .await
-        .expect("Opening connection to benchmark server");
+    let config = Config {
+        payload_size: options.payload_size,
+    };
 
-    let report = run(connection).await;
-    let mut writer =
-        csv::Writer::from_path(options.output).expect("Creating csv writer");
+    let report = match options.protocol {
+        Protocol::Tcp => {
+            run(
+                config,
+                tcp::TcpConnection::connect(options.address)
+                    .await
+                    .expect("Opening connection to benchmark server"),
+            )
+            .await
+        }
+        Protocol::Enet => {
+            run(config, enet::EnetConnection::connect(options.address).await)
+                .await
+        }
+    };
+
+    let mut writer: csv::Writer<Box<dyn std::io::Write>> = match options.output
+    {
+        Some(output) => {
+            let file = std::fs::File::create(output)
+                .expect("Creating csv output file");
+            csv::Writer::from_writer(Box::new(file))
+        }
+        None => csv::Writer::from_writer(Box::new(std::io::stdout())),
+    };
     report.into_iter().for_each(|trip_report| {
         writer
             .serialize(trip_report)

@@ -11,11 +11,9 @@ where
     C: Connection + Unpin,
 {
     let mut client = server.for_each_concurrent(/*limit=*/None, |client| async {
-        println!("Got client.");
         let client = client.expect("Unwrapping client from listener");
         let (mut client_sink, mut client_stream) = client.split();
         while let Some(datagram) = client_stream.next().await {  
-            println!("Got message from client");
             let benchmark_datagram = datagram.expect("Unwrapping benchmark datagram");
             client_sink.send(SendCmd {
                 delivery_mode: DeliveryMode::ReliableOrdered(benchmark_datagram.stream_position.expect("Unwrapping stream position of benchmark diagram").stream_id),
@@ -23,7 +21,6 @@ where
                 ..SendCmd::default()
             }).await.expect("Returning benchmark datagram to client");
         }
-        println!("Client stream ended");
     }).await;
 
     Ok(())
@@ -38,7 +35,7 @@ enum Protocol {
 #[derive(Debug, StructOpt)]
 struct Options {
     /// Address to serve the benchmark on.
-    #[structopt(short = "a")]
+    #[structopt(short = "a", default_value = "127.0.0.1:33333")]
     address: SocketAddr,
     /// The protocol to benchmark.
     #[structopt(subcommand)]
