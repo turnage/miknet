@@ -7,6 +7,8 @@ use std::collections::HashMap;
 use std::ffi::c_void;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use std::thread::{self, JoinHandle};
+use std::sync::Arc;
 
 pub const MAX_CHANNELS: u64 = 256;
 
@@ -28,6 +30,7 @@ struct EnetCmd {
 }
 
 pub struct EnetServer {
+    marker: Arc<()>,
     new_peer_stream: mpsc::UnboundedReceiver<NewPeer>,
     command_sink: mpsc::Sender<EnetCmd>,
 }
@@ -59,8 +62,11 @@ impl EnetServer {
 
         let (command_sink, command_stream) = mpsc::channel(0);
         let (new_peer_sink, new_peer_stream) = mpsc::unbounded();
+    
+        let marker = Arc::new(());
 
         std::thread::spawn(enet_service_loop(
+                marker.clone(),
             command_stream,
             new_peer_sink,
             HostType::Server,
@@ -68,6 +74,7 @@ impl EnetServer {
         ));
 
         Self {
+            marker,
             new_peer_stream,
             command_sink,
         }
@@ -96,6 +103,7 @@ impl Stream for EnetServer {
         };
 
         Poll::Ready(Some(Ok(EnetConnection {
+            marker: self.marker.clone(),
             peer: new_peer.peer,
             command_sink: self.command_sink.clone(),
             peer_event_stream: new_peer.peer_event_stream,
@@ -104,6 +112,7 @@ impl Stream for EnetServer {
 }
 
 pub struct EnetConnection {
+    marker: Arc<()>,
     peer: u64,
     command_sink: mpsc::Sender<EnetCmd>,
     peer_event_stream: mpsc::UnboundedReceiver<Datagram>,
@@ -116,7 +125,10 @@ impl EnetConnection {
         let (command_sink, command_stream) = mpsc::channel(0);
         let (new_peer_sink, mut new_peer_stream) = mpsc::unbounded();
 
+        let marker = Arc::new(());
+
         std::thread::spawn(enet_service_loop(
+                marker.clone(),
             command_stream,
             new_peer_sink,
             HostType::Client,
@@ -125,6 +137,7 @@ impl EnetConnection {
 
         let peer = new_peer_stream.next().await.expect("connection to server");
         Self {
+            marker,
             peer: peer.peer,
             command_sink,
             peer_event_stream: peer.peer_event_stream,
@@ -248,6 +261,7 @@ fn enet_service_command(command: EnetCmd) {
 }
 
 fn enet_service_loop(
+    marker: Arc<()>,
     mut command_stream: mpsc::Receiver<EnetCmd>,
     mut new_peer_sink: mpsc::UnboundedSender<NewPeer>,
     host_type: HostType,
@@ -260,6 +274,10 @@ fn enet_service_loop(
         let mut total_sent = 0;
         let mut peers = HashMap::new();
         loop {
+            if Arc::strong_count(&marker) == 1 {
+                return;
+            }
+
             match command_stream.try_next().transpose() {
                 Some(command) => command,
                 None => return,
