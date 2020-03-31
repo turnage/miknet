@@ -70,7 +70,7 @@ impl From<Vec<TripReport>> for StreamReport {
 
 struct Config {
     payload_size: usize,
-    channels: u8,
+    streams: u8,
     payload_count: usize,
     stream_burst_width: usize,
 }
@@ -94,7 +94,7 @@ async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
     let returned_datagrams = client_stream.map(Input::Wire);
     let ticks = ticker.map(|_| Input::Tick);
     let mut input_stream = select(returned_datagrams, ticks);
-    let mut channel_alternator: usize = 0;
+    let mut stream_alternator: usize = 0;
 
     loop {
         let input = input_stream.next().await.unwrap();
@@ -132,15 +132,15 @@ async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
                 }
             }
             Input::Tick => {
-                let channel = {
-                    let channel = (channel_alternator
+                let stream = {
+                    let stream = (stream_alternator
                         / config.stream_burst_width)
-                        % config.channels as usize;
-                    channel_alternator += 1;
-                    channel as u8
+                        % config.streams as usize;
+                    stream_alternator += 1;
+                    stream as u8
                 };
                 let delivery_mode =
-                    DeliveryMode::ReliableOrdered(StreamId(channel));
+                    DeliveryMode::ReliableOrdered(StreamId(stream));
                 let data = vec![0; config.payload_size];
                 let id = (total_datagrams - remaining_to_send) as u64;
                 let benchmark_datagram = BenchmarkDatagram {
@@ -174,7 +174,7 @@ pub struct Options {
     #[structopt(short = "a", default_value = "127.0.0.1:33333")]
     pub address: SocketAddr,
     #[structopt(short = "c", default_value = "1")]
-    pub channels: u8,
+    pub streams: u8,
     #[structopt(subcommand)]
     pub protocol: Protocol,
     #[structopt(short = "d", default_value = "200")]
@@ -190,7 +190,7 @@ pub struct Options {
 pub async fn client_main(options: Options) {
     let config = Config {
         payload_size: options.payload_size,
-        channels: options.channels,
+        streams: options.streams,
         payload_count: options.payload_count,
         stream_burst_width: options.stream_burst_width,
     };
