@@ -324,14 +324,19 @@ fn enet_service_loop(
                                 packet.dataLength as usize,
                             )
                         };
-                        sink.unbounded_send(Datagram {
-                            data: data.to_vec(),
-                            stream_position: Some(StreamPosition {
-                                stream_id: StreamId(event.channelID),
-                                index: StreamIndex::Ordinal(total_sent),
-                            }),
-                        })
-                        .expect("sending peer the event");
+                        if sink
+                            .unbounded_send(Datagram {
+                                data: data.to_vec(),
+                                stream_position: Some(StreamPosition {
+                                    stream_id: StreamId(event.channelID),
+                                    index: StreamIndex::Ordinal(total_sent),
+                                }),
+                            })
+                            .is_err()
+                        {
+                            drop(sink);
+                            peers.remove(&event.peer);
+                        }
 
                         total_sent += 1;
                     }

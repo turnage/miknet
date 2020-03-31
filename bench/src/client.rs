@@ -125,7 +125,12 @@ async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
                     .expect("deserializing");
 
                 let return_time = Instant::now();
-                let send_time = live.remove(&benchmark_datagram.id).unwrap();
+                let send_time = match live.remove(&benchmark_datagram.id) {
+                    Some(send_time) => send_time,
+                    None => {
+                        continue;
+                    }
+                };
                 let round_trip = return_time.duration_since(send_time);
                 stream_results.entry(stream).or_default().push(TripReport {
                     index: benchmark_datagram.id,

@@ -1,7 +1,7 @@
 use crate::*;
 use async_std::net::*;
 use async_std::task;
-use futures::future::{join};
+use futures::future::join;
 use std::process::Command;
 use std::thread;
 use structopt::StructOpt;
@@ -26,6 +26,8 @@ pub struct NetworkConfig {
     /// Network loopback interface.
     #[structopt(long, default_value = "lo")]
     pub interface: String,
+    #[structopt(long, default_value = "20000")]
+    pub rate_limit_kbps: usize,
 }
 
 impl NetworkConfig {
@@ -51,8 +53,10 @@ impl NetworkConfig {
                 &format!("{}", self.delay_correlation),
                 "loss",
                 "random",
-                &format!("{}", self.random_loss / 2.),
+                &format!("{}%", self.random_loss / 2.),
                 &format!("{}", self.random_loss_correlation),
+                "rate",
+                &format!("{}kbit", self.rate_limit_kbps),
             ])
             .output()
             .expect("applying delay");
@@ -101,6 +105,5 @@ pub async fn runner_main(options: Options) -> Result<client::Results> {
 
     options.network_config.reset();
 
-    println!("{:?}: {:?}", options.client_options.protocol, results);
     results
 }

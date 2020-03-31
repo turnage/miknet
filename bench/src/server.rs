@@ -10,10 +10,8 @@ async fn run<C>(mut server: impl Server<C> + Unpin) -> Result<()>
 where
     C: Connection + Unpin,
 {
-    eprintln!("Server waiting for client...");
     let mut client = server.next().await.expect("client").expect("Ok(client)");
     let (mut client_sink, mut client_stream) = client.split();
-    eprintln!("Server received client; running benchmark.");
 
     while let Some(Ok(benchmark_datagram)) = client_stream.next().await {
         let position = benchmark_datagram.stream_position.expect("position");
@@ -26,8 +24,6 @@ where
             })
             .await?;
     }
-
-    eprintln!("Client connection finished; server tearing down.");
 
     Ok(())
 }
