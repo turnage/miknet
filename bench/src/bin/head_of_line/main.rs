@@ -2,9 +2,9 @@ use async_std::{future::timeout, prelude::*};
 use bench::*;
 use csv::Writer;
 use itertools::iproduct;
+use rand::random;
 use serde::Serialize;
 use std::time::Duration;
-use rand::random;
 
 #[derive(Debug, Clone, Copy, Serialize)]
 struct Result {
@@ -46,9 +46,12 @@ async fn run_protocol(protocol: Protocol, streams: u8) -> Vec<Result> {
                 interface: String::from("lo"),
             },
             client_options: client::Options {
-                address: format!("127.0.0.1:{}", (random::<usize>() + 1024) % 65535)
-                    .parse()
-                    .unwrap(),
+                address: format!(
+                    "127.0.0.1:{}",
+                    (random::<usize>() + 1024) % 65535
+                )
+                .parse()
+                .unwrap(),
                 streams,
                 protocol,
                 payload_size: 200,
