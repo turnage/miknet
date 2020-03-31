@@ -1,6 +1,6 @@
+use crate::*;
 use anyhow::anyhow;
 use async_std::net::SocketAddr;
-use crate::*;
 use bincode::deserialize;
 use futures::prelude::*;
 use nhanh::*;
@@ -30,10 +30,10 @@ where
 pub struct Options {
     /// Address to serve the benchmark on.
     #[structopt(short = "a", default_value = "127.0.0.1:33333")]
-    address: SocketAddr,
+    pub address: SocketAddr,
     /// The protocol to benchmark.
     #[structopt(subcommand)]
-    protocol: Protocol,
+    pub protocol: Protocol,
 }
 
 pub async fn server_main(options: Options) {
@@ -47,6 +47,7 @@ pub async fn server_main(options: Options) {
         Protocol::Enet => {
             run(enet::EnetServer::bind(options.address).await).await
         }
+        p => panic!("unsupported protocol for server: {:?}", p),
     }
     .expect("running benchmark server");
 }

@@ -12,10 +12,23 @@ pub mod tcp;
 pub mod client;
 pub mod server;
 
-#[derive(Debug, StructOpt)]
+#[derive(Copy, Clone, Debug, StructOpt)]
 pub enum Protocol {
     Tcp,
     Enet,
+    All,
+}
+
+impl IntoIterator for Protocol {
+    type Item = Self;
+    type IntoIter = <Vec<Protocol> as IntoIterator>::IntoIter;
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            Protocol::All => vec![Protocol::Tcp, Protocol::Enet],
+            _ => vec![self],
+        }
+        .into_iter()
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

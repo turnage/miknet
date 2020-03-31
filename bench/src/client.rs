@@ -1,8 +1,8 @@
 #![recursion_limit = "256"]
 
+use crate::*;
 use anyhow::{anyhow, bail};
 use async_std::{net::SocketAddr, prelude::*};
-use crate::*;
 use bincode::deserialize;
 use futures::{
     self,
@@ -26,19 +26,27 @@ struct TripReport {
     round_trip: u128,
 }
 
+#[derive(Debug)]
 struct Results {
+    stream_reports: HashMap<StreamId, StreamReport>,
+}
+
+struct StreamReport {
     mean: Duration,
     deviation: Duration,
     trip_reports: Vec<TripReport>,
 }
 
-impl std::fmt::Debug for Results {
+impl std::fmt::Debug for StreamReport {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.debug_struct("Results").field("Mean", &self.mean).field("Deviation", &self.deviation).finish()
+        f.debug_struct("StreamReport")
+            .field("Mean", &self.mean)
+            .field("Deviation", &self.deviation)
+            .finish()
     }
 }
 
-impl From<Vec<TripReport>> for Results {
+impl From<Vec<TripReport>> for StreamReport {
     fn from(src: Vec<TripReport>) -> Self {
         let sum: u128 = src.iter().map(|r| r.round_trip).sum();
         let n = src.len() as u128;
@@ -46,29 +54,17 @@ impl From<Vec<TripReport>> for Results {
 
         let square_difference = |r: &TripReport| (r.round_trip - mean).pow(2);
         let sum_of_squares: u128 = src.iter().map(square_difference).sum();
-        let variance = sum_of_squares / (n - 1); 
+        let variance = sum_of_squares / (n - 1);
         let deviation = (variance as f64).sqrt();
 
         let mean = Duration::from_nanos(mean as u64);
         let deviation = Duration::from_nanos(deviation as u64);
 
-        Self {
+        StreamReport {
             mean,
             deviation,
             trip_reports: src,
         }
-    }
-}
-
-impl Results {
-    fn write_csv(&self, writer: impl std::io::Write) {
-        let mut writer = csv::Writer::from_writer(writer);
-
-        self.trip_reports.iter().for_each(|trip_report| {
-            writer
-                .serialize(trip_report)
-                .expect("Writing record to csv");
-        })
     }
 }
 
@@ -86,6 +82,7 @@ async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
     let total_datagrams = tick_ps * bench_seconds;
     let mut remaining_to_send = total_datagrams;
     let mut live = HashMap::new();
+    let mut stream_reports = HashMap::new();
     let mut trip_reports = vec![];
 
     enum Input {
@@ -119,7 +116,15 @@ async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
                 });
 
                 if remaining_to_send == 0 && live.is_empty() {
-                    return Results::from(trip_reports);
+                    return Results {
+                        stream_reports: {
+                            stream_reports.insert(
+                                StreamId(0),
+                                StreamReport::from(trip_reports),
+                            );
+                            stream_reports
+                        },
+                    };
                 }
             }
             Input::Tick => {
@@ -155,19 +160,18 @@ async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
 pub struct Options {
     /// Address of the server to run the benchmark against;
     #[structopt(short = "a", default_value = "127.0.0.1:33333")]
-    address: SocketAddr,
+    pub address: SocketAddr,
     /// Path to write the report csv to.
     #[structopt(short = "csv")]
-    csv: bool,
+    pub csv: bool,
     /// The protocol to benchmark.
     #[structopt(subcommand)]
-    protocol: Protocol,
+    pub protocol: Protocol,
     #[structopt(short = "d", default_value = "200")]
-    payload_size: usize,
+    pub payload_size: usize,
 }
 
 pub async fn client_main(options: Options) {
-
     let config = Config {
         payload_size: options.payload_size,
     };
@@ -176,9 +180,30 @@ pub async fn client_main(options: Options) {
         Protocol::Tcp => {
             run(
                 config,
-                tcp::TcpConnection::connect(options.address)
-                    .await
-                    .expect("Opening connection to benchmark server"),
+                loop {
+                    let result =
+                        tcp::TcpConnection::connect(options.address).await;
+
+                    let error = match result {
+                        Ok(results) => break results,
+                        Err(e) => e,
+                    };
+
+                    // The server port is not yet open; give it time.
+                    if error.is::<std::io::Error>()
+                        && error
+                            .downcast_ref::<std::io::Error>()
+                            .map(std::io::Error::kind)
+                            == Some(std::io::ErrorKind::ConnectionRefused)
+                    {
+                        continue;
+                    }
+
+                    panic!(
+                        "Failed to connect to benchmark server: {:?}",
+                        error
+                    );
+                },
             )
             .await
         }
@@ -186,13 +211,8 @@ pub async fn client_main(options: Options) {
             run(config, enet::EnetConnection::connect(options.address).await)
                 .await
         }
+        p => panic!("Unsupported protocol for client: {:?}", p),
     };
 
-    match options.csv{
-        true => results.write_csv(std::io::stdout()),
-        false => {
-
-    println!("Results: {:?}", results);
-        }
-    }
+    println!("{:?}: {:#?}", options.protocol, results);
 }

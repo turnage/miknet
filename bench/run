@@ -1,0 +1,3 @@
+#!/bin/bash
+
+sudo -E `which cargo` run --release --bin runner -- $@
