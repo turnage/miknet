@@ -293,7 +293,9 @@ fn enet_service_loop(
                             })
                             .expect("sending new peer event");
                     }
-                    enet::_ENetEventType_ENET_EVENT_TYPE_DISCONNECT => {}
+                    enet::_ENetEventType_ENET_EVENT_TYPE_DISCONNECT => {
+                        peers.remove(&event.peer);
+                    }
                     enet::_ENetEventType_ENET_EVENT_TYPE_RECEIVE => {
                         let sink =
                             peers.get_mut(&event.peer).expect("peer sink");
