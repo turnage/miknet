@@ -16,6 +16,7 @@ use serde::Serialize;
 use std::{
     collections::HashMap,
     fs::File,
+    iter::FromIterator,
     time::{Duration, Instant},
 };
 use structopt::StructOpt;
@@ -26,27 +27,42 @@ struct TripReport {
     round_trip: u128,
 }
 
-#[derive(Debug)]
 struct Results {
-    stream_reports: HashMap<StreamId, StreamReport>,
-}
-
-struct StreamReport {
     mean: Duration,
     deviation: Duration,
-    trip_reports: Vec<TripReport>,
 }
 
-impl std::fmt::Debug for StreamReport {
+impl FromIterator<Results> for Results {
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = Results>,
+    {
+        let (count, mean_sum, deviation_sum) = iter.into_iter().fold(
+            (0, Duration::from_secs(0), Duration::from_secs(0)),
+            |(mut count, mut mean_sum, mut deviation_sum), result| {
+                mean_sum += result.mean;
+                deviation_sum += result.deviation;
+                count += 1;
+                (count, mean_sum, deviation_sum)
+            },
+        );
+        Results {
+            mean: mean_sum / count,
+            deviation: deviation_sum / count,
+        }
+    }
+}
+
+impl std::fmt::Debug for Results {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.debug_struct("StreamReport")
+        f.debug_struct("Results")
             .field("Mean", &self.mean)
             .field("Deviation", &self.deviation)
             .finish()
     }
 }
 
-impl From<Vec<TripReport>> for StreamReport {
+impl From<Vec<TripReport>> for Results {
     fn from(src: Vec<TripReport>) -> Self {
         let sum: u128 = src.iter().map(|r| r.round_trip).sum();
         let n = src.len() as u128;
@@ -60,11 +76,7 @@ impl From<Vec<TripReport>> for StreamReport {
         let mean = Duration::from_nanos(mean as u64);
         let deviation = Duration::from_nanos(deviation as u64);
 
-        StreamReport {
-            mean,
-            deviation,
-            trip_reports: src,
-        }
+        Results { mean, deviation }
     }
 }
 
@@ -83,7 +95,7 @@ async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
     let total_datagrams = config.payload_count;
     let mut remaining_to_send = total_datagrams;
     let mut live = HashMap::new();
-    let mut stream_reports: HashMap<StreamId, Vec<TripReport>> = HashMap::new();
+    let mut stream_results: HashMap<StreamId, Vec<TripReport>> = HashMap::new();
 
     enum Input {
         Tick,
@@ -115,20 +127,17 @@ async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
                 let return_time = Instant::now();
                 let send_time = live.remove(&benchmark_datagram.id).unwrap();
                 let round_trip = return_time.duration_since(send_time);
-                stream_reports.entry(stream).or_default().push(TripReport {
+                stream_results.entry(stream).or_default().push(TripReport {
                     index: benchmark_datagram.id,
                     round_trip: round_trip.as_nanos(),
                 });
 
                 if remaining_to_send == 0 && live.is_empty() {
-                    return Results {
-                        stream_reports: stream_reports
-                            .into_iter()
-                            .map(|(stream, reports)| {
-                                (stream, StreamReport::from(reports))
-                            })
-                            .collect(),
-                    };
+                    return stream_results
+                        .into_iter()
+                        .map(|(_, reports)| reports)
+                        .map(Results::from)
+                        .collect();
                 }
             }
             Input::Tick => {
