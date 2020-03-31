@@ -18,7 +18,6 @@ where
     while let Some(Ok(benchmark_datagram)) = client_stream.next().await {
         let position = benchmark_datagram.stream_position.expect("position");
         let stream_id = position.stream_id;
-        eprintln!("Received benchmark datagram; returning");
         client_sink
             .send(SendCmd {
                 delivery_mode: DeliveryMode::ReliableOrdered(stream_id),
