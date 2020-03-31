@@ -70,20 +70,19 @@ impl From<Vec<TripReport>> for StreamReport {
 
 struct Config {
     payload_size: usize,
+    channels: u8,
+    payload_count: usize,
 }
 
 async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
-    let bench_seconds = 10;
-
     let tick_ps = 60;
     let tick_rate = Duration::from_secs(1) / tick_ps;
     let mut ticker = stream::repeat(0u8).then(|_| Delay::new(tick_rate));
 
-    let total_datagrams = tick_ps * bench_seconds;
+    let total_datagrams = config.payload_count;
     let mut remaining_to_send = total_datagrams;
     let mut live = HashMap::new();
-    let mut stream_reports = HashMap::new();
-    let mut trip_reports = vec![];
+    let mut stream_reports: HashMap<StreamId, Vec<TripReport>> = HashMap::new();
 
     enum Input {
         Tick,
@@ -94,6 +93,7 @@ async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
     let returned_datagrams = client_stream.map(Input::Wire);
     let ticks = ticker.map(|_| Input::Tick);
     let mut input_stream = select(returned_datagrams, ticks);
+    let mut channel_alternator = 0;
 
     loop {
         let input = input_stream.next().await.unwrap();
@@ -101,6 +101,7 @@ async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
             Input::Wire(returned_datagram) => {
                 let returned_datagram: Datagram =
                     returned_datagram.expect("datagram");
+                let stream = returned_datagram.stream_position.expect("stream position").stream_id;
                 let benchmark_datagram =
                     bincode::deserialize::<BenchmarkDatagram>(
                         returned_datagram.data.as_slice(),
@@ -110,25 +111,26 @@ async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
                 let return_time = Instant::now();
                 let send_time = live.remove(&benchmark_datagram.id).unwrap();
                 let round_trip = return_time.duration_since(send_time);
-                trip_reports.push(TripReport {
+                stream_reports.entry(stream).or_default().push(TripReport {
                     index: benchmark_datagram.id,
                     round_trip: round_trip.as_nanos(),
                 });
 
                 if remaining_to_send == 0 && live.is_empty() {
                     return Results {
-                        stream_reports: {
-                            stream_reports.insert(
-                                StreamId(0),
-                                StreamReport::from(trip_reports),
-                            );
-                            stream_reports
-                        },
+                        stream_reports: stream_reports.into_iter().map(|(stream, reports)| {
+                            (stream, StreamReport::from(reports))
+                        }).collect()
                     };
                 }
             }
             Input::Tick => {
-                let delivery_mode = DeliveryMode::ReliableOrdered(StreamId(0));
+                let channel = {
+                    let channel = channel_alternator % config.channels;
+                    channel_alternator += 1;
+                    channel
+                };
+                let delivery_mode = DeliveryMode::ReliableOrdered(StreamId(channel));
                 let data = vec![0; config.payload_size];
                 let id = (total_datagrams - remaining_to_send) as u64;
                 let benchmark_datagram = BenchmarkDatagram {
@@ -161,19 +163,21 @@ pub struct Options {
     /// Address of the server to run the benchmark against;
     #[structopt(short = "a", default_value = "127.0.0.1:33333")]
     pub address: SocketAddr,
-    /// Path to write the report csv to.
-    #[structopt(short = "csv")]
-    pub csv: bool,
-    /// The protocol to benchmark.
+    #[structopt(short = "c", default_value = "1")]
+    pub channels: u8,
     #[structopt(subcommand)]
     pub protocol: Protocol,
     #[structopt(short = "d", default_value = "200")]
     pub payload_size: usize,
+    #[structopt(short = "d", default_value = "600")]
+    pub payload_count: usize,
 }
 
 pub async fn client_main(options: Options) {
     let config = Config {
         payload_size: options.payload_size,
+        channels: options.channels,
+        payload_count: options.payload_count,
     };
 
     let results = match options.protocol {

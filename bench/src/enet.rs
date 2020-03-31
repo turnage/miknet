@@ -8,6 +8,8 @@ use std::ffi::c_void;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
+pub const MAX_CHANNELS: u64 = 256;
+
 #[allow(warnings)]
 mod enet {
     include!(concat!(env!("OUT_DIR"), "/enet.rs"));
@@ -203,7 +205,7 @@ impl HostType {
         unsafe {
             let host = match self {
                 HostType::Server => {
-                    enet::enet_host_create(&server_addr, 32, 2, 0, 0)
+                    enet::enet_host_create(&server_addr, 32, MAX_CHANNELS, 0, 0)
                 }
                 HostType::Client => {
                     let client = enet::enet_host_create(
@@ -214,7 +216,7 @@ impl HostType {
                         0,
                     );
                     assert!(
-                        enet::enet_host_connect(client, &server_addr, 2, 0,)
+                        enet::enet_host_connect(client, &server_addr, MAX_CHANNELS, 0,)
                             != 0 as *mut enet::ENetPeer
                     );
                     client

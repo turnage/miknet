@@ -72,8 +72,12 @@ struct Options {
     network_config: NetworkConfig,
     #[structopt(subcommand)]
     protocol: Protocol,
-    #[structopt(default_value = "200")]
+    #[structopt(long, default_value = "200")]
     payload_size: usize,
+    #[structopt(long, default_value = "600")]
+    payload_count: usize,
+    #[structopt(long, default_value = "1")]
+    channels: u8
 }
 
 fn server_address() -> SocketAddr {
@@ -98,10 +102,11 @@ async fn run_client(options: &Options) {
     loop {
         let result = client::client_main(client::Options {
             address: server_address(),
-            csv: false,
+            channels: options.channels,
             protocol: options.protocol,
             payload_size: options.payload_size,
-        })
+            payload_count: options.payload_count,
+      })
         .await;
 
         return;
