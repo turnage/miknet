@@ -27,9 +27,9 @@ struct TripReport {
     round_trip: u128,
 }
 
-struct Results {
-    mean: Duration,
-    deviation: Duration,
+pub struct Results {
+    pub mean: Duration,
+    pub deviation: Duration,
 }
 
 impl FromIterator<Results> for Results {
@@ -196,7 +196,7 @@ pub struct Options {
     pub stream_burst_width: usize,
 }
 
-pub async fn client_main(options: Options) {
+pub async fn client_main(options: Options) -> Results {
     let config = Config {
         payload_size: options.payload_size,
         streams: options.streams,
@@ -242,5 +242,5 @@ pub async fn client_main(options: Options) {
         p => panic!("Unsupported protocol for client: {:?}", p),
     };
 
-    println!("{:?}: {:#?}", options.protocol, results);
+    results
 }

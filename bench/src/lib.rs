@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate rental;
 
+use async_std::net::SocketAddr;
 use nhanh::*;
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
@@ -10,25 +11,19 @@ pub mod enet;
 pub mod tcp;
 
 pub mod client;
+pub mod runner;
 pub mod server;
+
+pub const ALL_PROTOCOLS: [Protocol; 2] = [Protocol::Tcp, Protocol::Enet];
+
+pub fn default_server_address() -> SocketAddr {
+    "127.0.0.1:33333".parse().unwrap()
+}
 
 #[derive(Copy, Clone, Debug, StructOpt)]
 pub enum Protocol {
     Tcp,
     Enet,
-    All,
-}
-
-impl IntoIterator for Protocol {
-    type Item = Self;
-    type IntoIter = <Vec<Protocol> as IntoIterator>::IntoIter;
-    fn into_iter(self) -> Self::IntoIter {
-        match self {
-            Protocol::All => vec![Protocol::Tcp, Protocol::Enet],
-            _ => vec![self],
-        }
-        .into_iter()
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
