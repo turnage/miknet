@@ -90,8 +90,7 @@ async fn launch_server(options: &Options) -> Option<Pid> {
 
 async fn run_client(options: &Options) {
     loop {
-        let result = client::client_main(options.client_options.clone())
-        .await;
+        let result = client::client_main(options.client_options.clone()).await;
 
         return;
     }

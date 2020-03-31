@@ -216,8 +216,12 @@ impl HostType {
                         0,
                     );
                     assert!(
-                        enet::enet_host_connect(client, &server_addr, MAX_CHANNELS, 0,)
-                            != 0 as *mut enet::ENetPeer
+                        enet::enet_host_connect(
+                            client,
+                            &server_addr,
+                            MAX_CHANNELS,
+                            0,
+                        ) != 0 as *mut enet::ENetPeer
                     );
                     client
                 }

@@ -72,6 +72,7 @@ struct Config {
     payload_size: usize,
     channels: u8,
     payload_count: usize,
+    stream_burst_width: usize,
 }
 
 async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
@@ -93,7 +94,7 @@ async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
     let returned_datagrams = client_stream.map(Input::Wire);
     let ticks = ticker.map(|_| Input::Tick);
     let mut input_stream = select(returned_datagrams, ticks);
-    let mut channel_alternator = 0;
+    let mut channel_alternator: usize = 0;
 
     loop {
         let input = input_stream.next().await.unwrap();
@@ -101,7 +102,10 @@ async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
             Input::Wire(returned_datagram) => {
                 let returned_datagram: Datagram =
                     returned_datagram.expect("datagram");
-                let stream = returned_datagram.stream_position.expect("stream position").stream_id;
+                let stream = returned_datagram
+                    .stream_position
+                    .expect("stream position")
+                    .stream_id;
                 let benchmark_datagram =
                     bincode::deserialize::<BenchmarkDatagram>(
                         returned_datagram.data.as_slice(),
@@ -118,19 +122,25 @@ async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
 
                 if remaining_to_send == 0 && live.is_empty() {
                     return Results {
-                        stream_reports: stream_reports.into_iter().map(|(stream, reports)| {
-                            (stream, StreamReport::from(reports))
-                        }).collect()
+                        stream_reports: stream_reports
+                            .into_iter()
+                            .map(|(stream, reports)| {
+                                (stream, StreamReport::from(reports))
+                            })
+                            .collect(),
                     };
                 }
             }
             Input::Tick => {
                 let channel = {
-                    let channel = channel_alternator % config.channels;
+                    let channel = (channel_alternator
+                        / config.stream_burst_width)
+                        % config.channels as usize;
                     channel_alternator += 1;
-                    channel
+                    channel as u8
                 };
-                let delivery_mode = DeliveryMode::ReliableOrdered(StreamId(channel));
+                let delivery_mode =
+                    DeliveryMode::ReliableOrdered(StreamId(channel));
                 let data = vec![0; config.payload_size];
                 let id = (total_datagrams - remaining_to_send) as u64;
                 let benchmark_datagram = BenchmarkDatagram {
@@ -169,8 +179,12 @@ pub struct Options {
     pub protocol: Protocol,
     #[structopt(short = "d", default_value = "200")]
     pub payload_size: usize,
-    #[structopt(short = "d", default_value = "600")]
+    #[structopt(short = "n", default_value = "600")]
     pub payload_count: usize,
+    /// The number of messages to send on a single stream at once,
+    /// before sending messages on another stream.
+    #[structopt(short = "w", default_value = "10")]
+    pub stream_burst_width: usize,
 }
 
 pub async fn client_main(options: Options) {
@@ -178,6 +192,7 @@ pub async fn client_main(options: Options) {
         payload_size: options.payload_size,
         channels: options.channels,
         payload_count: options.payload_count,
+        stream_burst_width: options.stream_burst_width,
     };
 
     let results = match options.protocol {
