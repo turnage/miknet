@@ -158,7 +158,7 @@ async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
     }
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Clone, Debug, StructOpt)]
 pub struct Options {
     /// Address of the server to run the benchmark against;
     #[structopt(short = "a", default_value = "127.0.0.1:33333")]

@@ -70,18 +70,8 @@ impl NetworkConfig {
 struct Options {
     #[structopt(flatten)]
     network_config: NetworkConfig,
-    #[structopt(subcommand)]
-    protocol: Protocol,
-    #[structopt(long, default_value = "200")]
-    payload_size: usize,
-    #[structopt(long, default_value = "600")]
-    payload_count: usize,
-    #[structopt(long, default_value = "1")]
-    channels: u8
-}
-
-fn server_address() -> SocketAddr {
-    "127.0.0.1:33333".parse().expect("server address")
+    #[structopt(flatten)]
+    client_options: client::Options,
 }
 
 async fn launch_server(options: &Options) -> Option<Pid> {
@@ -89,8 +79,8 @@ async fn launch_server(options: &Options) -> Option<Pid> {
         ForkResult::Parent { child, .. } => return Some(child),
         ForkResult::Child => {
             server::server_main(server::Options {
-                address: server_address(),
-                protocol: options.protocol,
+                address: options.client_options.address,
+                protocol: options.client_options.protocol,
             })
             .await;
             None
@@ -100,13 +90,7 @@ async fn launch_server(options: &Options) -> Option<Pid> {
 
 async fn run_client(options: &Options) {
     loop {
-        let result = client::client_main(client::Options {
-            address: server_address(),
-            channels: options.channels,
-            protocol: options.protocol,
-            payload_size: options.payload_size,
-            payload_count: options.payload_count,
-      })
+        let result = client::client_main(options.client_options.clone())
         .await;
 
         return;
@@ -127,9 +111,9 @@ async fn main() {
     options.network_config.reset();
     options.network_config.apply();
 
-    let protocols = options.protocol.into_iter();
+    let protocols = options.client_options.protocol.into_iter();
     for protocol in protocols {
-        options.protocol = protocol;
+        options.client_options.protocol = protocol;
         run(&options).await;
     }
 
