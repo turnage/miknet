@@ -6,9 +6,9 @@ use nhanh::*;
 use std::collections::HashMap;
 use std::ffi::c_void;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::thread::{self, JoinHandle};
-use std::sync::Arc;
 
 pub const MAX_CHANNELS: u64 = 256;
 
@@ -62,11 +62,11 @@ impl EnetServer {
 
         let (command_sink, command_stream) = mpsc::channel(0);
         let (new_peer_sink, new_peer_stream) = mpsc::unbounded();
-    
+
         let marker = Arc::new(());
 
         std::thread::spawn(enet_service_loop(
-                marker.clone(),
+            marker.clone(),
             command_stream,
             new_peer_sink,
             HostType::Server,
@@ -128,7 +128,7 @@ impl EnetConnection {
         let marker = Arc::new(());
 
         std::thread::spawn(enet_service_loop(
-                marker.clone(),
+            marker.clone(),
             command_stream,
             new_peer_sink,
             HostType::Client,
@@ -278,13 +278,13 @@ fn enet_service_loop(
                 return;
             }
 
-            match command_stream.try_next().transpose() {
+            while let Ok(command) = match command_stream.try_next().transpose()
+            {
                 Some(command) => command,
                 None => return,
+            } {
+                enet_service_command(command);
             }
-            .ok()
-            .into_iter()
-            .for_each(enet_service_command);
 
             let mut event: enet::ENetEvent =
                 unsafe { std::mem::uninitialized() };
