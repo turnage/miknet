@@ -8,7 +8,7 @@ use futures::{
     self,
     future::FusedFuture,
     sink::SinkExt,
-    stream::{self, select, FuturesUnordered, StreamExt},
+    stream::{self, SelectAll, select, FuturesUnordered, StreamExt},
 };
 use futures_timer::Delay;
 use nhanh::*;
@@ -86,14 +86,17 @@ struct Config {
     streams: u8,
     payload_count: usize,
     stream_burst_width: usize,
-    bulk_transfers: Vec<BulkTransfer>,
+    transfers: Vec<Transfer>,
+}
+
+/// Returns a stream that yields `()` `hertz` times per second.
+fn ticker(hertz: u32) -> impl Stream<Item=()> {
+    let tick_rate = Duration::from_secs(1) / hertz;
+    stream::repeat(0u8).then(move |_| Delay::new(tick_rate))
 }
 
 async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
-    let tick_ps = 60;
-    let tick_rate = Duration::from_secs(1) / tick_ps;
-    let mut ticker = stream::repeat(0u8).then(|_| Delay::new(tick_rate));
-    let mut bulk_tx_ticker = stream::repeat(0u8).then(|_| Delay::new(tick_rate / 4));
+    let mut ticker = ticker(60);
 
     let total_datagrams = config.payload_count;
     let mut remaining_to_send = total_datagrams;
@@ -102,18 +105,16 @@ async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
 
     enum Input {
         Tick,
-        BulkTransferTick, 
+        Transfer(SendCmd), 
         Wire(Result<Datagram>),
     }
 
     let (mut client_sink, client_stream) = client.split();
     let returned_datagrams = client_stream.map(Input::Wire);
     let ticks = ticker.map(|_| Input::Tick);
-    let bulk_tx_ticks = bulk_tx_ticker.map(|_| Input::BulkTransferTick);
-    let mut input_stream = select( bulk_tx_ticks,select(returned_datagrams, ticks));
+    let transfers: SelectAll<_> = config.transfers.into_iter().map(Transfer::stream).collect();
+    let mut input_stream = select(transfers.map(Input::Transfer) ,select(returned_datagrams, ticks));
     let mut stream_alternator: usize = 0;
-
-    let mut bulk_transfers = config.bulk_transfers.into_iter().flat_map(std::convert::identity);
 
     loop {
         let input = input_stream.next().await.unwrap();
@@ -185,10 +186,8 @@ async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
                     live.insert(id, Instant::now());
                 }
             }
-            Input::BulkTransferTick => {
-                if let Some(bulk_tx) = bulk_transfers.next() {
-                    client_sink.send(bulk_tx).await;
-                }
+            Input::Transfer(send_cmd) => {
+                    client_sink.send(send_cmd).await;
             }
         }
     }
@@ -209,57 +208,53 @@ pub struct Options {
     /// before sending messages on another stream.
     #[structopt(short = "w", default_value = "10")]
     pub stream_burst_width: usize,
-    /// Bulk transfers.
+    /// Periodic transfers, specified in terms of stream_id:size:hertz.
     #[structopt(short = "b", long)]
-    pub bulk_transfers: Vec<BulkTransfer>,
+    pub transfers: Vec<Transfer>,
     #[structopt(subcommand)]
     pub protocol: Protocol,
 }
 
 #[derive(Clone, Debug, Copy)]
-pub struct BulkTransfer {
+pub struct Transfer {
     pub stream_id: StreamId,
     pub size: usize,
+    pub hertz: u32,
 }
 
-impl Iterator for BulkTransfer {
-    type Item = SendCmd;
-    fn next(&mut self) -> Option<Self::Item> {
-        /// Chosen because ENet has a bug causing payloads larger than this
-        /// to trigger an infinite loop within enet_host_service.
-        /// TODO: file that bug
-        const MAX_PAYLOAD: usize = 800;
+impl Transfer {
+    fn stream(self) -> impl Stream<Item=SendCmd> {
+        let ticker = ticker(self.hertz);
+        ticker.map(move |_| self.send_cmd())
+    }
 
-        if self.size == 0 {
-            return None;
-        }
-
-        let payload_size = std::cmp::min(self.size, MAX_PAYLOAD);
-        self.size = self.size.saturating_sub(MAX_PAYLOAD);
-
+    fn send_cmd(&self) -> SendCmd {
         let delivery_mode = DeliveryMode::ReliableOrdered(self.stream_id);
-        Some(SendCmd {
+        SendCmd {
             delivery_mode, 
             data: bincode::serialize(&BenchmarkDatagram {
                 id: ID_DO_NOT_RETURN,
                 delivery_mode,
-                data: vec![0; payload_size],
+                data: vec![0; self.size],
             }).expect("to serialize bulk transfer"),
             ..SendCmd::default()
-        })
+        }
     }
 }
 
-impl FromStr for BulkTransfer {
+impl FromStr for Transfer {
     type Err = std::num::ParseIntError;
     fn from_str(src: &str) -> std::result::Result<Self, Self::Err> {
         let args: Vec<&str> = src.split(":").collect();
+
         let stream_id = args[0].parse::<u8>()?;
         let size = args[1].parse::<usize>()?;
+        let hertz = args[2].parse::<u32>()?;
 
         Ok(Self {
             stream_id: StreamId(stream_id),
             size,
+            hertz
         })
     }
 }
@@ -270,7 +265,7 @@ pub async fn client_main(options: Options) -> Results {
         streams: options.streams,
         payload_count: options.payload_count,
         stream_burst_width: options.stream_burst_width,
-        bulk_transfers: options.bulk_transfers,
+        transfers: options.transfers,
     };
 
     let results = match options.protocol {

@@ -10,7 +10,7 @@ use std::time::Duration;
 #[derive(Debug, Clone, Copy, Serialize)]
 struct Result {
     rate_limit_kbps: usize,
-    bulk_transfer_size: usize,
+    transfer_size: usize,
     mean_ping: Duration,
     ping_deviation: Duration,
 }
@@ -18,7 +18,7 @@ struct Result {
 #[derive(Debug, Clone, Copy, Serialize)]
 struct CsvResult {
     rate_limit_kbps: usize,
-    bulk_transfer_size: usize,
+    transfer_size: usize,
     mean_ping_ms: f32,
     ping_deviation_ms: f32,
 }
@@ -27,7 +27,7 @@ impl From<Result> for CsvResult {
     fn from(src: Result) -> Self {
         Self {
             rate_limit_kbps: src.rate_limit_kbps,
-            bulk_transfer_size: src.bulk_transfer_size,
+            transfer_size: src.transfer_size,
             mean_ping_ms: src.mean_ping.as_nanos() as f32 / 1e6,
             ping_deviation_ms: src.ping_deviation.as_nanos() as f32 / 1e6,
         }
@@ -42,11 +42,11 @@ async fn run_protocol(
 
     let mut results = vec![];
 
-    for bulk_transfer_size in vec![1, 4, 16].into_iter().map(|b| b * KB) {
+    for transfer_size in vec![1, 4, 16].into_iter().map(|b| b * KB) {
         println!(
             "\tRunning with rate limit {}kbit, 5% drop rate, {}KiB bulk transfer",
             rate_limit_kbps,
-            bulk_transfer_size / 1024,
+            transfer_size / 1024,
         );
         let options = runner::Options {
             start_server: true,
@@ -71,9 +71,10 @@ async fn run_protocol(
                 payload_size: 200,
                 payload_count: 200,
                 stream_burst_width: 10,
-                bulk_transfers: vec![client::BulkTransfer {
+                transfers: vec![client::Transfer {
                     stream_id: StreamId(2),
-                    size: bulk_transfer_size,
+                    size: transfer_size,
+                    hertz: 240
                 }],
             },
         };
@@ -99,7 +100,7 @@ async fn run_protocol(
         };
 
         results.push(Result {
-            bulk_transfer_size,
+            transfer_size,
             rate_limit_kbps,
             mean_ping: run_result.mean,
             ping_deviation: run_result.deviation,
