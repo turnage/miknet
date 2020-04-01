@@ -2,6 +2,7 @@ use async_std::{future::timeout, prelude::*};
 use bench::*;
 use csv::Writer;
 use itertools::iproduct;
+use nhanh::*;
 use rand::random;
 use serde::Serialize;
 use std::time::Duration;
@@ -9,6 +10,7 @@ use std::time::Duration;
 #[derive(Debug, Clone, Copy, Serialize)]
 struct Result {
     rate_limit_kbps: usize,
+    bulk_transfer_size: usize,
     mean_ping: Duration,
     ping_deviation: Duration,
 }
@@ -16,6 +18,7 @@ struct Result {
 #[derive(Debug, Clone, Copy, Serialize)]
 struct CsvResult {
     rate_limit_kbps: usize,
+    bulk_transfer_size: usize,
     mean_ping_ms: f32,
     ping_deviation_ms: f32,
 }
@@ -24,19 +27,26 @@ impl From<Result> for CsvResult {
     fn from(src: Result) -> Self {
         Self {
             rate_limit_kbps: src.rate_limit_kbps,
+            bulk_transfer_size: src.bulk_transfer_size,
             mean_ping_ms: src.mean_ping.as_nanos() as f32 / 1e6,
             ping_deviation_ms: src.ping_deviation.as_nanos() as f32 / 1e6,
         }
     }
 }
 
-async fn run_protocol(protocol: Protocol, streams: u8) -> Vec<Result> {
+async fn run_protocol(
+    protocol: Protocol,
+    rate_limit_kbps: usize,
+) -> Vec<Result> {
+    const KB: usize = 1024;
+
     let mut results = vec![];
 
-    for rate_limit_kbps in (8..11).map(|base: u32| 2usize.pow(base)) {
+    for bulk_transfer_size in vec![1, 4, 16].into_iter().map(|b| b * KB) {
         println!(
-            "\tRunning with rate limit {}kbit, 5% drop rate",
-            rate_limit_kbps
+            "\tRunning with rate limit {}kbit, 5% drop rate, {}KiB bulk transfer",
+            rate_limit_kbps,
+            bulk_transfer_size / 1024,
         );
         let options = runner::Options {
             start_server: true,
@@ -56,11 +66,15 @@ async fn run_protocol(protocol: Protocol, streams: u8) -> Vec<Result> {
                 )
                 .parse()
                 .unwrap(),
-                streams,
+                streams: 1,
                 protocol,
                 payload_size: 200,
                 payload_count: 200,
                 stream_burst_width: 10,
+                bulk_transfers: vec![client::BulkTransfer {
+                    stream_id: StreamId(2),
+                    size: bulk_transfer_size,
+                }],
             },
         };
 
@@ -71,7 +85,7 @@ async fn run_protocol(protocol: Protocol, streams: u8) -> Vec<Result> {
         .await
         {
             Ok(Ok(run_result)) => {
-                println!("\tResult: {:?}", run_result);
+                println!("\t\tResult: {:?}", run_result);
                 run_result
             }
             Ok(Err(e)) => {
@@ -85,6 +99,7 @@ async fn run_protocol(protocol: Protocol, streams: u8) -> Vec<Result> {
         };
 
         results.push(Result {
+            bulk_transfer_size,
             rate_limit_kbps,
             mean_ping: run_result.mean,
             ping_deviation: run_result.deviation,
@@ -98,12 +113,15 @@ async fn run_protocol(protocol: Protocol, streams: u8) -> Vec<Result> {
 async fn main() {
     let configurations = iproduct!(
         ALL_PROTOCOLS.iter().copied(),
-        (1..8).step_by(2).map(|b: u32| 2u8.pow(b))
+        vec![4096, 134217728].into_iter()
     );
-    for (protocol, stream_count) in configurations {
-        eprintln!("Running {:?} with {:?} streams...", protocol, stream_count);
-        let results = run_protocol(protocol, stream_count).await;
-        let path = format!("{:?}_{:?}_streams.csv", protocol, stream_count);
+    for (protocol, rate_limit_kbps) in configurations {
+        eprintln!(
+            "Running {:?} with {:?}kbps bandwidth...",
+            protocol, rate_limit_kbps
+        );
+        let results = run_protocol(protocol, rate_limit_kbps).await;
+        let path = format!("{:?}_{:?}_kbps.csv", protocol, rate_limit_kbps);
         let mut writer = Writer::from_path(path).expect("Opening output file");
         results.into_iter().map(CsvResult::from).for_each(|result| {
             writer.serialize(result).expect("Writing result to file");

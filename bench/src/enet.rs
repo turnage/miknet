@@ -208,6 +208,7 @@ impl Sink<SendCmd> for EnetConnection {
     }
 }
 
+#[derive(Debug)]
 enum HostType {
     Server,
     Client,

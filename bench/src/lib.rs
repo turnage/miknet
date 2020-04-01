@@ -16,6 +16,8 @@ pub mod server;
 
 pub const ALL_PROTOCOLS: [Protocol; 2] = [Protocol::Tcp, Protocol::Enet];
 
+pub const ID_DO_NOT_RETURN: u64 = u64::max_value();
+
 pub fn default_server_address() -> SocketAddr {
     "127.0.0.1:33333".parse().unwrap()
 }

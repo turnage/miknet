@@ -13,16 +13,21 @@ where
     let mut client = server.next().await.expect("client").expect("Ok(client)");
     let (mut client_sink, mut client_stream) = client.split();
 
-    while let Some(Ok(benchmark_datagram)) = client_stream.next().await {
-        let position = benchmark_datagram.stream_position.expect("position");
+    while let Some(Ok(wire_datagram)) = client_stream.next().await {
+        let position = wire_datagram.stream_position.expect("position");
         let stream_id = position.stream_id;
-        client_sink
-            .send(SendCmd {
-                delivery_mode: DeliveryMode::ReliableOrdered(stream_id),
-                data: benchmark_datagram.data,
-                ..SendCmd::default()
-            })
-            .await?;
+        let benchmark_datagram: BenchmarkDatagram =
+            bincode::deserialize(&wire_datagram.data)
+                .expect("valid datagram");
+        if benchmark_datagram.id != ID_DO_NOT_RETURN {
+            client_sink
+                .send(SendCmd {
+                    delivery_mode: DeliveryMode::ReliableOrdered(stream_id),
+                    data: wire_datagram.data,
+                    ..SendCmd::default()
+                })
+                .await?;
+        }
     }
 
     Ok(())

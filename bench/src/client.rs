@@ -13,6 +13,7 @@ use futures::{
 use futures_timer::Delay;
 use nhanh::*;
 use serde::Serialize;
+use std::str::FromStr;
 use std::{
     collections::HashMap,
     fs::File,
@@ -85,12 +86,14 @@ struct Config {
     streams: u8,
     payload_count: usize,
     stream_burst_width: usize,
+    bulk_transfers: Vec<BulkTransfer>,
 }
 
 async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
     let tick_ps = 60;
     let tick_rate = Duration::from_secs(1) / tick_ps;
     let mut ticker = stream::repeat(0u8).then(|_| Delay::new(tick_rate));
+    let mut bulk_tx_ticker = stream::repeat(0u8).then(|_| Delay::new(tick_rate / 4));
 
     let total_datagrams = config.payload_count;
     let mut remaining_to_send = total_datagrams;
@@ -99,14 +102,18 @@ async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
 
     enum Input {
         Tick,
+        BulkTransferTick, 
         Wire(Result<Datagram>),
     }
 
     let (mut client_sink, client_stream) = client.split();
     let returned_datagrams = client_stream.map(Input::Wire);
     let ticks = ticker.map(|_| Input::Tick);
-    let mut input_stream = select(returned_datagrams, ticks);
+    let bulk_tx_ticks = bulk_tx_ticker.map(|_| Input::BulkTransferTick);
+    let mut input_stream = select( bulk_tx_ticks,select(returned_datagrams, ticks));
     let mut stream_alternator: usize = 0;
+
+    let mut bulk_transfers = config.bulk_transfers.into_iter().flat_map(std::convert::identity);
 
     loop {
         let input = input_stream.next().await.unwrap();
@@ -178,6 +185,11 @@ async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
                     live.insert(id, Instant::now());
                 }
             }
+            Input::BulkTransferTick => {
+                if let Some(bulk_tx) = bulk_transfers.next() {
+                    client_sink.send(bulk_tx).await;
+                }
+            }
         }
     }
 }
@@ -189,8 +201,6 @@ pub struct Options {
     pub address: SocketAddr,
     #[structopt(short = "c", default_value = "1")]
     pub streams: u8,
-    #[structopt(subcommand)]
-    pub protocol: Protocol,
     #[structopt(short = "d", default_value = "200")]
     pub payload_size: usize,
     #[structopt(short = "n", default_value = "600")]
@@ -199,6 +209,59 @@ pub struct Options {
     /// before sending messages on another stream.
     #[structopt(short = "w", default_value = "10")]
     pub stream_burst_width: usize,
+    /// Bulk transfers.
+    #[structopt(short = "b", long)]
+    pub bulk_transfers: Vec<BulkTransfer>,
+    #[structopt(subcommand)]
+    pub protocol: Protocol,
+}
+
+#[derive(Clone, Debug, Copy)]
+pub struct BulkTransfer {
+    pub stream_id: StreamId,
+    pub size: usize,
+}
+
+impl Iterator for BulkTransfer {
+    type Item = SendCmd;
+    fn next(&mut self) -> Option<Self::Item> {
+        /// Chosen because ENet has a bug causing payloads larger than this
+        /// to trigger an infinite loop within enet_host_service.
+        /// TODO: file that bug
+        const MAX_PAYLOAD: usize = 800;
+
+        if self.size == 0 {
+            return None;
+        }
+
+        let payload_size = std::cmp::min(self.size, MAX_PAYLOAD);
+        self.size = self.size.saturating_sub(MAX_PAYLOAD);
+
+        let delivery_mode = DeliveryMode::ReliableOrdered(self.stream_id);
+        Some(SendCmd {
+            delivery_mode, 
+            data: bincode::serialize(&BenchmarkDatagram {
+                id: ID_DO_NOT_RETURN,
+                delivery_mode,
+                data: vec![0; payload_size],
+            }).expect("to serialize bulk transfer"),
+            ..SendCmd::default()
+        })
+    }
+}
+
+impl FromStr for BulkTransfer {
+    type Err = std::num::ParseIntError;
+    fn from_str(src: &str) -> std::result::Result<Self, Self::Err> {
+        let args: Vec<&str> = src.split(":").collect();
+        let stream_id = args[0].parse::<u8>()?;
+        let size = args[1].parse::<usize>()?;
+
+        Ok(Self {
+            stream_id: StreamId(stream_id),
+            size,
+        })
+    }
 }
 
 pub async fn client_main(options: Options) -> Results {
@@ -207,6 +270,7 @@ pub async fn client_main(options: Options) -> Results {
         streams: options.streams,
         payload_count: options.payload_count,
         stream_burst_width: options.stream_burst_width,
+        bulk_transfers: options.bulk_transfers,
     };
 
     let results = match options.protocol {
