@@ -1,11 +1,12 @@
 use crate::*;
 
 use futures::future::join;
+use serde::Serialize;
 use std::process::Command;
 
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
+#[derive(Serialize, Debug, Clone, StructOpt)]
 pub struct NetworkConfig {
     /// Delay in milliseconds
     #[structopt(long, default_value = "0")]
@@ -25,8 +26,23 @@ pub struct NetworkConfig {
     /// Network loopback interface.
     #[structopt(long, default_value = "lo")]
     pub interface: String,
-    #[structopt(long, default_value = "20000")]
+    /// Rate limit of simulated wire. Defaults to 1Gigabit.
+    #[structopt(long, default_value = "1073741824")]
     pub rate_limit_kbps: usize,
+}
+
+impl Default for NetworkConfig {
+    fn default() -> Self {
+        Self {
+            delay: 0,
+            jitter: 0,
+            delay_correlation: 0.0,
+            random_loss: 0.0,
+            random_loss_correlation: 0.0,
+            interface: String::from("lo"),
+            rate_limit_kbps: 1073741824,
+        }
+    }
 }
 
 impl NetworkConfig {
@@ -53,7 +69,7 @@ impl NetworkConfig {
                 "loss",
                 "random",
                 &format!("{}%", self.random_loss / 2.),
-                &format!("{}", self.random_loss_correlation),
+                &format!("{}%", self.random_loss_correlation),
                 "rate",
                 &format!("{}kbit", self.rate_limit_kbps),
             ])

@@ -21,7 +21,7 @@ pub fn default_server_address() -> SocketAddr {
     "127.0.0.1:33333".parse().unwrap()
 }
 
-#[derive(Copy, Clone, Debug, StructOpt)]
+#[derive(Serialize, Copy, Clone, Debug, StructOpt)]
 pub enum Protocol {
     Tcp,
     Enet,

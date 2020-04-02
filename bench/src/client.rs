@@ -18,7 +18,7 @@ use std::{
 };
 use structopt::StructOpt;
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 struct TripReport {
     index: u64,
     round_trip: u128,
@@ -83,36 +83,67 @@ fn ticker(hertz: u32) -> impl Stream<Item = ()> {
     stream::repeat(0u8).then(move |_| Delay::new(tick_rate))
 }
 
+#[derive(Default, Debug)]
+struct TransferTracker {
+    total_expected: usize,
+    live: HashMap<u64, Instant>,
+    returned: Vec<TripReport>,
+}
+
+impl TransferTracker {
+    fn track_send(&mut self, id: u64) {
+        self.live.insert(id, Instant::now());
+    }
+
+    fn track_return(&mut self, id: u64) {
+        if let Some(sent_time) = self.live.remove(&id) {
+            self.returned.push(TripReport {
+                index: id,
+                round_trip: Instant::now().duration_since(sent_time).as_nanos(),
+            });
+        }
+    }
+
+    fn done(&self) -> bool {
+        self.returned.len() >= self.total_expected
+    }
+}
+
 async fn run(
     options: Options,
     client: impl Connection + Unpin,
 ) -> Result<Results> {
-    let ticker = ticker(60);
-
-    let total_datagrams = options.payload_count;
-    let mut remaining_to_send = total_datagrams;
-    let mut live = HashMap::new();
-    let mut stream_results: HashMap<StreamId, Vec<TripReport>> = HashMap::new();
-
     enum Input {
-        Tick,
-        Transfer(SendCmd),
+        Transfer(TransferCmd),
         Wire(Result<Datagram>),
     }
 
     let (mut client_sink, client_stream) = client.split();
     let returned_datagrams = client_stream.map(Input::Wire);
-    let ticks = ticker.map(|_| Input::Tick);
+
+    let mut tracking = options
+        .transfers
+        .iter()
+        .filter_map(|tx| {
+            tx.return_count.map(|total_expected| {
+                (
+                    tx.stream_id,
+                    TransferTracker {
+                        total_expected,
+                        ..TransferTracker::default()
+                    },
+                )
+            })
+        })
+        .collect::<HashMap<StreamId, TransferTracker>>();
     let transfers: SelectAll<_> = options
         .transfers
         .into_iter()
         .map(Transfer::stream)
         .collect();
-    let mut input_stream = select(
-        transfers.map(Input::Transfer),
-        select(returned_datagrams, ticks),
-    );
-    let mut stream_alternator: usize = 0;
+
+    let mut input_stream =
+        select(transfers.map(Input::Transfer), returned_datagrams);
 
     loop {
         let input = input_stream.next().await.unwrap();
@@ -129,61 +160,29 @@ async fn run(
                         returned_datagram.data.as_slice(),
                     )?;
 
-                let return_time = Instant::now();
-                let send_time = match live.remove(&benchmark_datagram.id) {
-                    Some(send_time) => send_time,
-                    None => {
-                        continue;
-                    }
-                };
-                let round_trip = return_time.duration_since(send_time);
-                stream_results.entry(stream).or_default().push(TripReport {
-                    index: benchmark_datagram.id,
-                    round_trip: round_trip.as_nanos(),
-                });
+                if let Some(tracker) = tracking.get_mut(&stream) {
+                    tracker.track_return(benchmark_datagram.id);
+                }
 
-                if remaining_to_send == 0 && live.is_empty() {
-                    return Ok(stream_results
+                if tracking.values().all(TransferTracker::done) {
+                    return Ok(tracking
                         .into_iter()
-                        .map(|(_, reports)| reports)
+                        .map(|(_, tracker)| tracker.returned)
                         .map(Results::from)
                         .collect());
                 }
             }
-            Input::Tick => {
-                let stream = {
-                    let stream = (stream_alternator
-                        / options.stream_burst_width)
-                        % options.streams as usize;
-                    stream_alternator += 1;
-                    stream as u8
-                };
-                let delivery_mode =
-                    DeliveryMode::ReliableOrdered(StreamId(stream));
-                let data = vec![0; options.payload_size];
-                let id = (total_datagrams - remaining_to_send) as u64;
-                let benchmark_datagram = BenchmarkDatagram {
-                    delivery_mode,
-                    id,
-                    data,
-                };
-
-                client_sink
-                    .send(SendCmd {
-                        data: bincode::serialize(&benchmark_datagram)?,
-                        delivery_mode,
-                        ..SendCmd::default()
+            Input::Transfer(transfer_cmd) => {
+                client_sink.send(transfer_cmd.send_cmd).await?;
+                if let Some((cumulative_tracking, cmd_tracking)) =
+                    transfer_cmd.tracking.and_then(|cmd_tracking| {
+                        let cumulative_tracking =
+                            tracking.get_mut(&cmd_tracking.stream_id)?;
+                        Some((cumulative_tracking, cmd_tracking))
                     })
-                    .await?;
-
-                let old = remaining_to_send;
-                remaining_to_send = remaining_to_send.saturating_sub(1);
-                if old != remaining_to_send {
-                    live.insert(id, Instant::now());
+                {
+                    cumulative_tracking.track_send(cmd_tracking.id);
                 }
-            }
-            Input::Transfer(send_cmd) => {
-                client_sink.send(send_cmd).await?;
             }
         }
     }
@@ -194,21 +193,23 @@ pub struct Options {
     /// Address of the server to run the benchmark against;
     #[structopt(short = "a", default_value = "127.0.0.1:33333")]
     pub address: SocketAddr,
-    #[structopt(short = "c", default_value = "1")]
-    pub streams: u8,
-    #[structopt(short = "d", default_value = "200")]
-    pub payload_size: usize,
-    #[structopt(short = "n", default_value = "600")]
-    pub payload_count: usize,
-    /// The number of messages to send on a single stream at once,
-    /// before sending messages on another stream.
-    #[structopt(short = "w", default_value = "10")]
-    pub stream_burst_width: usize,
-    /// Periodic transfers, specified in terms of stream_id:size:hertz.
+    /// Periodic transfers, specified in terms of
+    /// `stream_id:size:hertz:[return_count]`.
     #[structopt(short = "b", long)]
     pub transfers: Vec<Transfer>,
     #[structopt(subcommand)]
     pub protocol: Protocol,
+}
+
+struct TransferCmd {
+    send_cmd: SendCmd,
+    tracking: Option<TransferMessageTracking>,
+}
+
+/// Tracking information for a transfer message on the wire.
+struct TransferMessageTracking {
+    stream_id: StreamId,
+    id: u64,
 }
 
 #[derive(Clone, Debug, Copy)]
@@ -216,20 +217,37 @@ pub struct Transfer {
     pub stream_id: StreamId,
     pub size: usize,
     pub hertz: u32,
+    pub return_count: Option<usize>,
 }
 
 impl Transfer {
-    fn stream(self) -> impl Stream<Item = SendCmd> {
+    fn stream(self) -> impl Stream<Item = TransferCmd> {
         let ticker = ticker(self.hertz);
-        ticker.map(move |_| self.send_cmd())
+        let mut id = 0;
+        ticker.map(move |_| {
+            id += 1;
+            match self.return_count {
+                Some(_) => TransferCmd {
+                    send_cmd: self.send_cmd(id),
+                    tracking: Some(TransferMessageTracking {
+                        stream_id: self.stream_id,
+                        id,
+                    }),
+                },
+                None => TransferCmd {
+                    send_cmd: self.send_cmd(ID_DO_NOT_RETURN),
+                    tracking: None,
+                },
+            }
+        })
     }
 
-    fn send_cmd(&self) -> SendCmd {
+    fn send_cmd(&self, id: u64) -> SendCmd {
         let delivery_mode = DeliveryMode::ReliableOrdered(self.stream_id);
         SendCmd {
             delivery_mode,
             data: bincode::serialize(&BenchmarkDatagram {
-                id: ID_DO_NOT_RETURN,
+                id,
                 delivery_mode,
                 data: vec![0; self.size],
             })
@@ -247,11 +265,14 @@ impl FromStr for Transfer {
         let stream_id = args[0].parse::<u8>()?;
         let size = args[1].parse::<usize>()?;
         let hertz = args[2].parse::<u32>()?;
+        let return_count =
+            args.get(3).map(|a| a.parse::<usize>()).transpose()?;
 
         Ok(Self {
             stream_id: StreamId(stream_id),
             size,
             hertz,
+            return_count,
         })
     }
 }
