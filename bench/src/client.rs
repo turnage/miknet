@@ -81,24 +81,16 @@ impl From<Vec<TripReport>> for Results {
     }
 }
 
-struct Config {
-    payload_size: usize,
-    streams: u8,
-    payload_count: usize,
-    stream_burst_width: usize,
-    transfers: Vec<Transfer>,
-}
-
 /// Returns a stream that yields `()` `hertz` times per second.
 fn ticker(hertz: u32) -> impl Stream<Item=()> {
     let tick_rate = Duration::from_secs(1) / hertz;
     stream::repeat(0u8).then(move |_| Delay::new(tick_rate))
 }
 
-async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
+async fn run(options: Options, mut client: impl Connection + Unpin) -> Results {
     let mut ticker = ticker(60);
 
-    let total_datagrams = config.payload_count;
+    let total_datagrams = options.payload_count;
     let mut remaining_to_send = total_datagrams;
     let mut live = HashMap::new();
     let mut stream_results: HashMap<StreamId, Vec<TripReport>> = HashMap::new();
@@ -112,7 +104,7 @@ async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
     let (mut client_sink, client_stream) = client.split();
     let returned_datagrams = client_stream.map(Input::Wire);
     let ticks = ticker.map(|_| Input::Tick);
-    let transfers: SelectAll<_> = config.transfers.into_iter().map(Transfer::stream).collect();
+    let transfers: SelectAll<_> = options.transfers.into_iter().map(Transfer::stream).collect();
     let mut input_stream = select(transfers.map(Input::Transfer) ,select(returned_datagrams, ticks));
     let mut stream_alternator: usize = 0;
 
@@ -156,14 +148,14 @@ async fn run(config: Config, mut client: impl Connection + Unpin) -> Results {
             Input::Tick => {
                 let stream = {
                     let stream = (stream_alternator
-                        / config.stream_burst_width)
-                        % config.streams as usize;
+                        / options.stream_burst_width)
+                        % options.streams as usize;
                     stream_alternator += 1;
                     stream as u8
                 };
                 let delivery_mode =
                     DeliveryMode::ReliableOrdered(StreamId(stream));
-                let data = vec![0; config.payload_size];
+                let data = vec![0; options.payload_size];
                 let id = (total_datagrams - remaining_to_send) as u64;
                 let benchmark_datagram = BenchmarkDatagram {
                     delivery_mode,
@@ -260,21 +252,14 @@ impl FromStr for Transfer {
 }
 
 pub async fn client_main(options: Options) -> Results {
-    let config = Config {
-        payload_size: options.payload_size,
-        streams: options.streams,
-        payload_count: options.payload_count,
-        stream_burst_width: options.stream_burst_width,
-        transfers: options.transfers,
-    };
-
-    let results = match options.protocol {
+    let address = options.address;
+        let results = match options.protocol {
         Protocol::Tcp => {
             run(
-                config,
+                options,
                 loop {
                     let result =
-                        tcp::TcpConnection::connect(options.address).await;
+                        tcp::TcpConnection::connect(address).await;
 
                     let error = match result {
                         Ok(results) => break results,
@@ -300,7 +285,7 @@ pub async fn client_main(options: Options) -> Results {
             .await
         }
         Protocol::Enet => {
-            run(config, enet::EnetConnection::connect(options.address).await)
+            run(options, enet::EnetConnection::connect(address).await)
                 .await
         }
         p => panic!("Unsupported protocol for client: {:?}", p),
