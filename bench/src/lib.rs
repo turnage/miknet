@@ -4,7 +4,7 @@ extern crate rental;
 use async_std::net::SocketAddr;
 use nhanh::*;
 use serde::{Deserialize, Serialize};
-use std::time::Instant;
+
 use structopt::StructOpt;
 
 pub mod enet;

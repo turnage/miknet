@@ -74,7 +74,7 @@ async fn run_protocol(
                 transfers: vec![client::Transfer {
                     stream_id: StreamId(2),
                     size: transfer_size,
-                    hertz: 240
+                    hertz: 240,
                 }],
             },
         };

@@ -8,7 +8,6 @@ use std::ffi::c_void;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
-use std::thread::{self, JoinHandle};
 
 pub const MAX_CHANNELS: u64 = 256;
 
@@ -264,7 +263,7 @@ fn enet_service_command(command: EnetCmd) {
 fn enet_service_loop(
     marker: Arc<()>,
     mut command_stream: mpsc::Receiver<EnetCmd>,
-    mut new_peer_sink: mpsc::UnboundedSender<NewPeer>,
+    new_peer_sink: mpsc::UnboundedSender<NewPeer>,
     host_type: HostType,
     server_addr: enet::ENetAddress,
 ) -> impl FnOnce() {

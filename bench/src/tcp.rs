@@ -1,26 +1,23 @@
 //! TCP implementation of the nhanh API
 
 use crate::*;
-use anyhow::anyhow;
+
 use async_std::{
-    io::ReadExt,
     net::*,
     task::{Context, Poll},
 };
-use bincode::{deserialize, serialize};
-use futures::channel::mpsc;
+
 use futures::{
-    future::{self, FutureExt, TryFutureExt},
+    future::{FutureExt, TryFutureExt},
     sink::SinkExt,
     stream::{
         self, Fuse, FusedStream, LocalBoxStream, StreamExt, TryStreamExt,
     },
     Sink, Stream,
 };
-use nhanh::*;
-use serde::{Deserialize, Serialize};
+
 use std::{marker::Unpin, pin::Pin};
-use thiserror::Error;
+
 use tokio_serde::{formats::*, SymmetricallyFramed};
 use tokio_util::{codec::*, compat::*};
 

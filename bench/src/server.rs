@@ -1,24 +1,23 @@
 use crate::*;
-use anyhow::anyhow;
+
 use async_std::net::SocketAddr;
-use bincode::deserialize;
+
 use futures::prelude::*;
-use nhanh::*;
+
 use structopt::StructOpt;
 
 async fn run<C>(mut server: impl Server<C> + Unpin) -> Result<()>
 where
     C: Connection + Unpin,
 {
-    let mut client = server.next().await.expect("client").expect("Ok(client)");
+    let client = server.next().await.expect("client").expect("Ok(client)");
     let (mut client_sink, mut client_stream) = client.split();
 
     while let Some(Ok(wire_datagram)) = client_stream.next().await {
         let position = wire_datagram.stream_position.expect("position");
         let stream_id = position.stream_id;
         let benchmark_datagram: BenchmarkDatagram =
-            bincode::deserialize(&wire_datagram.data)
-                .expect("valid datagram");
+            bincode::deserialize(&wire_datagram.data).expect("valid datagram");
         if benchmark_datagram.id != ID_DO_NOT_RETURN {
             client_sink
                 .send(SendCmd {

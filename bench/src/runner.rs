@@ -1,9 +1,8 @@
 use crate::*;
-use async_std::net::*;
-use async_std::task;
+
 use futures::future::join;
 use std::process::Command;
-use std::thread;
+
 use structopt::StructOpt;
 
 #[derive(StructOpt)]

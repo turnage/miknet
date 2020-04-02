@@ -1,22 +1,21 @@
 #![recursion_limit = "256"]
 
 use crate::*;
-use anyhow::{anyhow, bail};
+
 use async_std::{net::SocketAddr, prelude::*};
-use bincode::deserialize;
+
 use futures::{
     self,
     future::FusedFuture,
     sink::SinkExt,
-    stream::{self, SelectAll, select, FuturesUnordered, StreamExt},
+    stream::{self, select, FuturesUnordered, SelectAll, StreamExt},
 };
 use futures_timer::Delay;
-use nhanh::*;
+
 use serde::Serialize;
 use std::str::FromStr;
 use std::{
     collections::HashMap,
-    fs::File,
     iter::FromIterator,
     time::{Duration, Instant},
 };
@@ -82,13 +81,13 @@ impl From<Vec<TripReport>> for Results {
 }
 
 /// Returns a stream that yields `()` `hertz` times per second.
-fn ticker(hertz: u32) -> impl Stream<Item=()> {
+fn ticker(hertz: u32) -> impl Stream<Item = ()> {
     let tick_rate = Duration::from_secs(1) / hertz;
     stream::repeat(0u8).then(move |_| Delay::new(tick_rate))
 }
 
-async fn run(options: Options, mut client: impl Connection + Unpin) -> Results {
-    let mut ticker = ticker(60);
+async fn run(options: Options, client: impl Connection + Unpin) -> Results {
+    let ticker = ticker(60);
 
     let total_datagrams = options.payload_count;
     let mut remaining_to_send = total_datagrams;
@@ -97,15 +96,22 @@ async fn run(options: Options, mut client: impl Connection + Unpin) -> Results {
 
     enum Input {
         Tick,
-        Transfer(SendCmd), 
+        Transfer(SendCmd),
         Wire(Result<Datagram>),
     }
 
     let (mut client_sink, client_stream) = client.split();
     let returned_datagrams = client_stream.map(Input::Wire);
     let ticks = ticker.map(|_| Input::Tick);
-    let transfers: SelectAll<_> = options.transfers.into_iter().map(Transfer::stream).collect();
-    let mut input_stream = select(transfers.map(Input::Transfer) ,select(returned_datagrams, ticks));
+    let transfers: SelectAll<_> = options
+        .transfers
+        .into_iter()
+        .map(Transfer::stream)
+        .collect();
+    let mut input_stream = select(
+        transfers.map(Input::Transfer),
+        select(returned_datagrams, ticks),
+    );
     let mut stream_alternator: usize = 0;
 
     loop {
@@ -179,7 +185,7 @@ async fn run(options: Options, mut client: impl Connection + Unpin) -> Results {
                 }
             }
             Input::Transfer(send_cmd) => {
-                    client_sink.send(send_cmd).await;
+                client_sink.send(send_cmd).await;
             }
         }
     }
@@ -215,7 +221,7 @@ pub struct Transfer {
 }
 
 impl Transfer {
-    fn stream(self) -> impl Stream<Item=SendCmd> {
+    fn stream(self) -> impl Stream<Item = SendCmd> {
         let ticker = ticker(self.hertz);
         ticker.map(move |_| self.send_cmd())
     }
@@ -223,12 +229,13 @@ impl Transfer {
     fn send_cmd(&self) -> SendCmd {
         let delivery_mode = DeliveryMode::ReliableOrdered(self.stream_id);
         SendCmd {
-            delivery_mode, 
+            delivery_mode,
             data: bincode::serialize(&BenchmarkDatagram {
                 id: ID_DO_NOT_RETURN,
                 delivery_mode,
                 data: vec![0; self.size],
-            }).expect("to serialize bulk transfer"),
+            })
+            .expect("to serialize bulk transfer"),
             ..SendCmd::default()
         }
     }
@@ -246,20 +253,19 @@ impl FromStr for Transfer {
         Ok(Self {
             stream_id: StreamId(stream_id),
             size,
-            hertz
+            hertz,
         })
     }
 }
 
 pub async fn client_main(options: Options) -> Results {
     let address = options.address;
-        let results = match options.protocol {
+    let results = match options.protocol {
         Protocol::Tcp => {
             run(
                 options,
                 loop {
-                    let result =
-                        tcp::TcpConnection::connect(address).await;
+                    let result = tcp::TcpConnection::connect(address).await;
 
                     let error = match result {
                         Ok(results) => break results,
@@ -285,8 +291,7 @@ pub async fn client_main(options: Options) -> Results {
             .await
         }
         Protocol::Enet => {
-            run(options, enet::EnetConnection::connect(address).await)
-                .await
+            run(options, enet::EnetConnection::connect(address).await).await
         }
         p => panic!("Unsupported protocol for client: {:?}", p),
     };
