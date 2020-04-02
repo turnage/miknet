@@ -1,4 +1,4 @@
-use async_std::{future::timeout, prelude::*};
+use async_std::future::timeout;
 use bench::*;
 use csv::Writer;
 use itertools::iproduct;

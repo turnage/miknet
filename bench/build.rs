@@ -16,14 +16,11 @@ fn main() {
             .expect("command");
         write!(
             build_log,
-            "Command output: {}",
-            String::from_utf8(output.stdout.clone()).expect("utf8")
-        );
-        write!(
-            build_log,
-            "Command error: {}",
+            "Command output: {}\nCommand error: {}",
+            String::from_utf8(output.stdout.clone()).expect("utf8"),
             String::from_utf8(output.stderr.clone()).expect("utf8")
-        );
+        )
+        .expect("writing to build log");
         output
     };
     run_in_enet(Command::new("autoreconf").arg("-vfi"));

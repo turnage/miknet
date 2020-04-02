@@ -5,5 +5,5 @@ use structopt::StructOpt;
 async fn main() {
     let options = Options::from_args();
 
-    server_main(options).await;
+    server_main(options).await.expect("running server");
 }

@@ -29,6 +29,8 @@ struct EnetCmd {
 }
 
 pub struct EnetServer {
+    /// Keeps the service thread alive.
+    #[allow(unused)]
     marker: Arc<()>,
     new_peer_stream: mpsc::UnboundedReceiver<NewPeer>,
     command_sink: mpsc::Sender<EnetCmd>,
@@ -44,6 +46,7 @@ async fn socket_addr_to_enet_addr(
         .next()
         .expect("address");
 
+    #[allow(deprecated)]
     unsafe {
         let mut address: enet::ENetAddress = std::mem::uninitialized();
         address.host = match socket_address.ip() {
@@ -111,6 +114,8 @@ impl Stream for EnetServer {
 }
 
 pub struct EnetConnection {
+    /// Keeps the service thread alive.
+    #[allow(unused)]
     marker: Arc<()>,
     peer: u64,
     command_sink: mpsc::Sender<EnetCmd>,
@@ -286,6 +291,7 @@ fn enet_service_loop(
                 enet_service_command(command);
             }
 
+            #[allow(deprecated)]
             let mut event: enet::ENetEvent =
                 unsafe { std::mem::uninitialized() };
             while unsafe {

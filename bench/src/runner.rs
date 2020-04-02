@@ -80,7 +80,7 @@ pub struct Options {
     pub start_server: bool,
 }
 
-async fn run_client(options: &Options) -> client::Results {
+async fn run_client(options: &Options) -> Result<client::Results> {
     client::client_main(options.client_options.clone()).await
 }
 
@@ -93,7 +93,7 @@ async fn run(options: &Options) -> Result<client::Results> {
     let (results, server_result) =
         join(run_client(&options), server::server_main(server_options)).await;
 
-    server_result.map(|_| results)
+    server_result.and_then(|_| results)
 }
 
 pub async fn runner_main(options: Options) -> Result<client::Results> {

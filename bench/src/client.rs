@@ -1,14 +1,11 @@
-#![recursion_limit = "256"]
-
 use crate::*;
 
 use async_std::{net::SocketAddr, prelude::*};
 
 use futures::{
     self,
-    future::FusedFuture,
     sink::SinkExt,
-    stream::{self, select, FuturesUnordered, SelectAll, StreamExt},
+    stream::{self, select, SelectAll, StreamExt},
 };
 use futures_timer::Delay;
 
@@ -86,7 +83,10 @@ fn ticker(hertz: u32) -> impl Stream<Item = ()> {
     stream::repeat(0u8).then(move |_| Delay::new(tick_rate))
 }
 
-async fn run(options: Options, client: impl Connection + Unpin) -> Results {
+async fn run(
+    options: Options,
+    client: impl Connection + Unpin,
+) -> Result<Results> {
     let ticker = ticker(60);
 
     let total_datagrams = options.payload_count;
@@ -127,8 +127,7 @@ async fn run(options: Options, client: impl Connection + Unpin) -> Results {
                 let benchmark_datagram =
                     bincode::deserialize::<BenchmarkDatagram>(
                         returned_datagram.data.as_slice(),
-                    )
-                    .expect("deserializing");
+                    )?;
 
                 let return_time = Instant::now();
                 let send_time = match live.remove(&benchmark_datagram.id) {
@@ -144,11 +143,11 @@ async fn run(options: Options, client: impl Connection + Unpin) -> Results {
                 });
 
                 if remaining_to_send == 0 && live.is_empty() {
-                    return stream_results
+                    return Ok(stream_results
                         .into_iter()
                         .map(|(_, reports)| reports)
                         .map(Results::from)
-                        .collect();
+                        .collect());
                 }
             }
             Input::Tick => {
@@ -171,12 +170,11 @@ async fn run(options: Options, client: impl Connection + Unpin) -> Results {
 
                 client_sink
                     .send(SendCmd {
-                        data: bincode::serialize(&benchmark_datagram)
-                            .expect("serializing"),
+                        data: bincode::serialize(&benchmark_datagram)?,
                         delivery_mode,
                         ..SendCmd::default()
                     })
-                    .await;
+                    .await?;
 
                 let old = remaining_to_send;
                 remaining_to_send = remaining_to_send.saturating_sub(1);
@@ -185,7 +183,7 @@ async fn run(options: Options, client: impl Connection + Unpin) -> Results {
                 }
             }
             Input::Transfer(send_cmd) => {
-                client_sink.send(send_cmd).await;
+                client_sink.send(send_cmd).await?;
             }
         }
     }
@@ -258,9 +256,9 @@ impl FromStr for Transfer {
     }
 }
 
-pub async fn client_main(options: Options) -> Results {
+pub async fn client_main(options: Options) -> Result<Results> {
     let address = options.address;
-    let results = match options.protocol {
+    match options.protocol {
         Protocol::Tcp => {
             run(
                 options,
@@ -293,8 +291,5 @@ pub async fn client_main(options: Options) -> Results {
         Protocol::Enet => {
             run(options, enet::EnetConnection::connect(address).await).await
         }
-        p => panic!("Unsupported protocol for client: {:?}", p),
-    };
-
-    results
+    }
 }

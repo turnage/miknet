@@ -8,7 +8,6 @@ use async_std::{
 };
 
 use futures::{
-    future::{FutureExt, TryFutureExt},
     sink::SinkExt,
     stream::{
         self, Fuse, FusedStream, LocalBoxStream, StreamExt, TryStreamExt,
@@ -20,13 +19,6 @@ use std::{marker::Unpin, pin::Pin};
 
 use tokio_serde::{formats::*, SymmetricallyFramed};
 use tokio_util::{codec::*, compat::*};
-
-type FramedTcpStream = Framed<Compat<TcpStream>, LengthDelimitedCodec>;
-type DatagramStream = SymmetricallyFramed<
-    FramedTcpStream,
-    Datagram,
-    SymmetricalBincode<Datagram>,
->;
 
 pub struct TcpServer {
     incoming: Fuse<Incoming<'static>>,

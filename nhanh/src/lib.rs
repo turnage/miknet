@@ -57,9 +57,8 @@ use futures::{
     sink::Sink,
     stream::{FusedStream, Stream},
 };
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::{io, marker::PhantomData};
+use std::marker::PhantomData;
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -156,8 +155,6 @@ pub struct SendCmd {
     #[doc(hidden)]
     pub ___non_exhaustive: PhantomData<()>,
 }
-
-const EMPTY: Lazy<io::Empty> = Lazy::new(|| io::empty());
 
 impl Default for SendCmd {
     fn default() -> Self {

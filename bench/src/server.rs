@@ -51,6 +51,5 @@ pub async fn server_main(options: Options) -> Result<()> {
         Protocol::Enet => {
             run(enet::EnetServer::bind(options.address).await).await
         }
-        p => panic!("unsupported protocol for server: {:?}", p),
     }
 }

@@ -1,5 +1,4 @@
-#[macro_use]
-extern crate rental;
+#![recursion_limit = "256"]
 
 use async_std::net::SocketAddr;
 use nhanh::*;
