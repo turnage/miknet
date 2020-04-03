@@ -1,45 +1,48 @@
 use std::fs::File;
 
+use duct::cmd;
+use std::ffi::OsString;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
 
-fn main() {
-    let mut build_log =
-        File::create("build_log.txt").expect("opening build log");
+fn run_in(dir: &PathBuf, invocation: &str) {
+    let context =
+        format!("Running `{}` in `{}`", invocation, dir.as_path().display());
+    let invocation: Vec<&str> = invocation.split_whitespace().collect();
+    let output = cmd(invocation[0], &invocation[1..])
+        .dir(dir)
+        .run()
+        .expect(&context);
+    if !output.status.success() {
+        let stderr =
+            String::from_utf8(output.stderr).expect("Parsing stderr as utf8");
+        panic!("`{}` executed, but failed: {}", context, stderr);
+    }
+}
 
+fn build_enet(enet_dir: PathBuf) {
     println!("cargo:rerun-if-env-changed=ENET");
-    let mut run_in_enet = |cmd: &mut Command| {
-        let output = cmd
-            .current_dir("third_party/enet")
-            .output()
-            .expect("command");
-        write!(
-            build_log,
-            "Command output: {}\nCommand error: {}",
-            String::from_utf8(output.stdout.clone()).expect("utf8"),
-            String::from_utf8(output.stderr.clone()).expect("utf8")
-        )
-        .expect("writing to build log");
-        output
-    };
-    run_in_enet(Command::new("autoreconf").arg("-vfi"));
 
-    let mut path = PathBuf::new();
-    path.push(
-        String::from_utf8(run_in_enet(&mut Command::new("pwd")).stdout)
-            .expect("valid utf8 path")
-            .trim(),
+    run_in(&enet_dir, "autoreconf -vfi");
+
+    let mut build_path = enet_dir.clone();
+    build_path.push("build");
+
+    let target_dir_arg = format!("--prefix={:?}", build_path);
+    run_in(
+        &enet_dir,
+        &format!(
+            "{}/configure --prefix={}",
+            enet_dir.as_path().display(),
+            build_path.as_path().display(),
+        ),
     );
-    path.push("build");
-
-    let target_dir_arg = format!("--prefix={:?}", path);
-    run_in_enet(Command::new("./configure").arg(target_dir_arg));
-    run_in_enet(&mut Command::new("make"));
-    run_in_enet(Command::new("make").arg("install"));
+    run_in(&enet_dir, "make");
+    run_in(&enet_dir, "make install");
 
     let lib_path = {
-        let mut lib_path = path.clone();
+        let mut lib_path = build_path.clone();
         lib_path.push("lib");
         lib_path
     };
@@ -50,7 +53,7 @@ fn main() {
     println!("cargo:rustc-link-lib=static=enet");
 
     let include_path = {
-        let mut include_path = path.clone();
+        let mut include_path = build_path.clone();
         include_path.push("include");
         include_path
     };
@@ -70,4 +73,10 @@ fn main() {
     bindings
         .write_to_file(PathBuf::from(out_dir).join("enet.rs"))
         .expect("writing bindings");
+}
+
+fn main() {
+    build_enet(
+        format!("{}/third_party/enet", env!("CARGO_MANIFEST_DIR")).into(),
+    );
 }

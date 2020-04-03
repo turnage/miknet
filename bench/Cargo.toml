@@ -24,3 +24,4 @@ float-ord = "0.2.0"
 
 [build-dependencies]
 bindgen = "0.53"
+duct = "0.13.3"
