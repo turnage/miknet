@@ -25,6 +25,7 @@ pub struct NetworkConfig {
     pub random_loss_correlation: f32,
     /// Network loopback interface.
     #[structopt(long, default_value = "lo")]
+    #[serde(skip)]
     pub interface: String,
     /// Rate limit of simulated wire. Defaults to 1Gigabit.
     #[structopt(long, default_value = "1073741824")]

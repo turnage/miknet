@@ -2,10 +2,15 @@
 use async_std::net::*;
 use bench::*;
 
-use itertools::iproduct;
+use float_ord::FloatOrd;
+
 use nhanh::*;
 
-use serde::Serialize;
+use serde::{
+    ser::{SerializeStruct, Serializer},
+    Serialize,
+};
+use std::collections::HashMap;
 
 
 fn local_address(port: u16) -> SocketAddr {
@@ -51,38 +56,111 @@ impl Scenario {
             ));
 
         Report {
-            scenario_name: self.netcode_scenario.scenario_name,
-            network_delay_ms: self.network_config.delay,
-            network_jitter_ms: self.network_config.jitter,
-            network_delay_correlation: self.network_config.delay_correlation,
-            network_random_packet_loss: self.network_config.random_loss,
-            network_random_packet_loss_correlation: self
-                .network_config
-                .random_loss_correlation,
-            network_rate_limit_kilobits: self.network_config.rate_limit_kbps,
-            protocol,
             mean_ping_ms: results.mean.as_secs_f64() * 1e3,
             ping_deviation_ms: results.deviation.as_secs_f64() * 1e3,
         }
     }
 }
 
+#[derive(Debug, Clone)]
+struct Benchmark {
+    scenario: Scenario,
+    reports: HashMap<Protocol, Report>,
+    least_latent: Protocol,
+    least_variant: Protocol,
+}
+
+impl Benchmark {
+    fn from_reports(
+        scenario: Scenario,
+        reports: HashMap<Protocol, Report>,
+    ) -> Self {
+        let (least_latent, least_variant) = {
+            let (least_latent, _) = reports
+                .iter()
+                .min_by_key(|(_, report)| FloatOrd(report.mean_ping_ms))
+                .unwrap();
+            let (least_variant, _) = reports
+                .iter()
+                .min_by_key(|(_, report)| FloatOrd(report.ping_deviation_ms))
+                .unwrap();
+
+            (*least_latent, *least_variant)
+        };
+
+        Self {
+            scenario,
+            reports,
+            least_latent,
+            least_variant,
+        }
+    }
+}
+
+impl Serialize for Benchmark {
+    fn serialize<S>(
+        &self,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let network_config_fields = 6;
+        let report_fields = 2;
+        let summary_fields = 2;
+        let total_fields = network_config_fields
+            + report_fields * self.reports.len()
+            + summary_fields;
+
+        let mut state =
+            serializer.serialize_struct("Benchmark", total_fields)?;
+
+        let cfg = &self.scenario.network_config;
+
+        // Conditions
+        state.serialize_field("network_delay_ms", &cfg.delay)?;
+        state.serialize_field("network_jitter_ms", &cfg.delay)?;
+        state.serialize_field(
+            "network_delay_correlation",
+            &cfg.delay_correlation,
+        )?;
+        state.serialize_field("network_random_loss", &cfg.random_loss)?;
+        state.serialize_field(
+            "network_random_loss_correlation",
+            &cfg.random_loss_correlation,
+        )?;
+        state.serialize_field(
+            "network_rate_limit_kbits",
+            &cfg.rate_limit_kbps,
+        )?;
+
+        // Results
+        for (protocol, report) in &self.reports {
+            state.serialize_field(
+                Box::leak(Box::new(format!(
+                    "{:?}_mean_round_trip_ms",
+                    protocol
+                ))),
+                &report.mean_ping_ms,
+            )?;
+            state.serialize_field(
+                Box::leak(Box::new(format!(
+                    "{:?}_round_trip_deviation_ms",
+                    protocol
+                ))),
+                &report.ping_deviation_ms,
+            )?;
+        }
+
+        state.serialize_field("least_latent", &self.least_latent)?;
+        state.serialize_field("least_variant", &self.least_variant)?;
+
+        state.end()
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 struct Report {
-    scenario_name: &'static str,
-    /// Delay in milliseconds
-    network_delay_ms: u64,
-    /// Jitter in milliseconds
-    network_jitter_ms: u64,
-    /// Delay correlation percentage (range: [0.0-100.0])
-    network_delay_correlation: f32,
-    /// Independent chance of packet loss (range: [0.0-100.0])
-    network_random_packet_loss: f32,
-    /// Random packet loss correlation (range: [0.0-100.0])
-    network_random_packet_loss_correlation: f32,
-    /// Rate limit of simulated wire.
-    network_rate_limit_kilobits: usize,
-    protocol: Protocol,
     mean_ping_ms: f64,
     ping_deviation_ms: f64,
 }
@@ -90,37 +168,83 @@ struct Report {
 const DEFAULT_RETURN_COUNT: Option<usize> = Some(200);
 
 fn scenarios() -> Vec<Scenario> {
-    vec![Scenario {
-        netcode_scenario: NetcodeScenario {
-            scenario_name: "200B_60hz",
-            transfers: vec![client::Transfer {
-                stream_id: StreamId(0),
-                size: 200,
-                hertz: 60,
-                return_count: DEFAULT_RETURN_COUNT,
-            }],
+    vec![
+        Scenario {
+            netcode_scenario: NetcodeScenario {
+                scenario_name: "transfer_0_200B_60Hz",
+                transfers: vec![client::Transfer {
+                    stream_id: StreamId(0),
+                    size: 200,
+                    hertz: 60,
+                    return_count: DEFAULT_RETURN_COUNT,
+                }],
+            },
+            network_config: runner::NetworkConfig::default(),
         },
-        network_config: runner::NetworkConfig::default(),
-    }]
+        Scenario {
+            netcode_scenario: NetcodeScenario {
+                scenario_name: "transfer_0_200B_60Hz-transfer_1_800_240Hz",
+                transfers: vec![
+                    client::Transfer {
+                        stream_id: StreamId(0),
+                        size: 200,
+                        hertz: 60,
+                        return_count: DEFAULT_RETURN_COUNT,
+                    },
+                    client::Transfer {
+                        stream_id: StreamId(1),
+                        size: 200,
+                        hertz: 240,
+                        return_count: None,
+                    },
+                ],
+            },
+            network_config: runner::NetworkConfig::default(),
+        },
+        Scenario {
+            netcode_scenario: NetcodeScenario {
+                scenario_name: "transfer_0_200B_60Hz-transfer_1_800_240Hz",
+                transfers: vec![
+                    client::Transfer {
+                        stream_id: StreamId(0),
+                        size: 200,
+                        hertz: 60,
+                        return_count: DEFAULT_RETURN_COUNT,
+                    },
+                    client::Transfer {
+                        stream_id: StreamId(1),
+                        size: 200,
+                        hertz: 240,
+                        return_count: None,
+                    },
+                ],
+            },
+            network_config: runner::NetworkConfig {
+                rate_limit_kbps: 1024,
+                ..Default::default()
+            },
+        },
+    ]
 }
 
 #[async_std::main]
 async fn main() {
     let scenarios = scenarios();
-    let scenarios = scenarios.iter();
-
-    let protocols = ALL_PROTOCOLS.iter().copied();
-
-    let configurations = iproduct!(scenarios, protocols);
 
     let output = std::io::stdout();
     let mut writer = csv::Writer::from_writer(output);
 
     let mut port = 1025;
-    for (scenario, protocol) in configurations {
+    for scenario in scenarios {
+        let mut reports = HashMap::new();
+        for protocol in &ALL_PROTOCOLS {
+            let report = scenario.run(port, *protocol).await;
+            reports.insert(*protocol, report);
+            port += 1;
+        }
+        let benchmark = Benchmark::from_reports(scenario, reports);
         writer
-            .serialize(scenario.run(port, protocol).await)
-            .expect("writing report to stdout");
-        port += 1;
+            .serialize(benchmark)
+            .expect("writing benchmark to stdout");
     }
 }
