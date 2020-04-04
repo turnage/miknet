@@ -75,8 +75,33 @@ fn build_enet(enet_dir: PathBuf) {
         .expect("writing bindings");
 }
 
+fn build_kcp(kcp_dir: PathBuf) {
+    println!("cargo:rerun-if-env-changed=KCP");
+
+    run_in(&kcp_dir, "cmake .");
+    run_in(&kcp_dir, "make");
+
+    println!(
+        "cargo:rustc-link-search=native={}",
+        kcp_dir.as_path().display()
+    );
+    println!("cargo:rustc-link-lib=static=kcp");
+
+    let bindings = bindgen::Builder::default()
+        .header(format!("{}/ikcp.h", kcp_dir.as_path().display()))
+        .generate()
+        .expect("Enet bindgen output");
+
+    let out_dir = std::env::var("OUT_DIR").expect("build out dir");
+    bindings
+        .write_to_file(PathBuf::from(out_dir).join("kcp.rs"))
+        .expect("writing bindings");
+}
+
 fn main() {
     build_enet(
         format!("{}/third_party/enet", env!("CARGO_MANIFEST_DIR")).into(),
     );
+
+    build_kcp(format!("{}/third_party/kcp", env!("CARGO_MANIFEST_DIR")).into());
 }
