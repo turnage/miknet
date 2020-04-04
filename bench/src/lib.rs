@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
 
 pub mod enet;
+pub mod kcp;
 pub mod tcp;
 
 pub mod client;
