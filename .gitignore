@@ -4,3 +4,4 @@ target/
 Cargo.lock
 **/*.txt
 **/*.csv
+bench/third_party/*
