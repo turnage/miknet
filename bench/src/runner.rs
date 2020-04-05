@@ -97,11 +97,11 @@ pub struct Options {
     pub start_server: bool,
 }
 
-async fn run_client(options: &Options) -> Result<client::Results> {
+async fn run_client(options: &Options) -> Result<client::Summary> {
     client::client_main(options.client_options.clone()).await
 }
 
-async fn run(options: &Options) -> Result<client::Results> {
+async fn run(options: &Options) -> Result<client::Summary> {
     let server_options = server::Options {
         address: options.client_options.address,
         protocol: options.client_options.protocol,
@@ -113,7 +113,7 @@ async fn run(options: &Options) -> Result<client::Results> {
     server_result.and_then(|_| results)
 }
 
-pub async fn runner_main(options: Options) -> Result<client::Results> {
+pub async fn runner_main(options: Options) -> Result<client::Summary> {
     options.network_config.reset();
     options.network_config.apply();
 

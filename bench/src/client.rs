@@ -24,15 +24,15 @@ struct TripReport {
     round_trip: u128,
 }
 
-pub struct Results {
+pub struct Summary {
     pub mean: Duration,
     pub deviation: Duration,
 }
 
-impl FromIterator<Results> for Results {
+impl FromIterator<Summary> for Summary {
     fn from_iter<T>(iter: T) -> Self
     where
-        T: IntoIterator<Item = Results>,
+        T: IntoIterator<Item = Summary>,
     {
         let (count, mean_sum, deviation_sum) = iter.into_iter().fold(
             (0, Duration::from_secs(0), Duration::from_secs(0)),
@@ -43,23 +43,23 @@ impl FromIterator<Results> for Results {
                 (count, mean_sum, deviation_sum)
             },
         );
-        Results {
+        Summary {
             mean: mean_sum / count,
             deviation: deviation_sum / count,
         }
     }
 }
 
-impl std::fmt::Debug for Results {
+impl std::fmt::Debug for Summary {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.debug_struct("Results")
+        f.debug_struct("Summary")
             .field("Mean", &self.mean)
             .field("Deviation", &self.deviation)
             .finish()
     }
 }
 
-impl From<Vec<TripReport>> for Results {
+impl From<Vec<TripReport>> for Summary {
     fn from(src: Vec<TripReport>) -> Self {
         let sum: u128 = src.iter().map(|r| r.round_trip).sum();
         let n = src.len() as u128;
@@ -73,7 +73,7 @@ impl From<Vec<TripReport>> for Results {
         let mean = Duration::from_nanos(mean as u64);
         let deviation = Duration::from_nanos(deviation as u64);
 
-        Results { mean, deviation }
+        Summary { mean, deviation }
     }
 }
 
@@ -112,7 +112,7 @@ impl TransferTracker {
 async fn run(
     options: Options,
     client: impl Connection + Unpin,
-) -> Result<Results> {
+) -> Result<Summary> {
     enum Input {
         Transfer(TransferCmd),
         Wire(Result<Datagram>),
@@ -168,7 +168,7 @@ async fn run(
                     return Ok(tracking
                         .into_iter()
                         .map(|(_, tracker)| tracker.returned)
-                        .map(Results::from)
+                        .map(Summary::from)
                         .collect());
                 }
             }
@@ -277,7 +277,7 @@ impl FromStr for Transfer {
     }
 }
 
-pub async fn client_main(options: Options) -> Result<Results> {
+pub async fn client_main(options: Options) -> Result<Summary> {
     let address = options.address;
     match options.protocol {
         Protocol::Tcp => {
