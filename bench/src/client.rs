@@ -19,7 +19,7 @@ use std::{
 use structopt::StructOpt;
 
 #[derive(Debug, Serialize)]
-struct TripReport {
+pub struct TripReport {
     stream_id: StreamId,
     index: u64,
     round_trip: u128,
@@ -28,6 +28,7 @@ struct TripReport {
 pub struct Summary {
     pub mean: Duration,
     pub deviation: Duration,
+    pub trip_reports: Vec<TripReport>,
 }
 
 impl FromIterator<Summary> for Summary {
@@ -35,18 +36,29 @@ impl FromIterator<Summary> for Summary {
     where
         T: IntoIterator<Item = Summary>,
     {
-        let (count, mean_sum, deviation_sum) = iter.into_iter().fold(
-            (0, Duration::from_secs(0), Duration::from_secs(0)),
-            |(mut count, mut mean_sum, mut deviation_sum), result| {
-                mean_sum += result.mean;
-                deviation_sum += result.deviation;
-                count += 1;
-                (count, mean_sum, deviation_sum)
-            },
-        );
+        let (trip_reports, count, mean_sum, deviation_sum) =
+            iter.into_iter().fold(
+                (vec![], 0, Duration::from_secs(0), Duration::from_secs(0)),
+                |(
+                    mut trip_reports,
+                    mut count,
+                    mut mean_sum,
+                    mut deviation_sum,
+                ),
+                 mut result| {
+                    mean_sum += result.mean;
+                    deviation_sum += result.deviation;
+                    count += 1;
+                    trip_reports.append(&mut result.trip_reports);
+
+                    (trip_reports, count, mean_sum, deviation_sum)
+                },
+            );
+
         Summary {
             mean: mean_sum / count,
             deviation: deviation_sum / count,
+            trip_reports,
         }
     }
 }
@@ -74,7 +86,11 @@ impl From<Vec<TripReport>> for Summary {
         let mean = Duration::from_nanos(mean as u64);
         let deviation = Duration::from_nanos(deviation as u64);
 
-        Summary { mean, deviation }
+        Summary {
+            mean,
+            deviation,
+            trip_reports: src,
+        }
     }
 }
 
@@ -135,7 +151,7 @@ async fn run(
                         stream_id: tx.stream_id,
                         total_expected,
                         live: HashMap::new(),
-                        returned: vec![]
+                        returned: vec![],
                     },
                 )
             })
