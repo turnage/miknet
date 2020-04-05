@@ -20,6 +20,7 @@ use structopt::StructOpt;
 
 #[derive(Debug, Serialize)]
 struct TripReport {
+    stream_id: StreamId,
     index: u64,
     round_trip: u128,
 }
@@ -83,8 +84,9 @@ fn ticker(hertz: u32) -> impl Stream<Item = ()> {
     stream::repeat(0u8).then(move |_| Delay::new(tick_rate))
 }
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 struct TransferTracker {
+    stream_id: StreamId,
     total_expected: usize,
     live: HashMap<u64, Instant>,
     returned: Vec<TripReport>,
@@ -98,6 +100,7 @@ impl TransferTracker {
     fn track_return(&mut self, id: u64) {
         if let Some(sent_time) = self.live.remove(&id) {
             self.returned.push(TripReport {
+                stream_id: self.stream_id,
                 index: id,
                 round_trip: Instant::now().duration_since(sent_time).as_nanos(),
             });
@@ -129,8 +132,10 @@ async fn run(
                 (
                     tx.stream_id,
                     TransferTracker {
+                        stream_id: tx.stream_id,
                         total_expected,
-                        ..TransferTracker::default()
+                        live: HashMap::new(),
+                        returned: vec![]
                     },
                 )
             })
