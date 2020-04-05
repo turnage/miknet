@@ -1,6 +1,6 @@
-
 use async_std::net::*;
 use bench::*;
+use structopt::StructOpt;
 
 use float_ord::FloatOrd;
 
@@ -11,7 +11,6 @@ use serde::{
     Serialize,
 };
 use std::collections::HashMap;
-
 
 fn local_address(port: u16) -> SocketAddr {
     format!("127.0.0.1:{}", port)
@@ -227,9 +226,30 @@ fn scenarios() -> Vec<Scenario> {
     ]
 }
 
+#[derive(Debug, StructOpt)]
+struct Options {
+    #[structopt(long, short = "f")]
+    scenario_filter: Option<String>,
+}
+
 #[async_std::main]
 async fn main() {
+    let options = Options::from_args();
+
     let scenarios = scenarios();
+    let scenarios = scenarios.into_iter().filter(|s| {
+        options
+            .scenario_filter
+            .as_ref()
+            .map(|pattern| {
+                s.netcode_scenario
+                    .scenario_name
+                    .matches(pattern.as_str())
+                    .next()
+                    .is_some()
+            })
+            .unwrap_or(false)
+    });
 
     let output = std::io::stdout();
     let mut writer = csv::Writer::from_writer(output);
