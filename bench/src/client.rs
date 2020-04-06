@@ -22,7 +22,7 @@ use structopt::StructOpt;
 pub struct TripReport {
     stream_id: StreamId,
     index: u64,
-    round_trip: u128,
+    round_trip: f64,
 }
 
 #[derive(Clone)]
@@ -75,21 +75,18 @@ impl std::fmt::Debug for Summary {
 
 impl From<Vec<TripReport>> for Summary {
     fn from(src: Vec<TripReport>) -> Self {
-        let sum: u128 = src.iter().map(|r| r.round_trip).sum();
-        let n = src.len() as u128;
+        let sum: f64 = src.iter().map(|r| r.round_trip).sum();
+        let n = src.len() as f64;
         let mean = sum / n;
 
-        let square_difference = |r: &TripReport| (r.round_trip - mean).pow(2);
-        let sum_of_squares: u128 = src.iter().map(square_difference).sum();
-        let variance = sum_of_squares / (n - 1);
-        let deviation = (variance as f64).sqrt();
-
-        let mean = Duration::from_nanos(mean as u64);
-        let deviation = Duration::from_nanos(deviation as u64);
+        let square_difference = |r: &TripReport| (r.round_trip - mean).powi(2);
+        let sum_of_squares: f64 = src.iter().map(square_difference).sum();
+        let variance = sum_of_squares / (n - 1.0);
+        let deviation = variance.sqrt();
 
         Summary {
-            mean_ms: mean.as_secs_f64() * 1e3,
-            deviation_ms: deviation.as_secs_f64() * 1e3,
+            mean_ms: mean,
+            deviation_ms: deviation,
             trip_reports: src,
         }
     }
@@ -119,7 +116,7 @@ impl TransferTracker {
             self.returned.push(TripReport {
                 stream_id: self.stream_id,
                 index: id,
-                round_trip: Instant::now().duration_since(sent_time).as_nanos(),
+                round_trip: Instant::now().duration_since(sent_time).as_secs_f64() * 1e3,
             });
         }
     }
