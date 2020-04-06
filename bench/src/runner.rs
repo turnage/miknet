@@ -1,9 +1,8 @@
 use crate::*;
-
 use futures::future::join;
 use serde::Serialize;
+use std::fs;
 use std::process::Command;
-
 use structopt::StructOpt;
 
 #[derive(Serialize, Debug, Clone, StructOpt)]
@@ -95,6 +94,8 @@ pub struct Options {
     /// server address.
     #[structopt(long)]
     pub start_server: bool,
+    #[structopt(long, short = "o")]
+    pub output: Option<String>,
 }
 
 async fn run_client(options: &Options) -> Result<client::Summary> {
@@ -121,5 +122,16 @@ pub async fn runner_main(options: Options) -> Result<client::Summary> {
 
     options.network_config.reset();
 
-    results
+    let results = results?;
+
+    if let Some(output) = options.output {
+        let writer = fs::File::create(output)?;
+        let mut writer = csv::Writer::from_writer(writer);
+
+        for report in &results.trip_reports {
+            writer.serialize(report)?;
+        }
+    }
+
+    Ok(results)
 }

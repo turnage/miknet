@@ -18,16 +18,17 @@ use std::{
 };
 use structopt::StructOpt;
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Copy, Debug, Serialize)]
 pub struct TripReport {
     stream_id: StreamId,
     index: u64,
     round_trip: u128,
 }
 
+#[derive(Clone)]
 pub struct Summary {
-    pub mean: Duration,
-    pub deviation: Duration,
+    pub mean_ms: f64,
+    pub deviation_ms: f64,
     pub trip_reports: Vec<TripReport>,
 }
 
@@ -38,7 +39,7 @@ impl FromIterator<Summary> for Summary {
     {
         let (trip_reports, count, mean_sum, deviation_sum) =
             iter.into_iter().fold(
-                (vec![], 0, Duration::from_secs(0), Duration::from_secs(0)),
+                (vec![], 0, 0.0, 0.0),
                 |(
                     mut trip_reports,
                     mut count,
@@ -46,8 +47,8 @@ impl FromIterator<Summary> for Summary {
                     mut deviation_sum,
                 ),
                  mut result| {
-                    mean_sum += result.mean;
-                    deviation_sum += result.deviation;
+                    mean_sum += result.mean_ms;
+                    deviation_sum += result.deviation_ms;
                     count += 1;
                     trip_reports.append(&mut result.trip_reports);
 
@@ -56,8 +57,8 @@ impl FromIterator<Summary> for Summary {
             );
 
         Summary {
-            mean: mean_sum / count,
-            deviation: deviation_sum / count,
+            mean_ms: mean_sum / count as f64,
+            deviation_ms: deviation_sum / count as f64,
             trip_reports,
         }
     }
@@ -66,8 +67,8 @@ impl FromIterator<Summary> for Summary {
 impl std::fmt::Debug for Summary {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.debug_struct("Summary")
-            .field("Mean", &self.mean)
-            .field("Deviation", &self.deviation)
+            .field("Mean", &self.mean_ms)
+            .field("Deviation", &self.deviation_ms)
             .finish()
     }
 }
@@ -87,8 +88,8 @@ impl From<Vec<TripReport>> for Summary {
         let deviation = Duration::from_nanos(deviation as u64);
 
         Summary {
-            mean,
-            deviation,
+            mean_ms: mean.as_secs_f64() * 1e3,
+            deviation_ms: deviation.as_secs_f64() * 1e3,
             trip_reports: src,
         }
     }

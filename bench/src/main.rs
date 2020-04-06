@@ -1,5 +1,6 @@
 use async_std::net::*;
 use bench::*;
+use std::fs;
 use structopt::StructOpt;
 
 use float_ord::FloatOrd;
@@ -34,7 +35,7 @@ struct Scenario {
 }
 
 impl Scenario {
-    async fn run(&self, port: u16, protocol: Protocol) -> Report {
+    async fn run(&self, port: u16, protocol: Protocol) -> client::Summary {
         let server_address = local_address(port);
         let client_options = client::Options {
             address: server_address,
@@ -46,42 +47,37 @@ impl Scenario {
             network_config: self.network_config.clone(),
             client_options,
             start_server: true,
+            output: None,
         };
 
-        let results =
-            runner::runner_main(runner_options).await.expect(&format!(
-                "running scenario {} against protocol {:?}",
-                self.netcode_scenario.scenario_name, protocol
-            ));
-
-        Report {
-            mean_ping_ms: results.mean.as_secs_f64() * 1e3,
-            ping_deviation_ms: results.deviation.as_secs_f64() * 1e3,
-        }
+        runner::runner_main(runner_options).await.expect(&format!(
+            "running scenario {} against protocol {:?}",
+            self.netcode_scenario.scenario_name, protocol
+        ))
     }
 }
 
-#[derive(Debug, Clone)]
-struct Benchmark {
+#[derive(Debug)]
+struct Comparison {
     scenario: Scenario,
-    reports: HashMap<Protocol, Report>,
+    reports: HashMap<Protocol, client::Summary>,
     least_latent: Protocol,
     least_variant: Protocol,
 }
 
-impl Benchmark {
+impl Comparison {
     fn from_reports(
         scenario: Scenario,
-        reports: HashMap<Protocol, Report>,
+        reports: HashMap<Protocol, client::Summary>,
     ) -> Self {
         let (least_latent, least_variant) = {
             let (least_latent, _) = reports
                 .iter()
-                .min_by_key(|(_, report)| FloatOrd(report.mean_ping_ms))
+                .min_by_key(|(_, report)| FloatOrd(report.mean_ms))
                 .unwrap();
             let (least_variant, _) = reports
                 .iter()
-                .min_by_key(|(_, report)| FloatOrd(report.ping_deviation_ms))
+                .min_by_key(|(_, report)| FloatOrd(report.deviation_ms))
                 .unwrap();
 
             (*least_latent, *least_variant)
@@ -96,7 +92,7 @@ impl Benchmark {
     }
 }
 
-impl Serialize for Benchmark {
+impl Serialize for Comparison {
     fn serialize<S>(
         &self,
         serializer: S,
@@ -112,7 +108,7 @@ impl Serialize for Benchmark {
             + summary_fields;
 
         let mut state =
-            serializer.serialize_struct("Benchmark", total_fields)?;
+            serializer.serialize_struct("Comparison", total_fields)?;
 
         let cfg = &self.scenario.network_config;
 
@@ -140,14 +136,14 @@ impl Serialize for Benchmark {
                     "{:?}_mean_round_trip_ms",
                     protocol
                 ))),
-                &report.mean_ping_ms,
+                &report.mean_ms,
             )?;
             state.serialize_field(
                 Box::leak(Box::new(format!(
                     "{:?}_round_trip_deviation_ms",
                     protocol
                 ))),
-                &report.ping_deviation_ms,
+                &report.deviation_ms,
             )?;
         }
 
@@ -164,13 +160,53 @@ struct Report {
     ping_deviation_ms: f64,
 }
 
+#[derive(Debug, Default)]
+struct SimulationData {
+    scenarios:
+        HashMap<&'static str, (Comparison, HashMap<Protocol, client::Summary>)>,
+}
+
+impl SimulationData {
+    fn write_out(self, dir: String) {
+        let _ = fs::create_dir(&dir);
+
+        let comparison_writer =
+            fs::File::create(format!("{}/comparison.csv", dir))
+                .expect("opening comparison output file");
+        let mut comparison_writer = csv::Writer::from_writer(comparison_writer);
+
+        for (scenario, (comparison, protocols)) in self.scenarios {
+            let _ = fs::create_dir(format!("{}/{}", dir, scenario));
+
+            comparison_writer
+                .serialize(comparison)
+                .expect("writing comparison to file");
+
+            for (protocol, summary) in protocols {
+                let writer = fs::File::create(format!(
+                    "{}/{}/{:?}.csv",
+                    dir, scenario, protocol
+                ))
+                .expect("opening file to write protocol report");
+                let mut writer = csv::Writer::from_writer(writer);
+
+                summary.trip_reports.into_iter().for_each(|report| {
+                    writer
+                        .serialize(report)
+                        .expect("serializing trip reports to file")
+                });
+            }
+        }
+    }
+}
+
 const DEFAULT_RETURN_COUNT: Option<usize> = Some(200);
 
 fn scenarios() -> Vec<Scenario> {
     vec![
         Scenario {
             netcode_scenario: NetcodeScenario {
-                scenario_name: "transfer_0_200B_60Hz",
+                scenario_name: "transfer_0_200B_60Hz-full_bandwith",
                 transfers: vec![client::Transfer {
                     stream_id: StreamId(0),
                     size: 200,
@@ -182,7 +218,8 @@ fn scenarios() -> Vec<Scenario> {
         },
         Scenario {
             netcode_scenario: NetcodeScenario {
-                scenario_name: "transfer_0_200B_60Hz-transfer_1_800_240Hz",
+                scenario_name:
+                    "transfer_0_200B_60Hz-transfer_1_800_240Hz-full_bandwidth",
                 transfers: vec![
                     client::Transfer {
                         stream_id: StreamId(0),
@@ -202,7 +239,8 @@ fn scenarios() -> Vec<Scenario> {
         },
         Scenario {
             netcode_scenario: NetcodeScenario {
-                scenario_name: "transfer_0_200B_60Hz-transfer_1_800_240Hz",
+                scenario_name:
+                    "transfer_0_200B_60Hz-transfer_1_800_240Hz-1024kbps",
                 transfers: vec![
                     client::Transfer {
                         stream_id: StreamId(0),
@@ -223,6 +261,21 @@ fn scenarios() -> Vec<Scenario> {
                 ..Default::default()
             },
         },
+        Scenario {
+            netcode_scenario: NetcodeScenario {
+                scenario_name: "transfer_0_200B_60Hz-half_bandwidth",
+                transfers: vec![client::Transfer {
+                    stream_id: StreamId(0),
+                    size: 200,
+                    hertz: 60,
+                    return_count: DEFAULT_RETURN_COUNT,
+                }],
+            },
+            network_config: runner::NetworkConfig {
+                rate_limit_kbps: 12,
+                ..Default::default()
+            },
+        },
     ]
 }
 
@@ -230,6 +283,9 @@ fn scenarios() -> Vec<Scenario> {
 struct Options {
     #[structopt(long, short = "f")]
     scenario_filter: Option<String>,
+    /// Name of the directory in which to write CSV results.
+    #[structopt(long, short = "o")]
+    output: String,
 }
 
 #[async_std::main]
@@ -248,11 +304,10 @@ async fn main() {
                     .next()
                     .is_some()
             })
-            .unwrap_or(false)
+            .unwrap_or(true)
     });
 
-    let output = std::io::stdout();
-    let mut writer = csv::Writer::from_writer(output);
+    let mut simulation_data = SimulationData::default();
 
     let mut port = 1025;
     for scenario in scenarios {
@@ -262,9 +317,13 @@ async fn main() {
             reports.insert(*protocol, report);
             port += 1;
         }
-        let benchmark = Benchmark::from_reports(scenario, reports);
-        writer
-            .serialize(benchmark)
-            .expect("writing benchmark to stdout");
+        let comparison =
+            Comparison::from_reports(scenario.clone(), reports.clone());
+        simulation_data.scenarios.insert(
+            scenario.netcode_scenario.scenario_name,
+            (comparison, reports),
+        );
     }
+
+    simulation_data.write_out(options.output);
 }
