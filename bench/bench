@@ -1,0 +1,7 @@
+#!/bin/bash
+
+outdir=$1 
+shift
+
+sudo -E `which cargo` run --release --bin bench -- -o $outdir $@
+sudo -E chown -R $USER $outdir
