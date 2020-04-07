@@ -1,8 +1,12 @@
 use crate::{Result, *};
+use async_std::net::*;
 use bincode::*;
-use futures::{channel::mpsc, prelude::*};
+use futures::{
+    channel::mpsc,
+    prelude::*,
+    stream::{self, LocalBoxStream, StreamExt},
+};
 use serde::{Deserialize, Serialize};
-use std::net::*;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
@@ -15,45 +19,57 @@ mod kcp {
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, Hash, Eq, PartialEq)]
 struct Conv(u32);
 
+struct NewPeer {
+    conv: Conv,
+    address: SocketAddr,
+}
+
 struct KcpServer {
-    #[allow(unused)]
-    marker: Arc<()>,
-    new_peers: mpsc::UnboundedReceiver<(Conv, SocketAddr)>,
+    new_peers: LocalBoxStream<'static, Result<NewPeer>>,
 }
 
 impl KcpServer {
-    pub fn bind(address: impl ToSocketAddrs) -> Result<Self> {
-        let socket = UdpSocket::bind(address)?;
+    pub async fn bind(address: impl ToSocketAddrs) -> Result<Self> {
+        let socket = UdpSocket::bind(address).await?;
 
-        let (peer_sink, new_peers) = mpsc::unbounded();
-        let marker = Arc::new(());
-
-        let daemon_marker = marker.clone();
-        std::thread::spawn(move || {
-            Self::daemon(daemon_marker, peer_sink, socket)
-                .expect("kcp listener daemon")
-        });
-
-        Ok(Self { marker, new_peers })
-    }
-
-    fn daemon(
-        marker: Arc<()>,
-        mut peer_sink: mpsc::UnboundedSender<(Conv, SocketAddr)>,
-        socket: UdpSocket,
-    ) -> Result<()> {
-        loop {
-            let mut buffer = [0; 1400];
-            match socket.recv_from(&mut buffer) {
-                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
-                Err(e) => Err(e)?,
-                Ok((_, sender)) => {
-                    let conv = deserialize(&buffer)?;
-
-                    peer_sink.unbounded_send((conv, sender))?;
-                }
+        let (mut sink, mut stream) = mpsc::channel(0);
+        let mut watcher = (move || async move {
+            let mut buffer = [0; 1024];
+            loop {
+                let (_, sender) = socket.recv_from(&mut buffer).await?;
+                let conv: Conv = deserialize(&buffer)?;
+                sink.send(NewPeer {
+                    conv,
+                    address: sender,
+                })
+                .await?;
             }
-        }
+
+            Ok(())
+        })()
+        .boxed_local();
+
+        let mut terminated = false;
+        let new_peers = stream::poll_fn(
+            move |ctx: &mut Context| -> Poll<Option<Result<NewPeer>>> {
+                if terminated {
+                    return Poll::Ready(None);
+                }
+
+                if let Poll::Ready(Err(e)) = watcher.as_mut().poll(ctx) {
+                    terminated = true;
+                    return Poll::Ready(Some(Err(e)));
+                }
+
+                Pin::new(&mut stream)
+                    .poll_next(ctx)
+                    .map(|peer| Ok(peer).transpose())
+            },
+        );
+
+        Ok(Self {
+            new_peers: new_peers.boxed_local(),
+        })
     }
 }
 
