@@ -22,6 +22,15 @@ pub fn default_server_address() -> SocketAddr {
     "127.0.0.1:33333".parse().unwrap()
 }
 
+/// Returns a stream that yields `()` `hertz` times per second.
+pub fn ticker(hertz: u32) -> impl futures::stream::Stream<Item = ()> {
+    use futures::stream::StreamExt;
+
+    let tick_rate = std::time::Duration::from_secs(1) / hertz;
+    futures::stream::repeat(0u8)
+        .then(move |_| futures_timer::Delay::new(tick_rate))
+}
+
 #[derive(Serialize, Eq, PartialEq, Hash, Copy, Clone, Debug, StructOpt)]
 pub enum Protocol {
     Tcp,

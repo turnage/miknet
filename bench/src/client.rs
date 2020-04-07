@@ -93,12 +93,6 @@ impl From<Vec<TripReport>> for Summary {
     }
 }
 
-/// Returns a stream that yields `()` `hertz` times per second.
-fn ticker(hertz: u32) -> impl Stream<Item = ()> {
-    let tick_rate = Duration::from_secs(1) / hertz;
-    stream::repeat(0u8).then(move |_| Delay::new(tick_rate))
-}
-
 #[derive(Debug)]
 struct TransferTracker {
     epoch: Instant,
