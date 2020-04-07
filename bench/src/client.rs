@@ -120,7 +120,9 @@ impl TransferTracker {
             self.returned.push(TripReport {
                 stream_id: self.stream_id,
                 index: id,
-                send_time: (now.duration_since(self.epoch) - round_trip).as_secs_f64() * 1e3,
+                send_time: (now.duration_since(self.epoch) - round_trip)
+                    .as_secs_f64()
+                    * 1e3,
                 round_trip: round_trip.as_secs_f64() * 1e3,
             });
         }

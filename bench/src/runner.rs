@@ -29,7 +29,7 @@ pub struct NetworkConfig {
     /// Rate limit of simulated wire. Defaults to 1Gigabit.
     #[structopt(long, default_value = "1073741824")]
     pub rate_limit_kbps: usize,
-    #[structopt(long, default_value="1000")]
+    #[structopt(long, default_value = "1000")]
     pub packet_limit: usize,
 }
 
@@ -43,7 +43,7 @@ impl Default for NetworkConfig {
             random_loss_correlation: 0.0,
             interface: String::from("lo"),
             rate_limit_kbps: 1073741824,
-            packet_limit: 1000
+            packet_limit: 1000,
         }
     }
 }
@@ -76,7 +76,7 @@ impl NetworkConfig {
                 "rate",
                 &format!("{}kbit", self.rate_limit_kbps),
                 "limit",
-                &format!("{}", self.packet_limit / 2)
+                &format!("{}", self.packet_limit / 2),
             ])
             .output()
             .expect("applying delay");
