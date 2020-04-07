@@ -1,4 +1,6 @@
 [submodule "third_party/enet"]
+	url = "git@github.com:lsalzman/enet.git"
 	ignore = dirty
 [submodule "third_party/kcp"]
+	url = "https://github.com/skywind3000/kcp"
 	ignore = dirty
