@@ -1,6 +1,6 @@
 [submodule "bench/third_party/enet"]
 	path = bench/third_party/enet
-	url = https://github.com/lsalzman/enet
+	url = git@github.com:lsalzman/enet.git
 [submodule "bench/third_party/kcp"]
 	path = bench/third_party/kcp
-	url = https://github.com/lsalzman/kcp
+	url = git@github.com:skywind3000/kcp.git
