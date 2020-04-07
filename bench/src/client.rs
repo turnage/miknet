@@ -23,6 +23,7 @@ pub struct TripReport {
     stream_id: StreamId,
     index: u64,
     round_trip: f64,
+    send_time: f64,
 }
 
 #[derive(Clone)]
@@ -100,6 +101,7 @@ fn ticker(hertz: u32) -> impl Stream<Item = ()> {
 
 #[derive(Debug)]
 struct TransferTracker {
+    epoch: Instant,
     stream_id: StreamId,
     total_expected: usize,
     live: HashMap<u64, Instant>,
@@ -112,11 +114,14 @@ impl TransferTracker {
     }
 
     fn track_return(&mut self, id: u64) {
+        let now = Instant::now();
         if let Some(sent_time) = self.live.remove(&id) {
+            let round_trip = now.duration_since(sent_time);
             self.returned.push(TripReport {
                 stream_id: self.stream_id,
                 index: id,
-                round_trip: Instant::now().duration_since(sent_time).as_secs_f64() * 1e3,
+                send_time: (now.duration_since(self.epoch) - round_trip).as_secs_f64() * 1e3,
+                round_trip: round_trip.as_secs_f64() * 1e3,
             });
         }
     }
@@ -138,6 +143,7 @@ async fn run(
     let (mut client_sink, client_stream) = client.split();
     let returned_datagrams = client_stream.map(Input::Wire);
 
+    let epoch = Instant::now();
     let mut tracking = options
         .transfers
         .iter()
@@ -146,6 +152,7 @@ async fn run(
                 (
                     tx.stream_id,
                     TransferTracker {
+                        epoch,
                         stream_id: tx.stream_id,
                         total_expected,
                         live: HashMap::new(),
