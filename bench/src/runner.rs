@@ -113,8 +113,16 @@ async fn run(options: &Options) -> Result<client::Summary> {
         protocol: options.client_options.protocol,
     };
 
+    let run_server = async move {
+        if options.start_server {
+            return server::server_main(server_options).await;
+        }
+
+        Ok(())
+    };
+
     let (results, server_result) =
-        join(run_client(&options), server::server_main(server_options)).await;
+        join(run_client(&options), run_server).await;
 
     server_result.and_then(|_| results)
 }
