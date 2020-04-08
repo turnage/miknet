@@ -334,5 +334,8 @@ pub async fn client_main(options: Options) -> Result<Summary> {
         Protocol::Enet => {
             run(options, enet::EnetConnection::connect(address).await).await
         }
+        Protocol::Kcp => {
+            run(options, kcp::KcpConnection::connect(address).await?).await
+        }
     }
 }

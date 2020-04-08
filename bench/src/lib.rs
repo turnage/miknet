@@ -14,7 +14,8 @@ pub mod client;
 pub mod runner;
 pub mod server;
 
-pub const ALL_PROTOCOLS: [Protocol; 2] = [Protocol::Tcp, Protocol::Enet];
+pub const ALL_PROTOCOLS: [Protocol; 3] =
+    [Protocol::Tcp, Protocol::Enet, Protocol::Kcp];
 
 pub const ID_DO_NOT_RETURN: u64 = u64::max_value();
 
@@ -35,6 +36,7 @@ pub fn ticker(hertz: u32) -> impl futures::stream::Stream<Item = ()> {
 pub enum Protocol {
     Tcp,
     Enet,
+    Kcp,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

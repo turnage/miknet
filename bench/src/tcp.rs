@@ -72,6 +72,10 @@ impl TcpConnection {
         Ok(TcpConnection::from(tcp_stream))
     }
 
+    pub fn peer_addr(&self) -> Result<SocketAddr> {
+        Ok(self.peer_addr()?)
+    }
+
     fn send_gate() -> impl FnMut(
         SendCmd,
     ) -> stream::Iter<

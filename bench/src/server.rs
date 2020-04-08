@@ -51,5 +51,8 @@ pub async fn server_main(options: Options) -> Result<()> {
         Protocol::Enet => {
             run(enet::EnetServer::bind(options.address).await).await
         }
+        Protocol::Kcp => {
+            run(kcp::KcpServer::bind(options.address).await?).await
+        }
     }
 }
