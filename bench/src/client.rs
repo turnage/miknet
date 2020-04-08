@@ -5,16 +5,16 @@ use async_std::{net::SocketAddr, prelude::*};
 use futures::{
     self,
     sink::SinkExt,
-    stream::{self, select, SelectAll, StreamExt},
+    stream::{select, SelectAll, StreamExt},
 };
-use futures_timer::Delay;
+
 
 use serde::Serialize;
 use std::str::FromStr;
 use std::{
     collections::HashMap,
     iter::FromIterator,
-    time::{Duration, Instant},
+    time::{Instant},
 };
 use structopt::StructOpt;
 

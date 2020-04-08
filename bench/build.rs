@@ -1,10 +1,10 @@
-use std::fs::File;
+
 
 use duct::cmd;
-use std::ffi::OsString;
-use std::io::Write;
+
+
 use std::path::PathBuf;
-use std::process::Command;
+
 
 fn run_in(dir: &PathBuf, invocation: &str) {
     let context =
@@ -29,7 +29,7 @@ fn build_enet(enet_dir: PathBuf) {
     let mut build_path = enet_dir.clone();
     build_path.push("build");
 
-    let target_dir_arg = format!("--prefix={:?}", build_path);
+    let _target_dir_arg = format!("--prefix={:?}", build_path);
     run_in(
         &enet_dir,
         &format!(

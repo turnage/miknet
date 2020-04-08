@@ -15,18 +15,16 @@ use async_std::net::*;
 use bincode::*;
 use futures::{
     channel::mpsc,
-    future::{AbortHandle, Abortable, Either, LocalBoxFuture},
     prelude::*,
-    sink,
-    stream::{self, Fuse, FusedStream, LocalBoxStream, StreamExt},
+    stream::{Fuse, FusedStream, LocalBoxStream, StreamExt},
 };
-use rand::random;
-use serde::{Deserialize, Serialize};
+
+
 use std::ffi::c_void;
 use std::os::raw::c_int;
-use std::os::unix::io::{FromRawFd, IntoRawFd};
+
 use std::pin::Pin;
-use std::sync::Arc;
+
 use std::task::{Context, Poll};
 use std::time::*;
 
@@ -108,6 +106,7 @@ impl FusedStream for KcpServer {
 }
 
 pub struct KcpConnection {
+    #[allow(unused)]
     tcp_connection: tcp::TcpConnection,
     receiver: mpsc::Receiver<Datagram>,
     sender:
@@ -121,7 +120,7 @@ impl KcpConnection {
         let port =
             tcp_connection.next().await.expect("udp port from server")?;
         let port: u16 = deserialize(port.data.as_slice())?;
-        let udp_addr = server.set_port(port);
+        let _udp_addr = server.set_port(port);
 
         let udp = UdpSocket::bind(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 0))
             .await?;
@@ -142,8 +141,8 @@ impl KcpConnection {
         socket: UdpSocket,
         peer: SocketAddr,
     ) -> Self {
-        let (mut command_sink, mut command_stream) = mpsc::channel(100);
-        let (mut datagram_sink, mut datagram_stream) = mpsc::channel(100);
+        let (command_sink, command_stream) = mpsc::channel(100);
+        let (datagram_sink, datagram_stream) = mpsc::channel(100);
 
         std::thread::spawn(move || {
             eprintln!("ne connection thread");
@@ -167,20 +166,17 @@ impl KcpConnection {
         socket: UdpSocket,
         peer: SocketAddr,
         command_stream: mpsc::Receiver<SendCmd>,
-        mut datagram_sink: mpsc::Sender<Datagram>,
+        datagram_sink: mpsc::Sender<Datagram>,
     ) -> Result<()> {
         eprintln!("starting driver");
 
         socket.connect(peer).await?;
 
-        let (mut wire_notify, wire_events) = mpsc::channel(100);
-
         enum Event {
             Outgoing(SendCmd),
         }
 
-        let mut events =
-            stream::select(wire_events, command_stream.map(Event::Outgoing));
+        let mut events = command_stream.map(Event::Outgoing);
 
         let output_callback =
             |buf: *const i8, len: i32, _cb: *mut kcp::ikcpcb| -> c_int {
@@ -193,12 +189,12 @@ impl KcpConnection {
             };
         let (callback, state) =
             unsafe { wrap_output_callback(&output_callback) };
-        let mut cb = unsafe {
+        let cb = unsafe {
             kcp::ikcp_create(/*conv=*/ 0, state)
         };
         unsafe { kcp::ikcp_setoutput(cb, Some(callback)) }
 
-        let mut service_ticks = ticker(1000).fuse();
+        let _service_ticks = ticker(1000).fuse();
 
         let mut servicer = KcpServicer {
             epoch: Instant::now(),
@@ -260,7 +256,8 @@ impl KcpServicer {
         unsafe { kcp::ikcp_update(self.cb, self.current_time_ms()) };
 
         let mut buffer = [0; 65535];
-        let mut len = 0i32;
+        #[allow(unused_assignments)]
+        let mut len = i32::default();
 
         let buffer_ptr = buffer.as_mut_ptr() as *mut i8;
         while {
@@ -277,7 +274,7 @@ impl KcpServicer {
                         index: StreamIndex::Ordinal(self.sequence_number),
                     }),
                 })
-                .await;
+                .await.expect("Sending datagram to user");
             self.sequence_number += 1;
         }
     }
