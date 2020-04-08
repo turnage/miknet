@@ -51,7 +51,13 @@ impl Stream for TcpServer {
     ) -> Poll<Option<Self::Item>> {
         match Pin::new(&mut self.incoming).poll_next(ctx) {
             Poll::Ready(Some(Ok(tcp_stream))) => {
-                Poll::Ready(Some(Ok(TcpConnection::from(tcp_stream))))
+                let peer_addr = match tcp_stream.peer_addr() {
+                    Ok(peer_addr) => peer_addr,
+                    Err(e) => return Poll::Ready(Some(Err(e.into()))),
+                };
+                Poll::Ready(Some(Ok(TcpConnection::from((
+                    tcp_stream, peer_addr,
+                )))))
             }
             Poll::Ready(Some(Err(e))) => Poll::Ready(Some(Err(e.into()))),
             Poll::Ready(None) => Poll::Ready(None),
@@ -64,16 +70,18 @@ pub struct TcpConnection {
     receiver: LocalBoxStream<'static, Result<Datagram>>,
     sender:
         Pin<Box<dyn Sink<SendCmd, Error = Box<dyn std::error::Error>> + Unpin>>,
+    peer_addr: SocketAddr,
 }
 
 impl TcpConnection {
     pub async fn connect(address: impl ToSocketAddrs) -> Result<Self> {
         let tcp_stream = TcpStream::connect(address).await?;
-        Ok(TcpConnection::from(tcp_stream))
+        let peer_addr = tcp_stream.peer_addr()?;
+        Ok(TcpConnection::from((tcp_stream, peer_addr)))
     }
 
-    pub fn peer_addr(&self) -> Result<SocketAddr> {
-        Ok(self.peer_addr()?)
+    pub fn peer_addr(&self) -> SocketAddr {
+        self.peer_addr
     }
 
     fn send_gate() -> impl FnMut(
@@ -100,8 +108,8 @@ impl TcpConnection {
     }
 }
 
-impl From<TcpStream> for TcpConnection {
-    fn from(stream: TcpStream) -> Self {
+impl From<(TcpStream, SocketAddr)> for TcpConnection {
+    fn from((stream, peer_addr): (TcpStream, SocketAddr)) -> Self {
         let framer = LengthDelimitedCodec::new();
         let stream = Framed::new(stream.compat(), framer);
         let codec = SymmetricalBincode::default();
@@ -116,6 +124,7 @@ impl From<TcpStream> for TcpConnection {
         Self {
             receiver: wire_stream.boxed_local(),
             sender: Pin::new(Box::new(wire_sink)),
+            peer_addr,
         }
     }
 }

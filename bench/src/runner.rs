@@ -121,7 +121,7 @@ async fn run(options: &Options) -> Result<client::Summary> {
         Ok(())
     };
 
-    let (results, server_result) = join(run_client(&options), run_server).await;
+    let (server_result, results) = join(run_server, run_client(&options)).await;
 
     server_result.and_then(|_| results)
 }

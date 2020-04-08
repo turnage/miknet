@@ -42,34 +42,47 @@ pub struct KcpServer {
 impl Server<KcpConnection> for KcpServer {}
 
 impl KcpServer {
-    pub async fn bind(address: impl ToSocketAddrs) -> Result<Self> {
-        let tcp = tcp::TcpServer::bind(address).await?;
+    pub async fn bind(
+        address: impl ToSocketAddrs + Clone + 'static,
+    ) -> Result<Self> {
+        let tcp = tcp::TcpServer::bind(address.clone()).await?;
 
-        let peers = tcp.then(|tcp_connection| async {
-            let mut tcp_connection = tcp_connection?;
+        println!("built ttcp server");
 
-            let udp =
-                UdpSocket::bind(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 0))
+        let peers = tcp.then(move |tcp_connection| {
+            println!("connection on tcp");
+            let address = address.clone();
+            async move {
+                let mut tcp_connection = tcp_connection?;
+
+                let udp = UdpSocket::bind(address.clone()).await?;
+                let port = udp.local_addr()?.port();
+
+                println!("Established tcp connection and opened udp port");
+
+                tcp_connection
+                    .send(SendCmd {
+                        data: serialize(&port)?,
+                        delivery_mode: DeliveryMode::ReliableOrdered(StreamId(
+                            0,
+                        )),
+                        ..SendCmd::default()
+                    })
                     .await?;
-            let port = udp.local_addr()?.port();
 
-            tcp_connection
-                .send(SendCmd {
-                    data: serialize(&port)?,
-                    delivery_mode: DeliveryMode::ReliableOrdered(StreamId(0)),
-                    ..SendCmd::default()
-                })
-                .await?;
+                let client_port = tcp_connection
+                    .next()
+                    .await
+                    .expect("Confirmation of port")?;
+                let client_port: u16 =
+                    deserialize(client_port.data.as_slice())?;
 
-            let client_port =
-                tcp_connection.next().await.expect("Confirmation of port")?;
-            let client_port: u16 = deserialize(client_port.data.as_slice())?;
+                let mut client_addr = tcp_connection.peer_addr();
+                client_addr.set_port(client_port);
 
-            let mut client_addr = tcp_connection.peer_addr()?;
-            client_addr.set_port(client_port);
-
-            Ok(KcpConnection::from_socket(tcp_connection, udp, client_addr)
-                .await)
+                Ok(KcpConnection::from_socket(tcp_connection, udp, client_addr)
+                    .await)
+            }
         });
 
         Ok(Self {
@@ -96,9 +109,7 @@ impl FusedStream for KcpServer {
 
 pub struct KcpConnection {
     tcp_connection: tcp::TcpConnection,
-    driver: LocalBoxFuture<'static, Result<()>>,
-    control_block: *mut kcp::ikcpcb,
-    receiver: LocalBoxStream<'static, Result<Datagram>>,
+    receiver: mpsc::Receiver<Datagram>,
     sender:
         Pin<Box<dyn Sink<SendCmd, Error = Box<dyn std::error::Error>> + Unpin>>,
 }
@@ -131,53 +142,53 @@ impl KcpConnection {
         socket: UdpSocket,
         peer: SocketAddr,
     ) -> Self {
-        let mut control_block = 0 as *mut kcp::ikcpcb;
-        let control_block_out = &mut control_block as *mut *mut kcp::ikcpcb;
-        let driver = Self::driver(socket, peer, control_block_out);
-        let (cancel_handle, registration) = AbortHandle::new_pair();
-        let driver = Abortable::new(driver, registration)
-            .err_into()
-            .map(|r| r.and_then(|r| Ok(r?)));
+        let (mut command_sink, mut command_stream) = mpsc::channel(100);
+        let (mut datagram_sink, mut datagram_stream) = mpsc::channel(100);
+
+        std::thread::spawn(move || {
+            eprintln!("ne connection thread");
+            async_std::task::block_on(Self::driver(
+                socket,
+                peer,
+                command_stream,
+                datagram_sink,
+            ))
+            .expect("kcp driver stopped");
+        });
 
         Self {
             tcp_connection,
-            driver: driver.boxed_local(),
-            control_block,
-            receiver: stream::empty().boxed_local(),
-            sender: Pin::new(Box::new(sink::drain().sink_err_into())),
+            receiver: datagram_stream,
+            sender: Pin::new(Box::new(command_sink.sink_err_into())),
         }
     }
 
     async fn driver(
         socket: UdpSocket,
         peer: SocketAddr,
-        control_block_out: *mut *mut kcp::ikcpcb,
+        command_stream: mpsc::Receiver<SendCmd>,
+        mut datagram_sink: mpsc::Sender<Datagram>,
     ) -> Result<()> {
+        eprintln!("starting driver");
+
         socket.connect(peer).await?;
 
-        let epoch = Instant::now();
-        let current_time_ms =
-            || Instant::now().duration_since(epoch).as_millis() as u32;
-
-        let (mut service_notify, service_requests) = mpsc::channel(1);
-        let (mut wire_notify, wire_events) = mpsc::channel(1);
+        let (mut wire_notify, wire_events) = mpsc::channel(100);
 
         enum Event {
-            ServiceRequest,
             Outgoing(SendCmd),
         }
 
-        let mut events = stream::select(service_requests, wire_events);
-
-        let mut buffer = [0u8; 65535];
+        let mut events =
+            stream::select(wire_events, command_stream.map(Event::Outgoing));
 
         let output_callback =
             |buf: *const i8, len: i32, _cb: *mut kcp::ikcpcb| -> c_int {
                 let data: &[u8] = unsafe {
                     std::slice::from_raw_parts(buf as *const u8, len as usize)
                 };
-                async_std::task::block_on(socket.send(data))
-                    .expect("sending data for kcp");
+                eprintln!("output callback");
+                let _ = async_std::task::block_on(socket.send(data));
                 0
             };
         let (callback, state) =
@@ -185,9 +196,18 @@ impl KcpConnection {
         let mut cb = unsafe {
             kcp::ikcp_create(/*conv=*/ 0, state)
         };
-        unsafe { *control_block_out = cb };
         unsafe { kcp::ikcp_setoutput(cb, Some(callback)) }
 
+        let mut service_ticks = ticker(1000).fuse();
+
+        let mut servicer = KcpServicer {
+            epoch: Instant::now(),
+            datagram_sink,
+            cb,
+            sequence_number: 0,
+        };
+
+        let mut buffer = [0u8; 65535];
         loop {
             futures::select! {
                 read_result = socket.recv(&mut buffer).fuse() => {
@@ -197,23 +217,11 @@ impl KcpConnection {
                     if code < 0 {
                         panic!("kcp panic; input error: {:?}", code);
                     }
+
+                    servicer.service().await;
                 }
                 event = events.select_next_some()  => {
                     match event {
-                        Event::ServiceRequest => unsafe {
-                            kcp::ikcp_update(cb, current_time_ms());
-
-                            // Schedule next update
-                            let delay = kcp::ikcp_check(cb, current_time_ms());
-                            let delay = Duration::from_millis(delay as u64);
-                            let timer = futures_timer::Delay::new(delay);
-
-                            let mut notifier = service_notify.clone();
-                            let notify = |_| async move {
-                                notifier.send(Event::ServiceRequest).await
-                            };
-                            async_std::task::spawn(timer.then(notify));
-                        }
                         Event::Outgoing(send_cmd) => unsafe {
                             match send_cmd.delivery_mode {
                                 DeliveryMode::ReliableOrdered(StreamId(0)) => {},
@@ -221,14 +229,56 @@ impl KcpConnection {
                             };
 
                             let data = send_cmd.data.as_ptr() as *const i8;
-                            let code = kcp::ikcp_input(cb, data, send_cmd.data.len() as i64);
+                            let code = kcp::ikcp_send(cb, data, send_cmd.data.len() as i32);
                             if code < 0 {
                                 panic!("kcp input failed: {:?}", code);
                             }
+
+                            servicer.service().await;
                         }
                     }
-                },
+                }
             }
+        }
+    }
+}
+
+struct KcpServicer {
+    epoch: Instant,
+    datagram_sink: mpsc::Sender<Datagram>,
+    cb: *mut kcp::ikcpcb,
+    sequence_number: u32,
+}
+
+impl KcpServicer {
+    fn current_time_ms(&self) -> u32 {
+        Instant::now().duration_since(self.epoch).as_millis() as u32
+    }
+
+    async fn service(&mut self) {
+        eprintln!("servicing kcp");
+        unsafe { kcp::ikcp_update(self.cb, self.current_time_ms()) };
+
+        let mut buffer = [0; 65535];
+        let mut len = 0i32;
+
+        let buffer_ptr = buffer.as_mut_ptr() as *mut i8;
+        while {
+            len = unsafe {
+                kcp::ikcp_recv(self.cb, buffer_ptr, buffer.len() as i32)
+            };
+            len > 0
+        } {
+            self.datagram_sink
+                .send(Datagram {
+                    data: buffer[0..(len as usize)].to_vec(),
+                    stream_position: Some(StreamPosition {
+                        stream_id: StreamId(0),
+                        index: StreamIndex::Ordinal(self.sequence_number),
+                    }),
+                })
+                .await;
+            self.sequence_number += 1;
         }
     }
 }
@@ -274,7 +324,9 @@ impl Stream for KcpConnection {
         mut self: Pin<&mut Self>,
         ctx: &mut Context,
     ) -> Poll<Option<Self::Item>> {
-        Pin::new(&mut self.receiver).poll_next(ctx)
+        Pin::new(&mut self.receiver)
+            .poll_next(ctx)
+            .map(|d| d.map(Ok))
     }
 }
 

@@ -195,7 +195,9 @@ async fn run(
                 }
             }
             Input::Transfer(transfer_cmd) => {
+                println!("Sending...");
                 client_sink.send(transfer_cmd.send_cmd).await?;
+                println!("Sent!");
                 if let Some((cumulative_tracking, cmd_tracking)) =
                     transfer_cmd.tracking.and_then(|cmd_tracking| {
                         let cumulative_tracking =
