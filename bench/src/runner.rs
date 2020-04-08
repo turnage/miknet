@@ -1,5 +1,5 @@
 use crate::*;
-use futures::future::join;
+use futures::future::{self, Either, FutureExt};
 use serde::Serialize;
 use std::fs;
 use std::process::Command;
@@ -119,11 +119,15 @@ async fn run(options: &Options) -> Result<client::Summary> {
         }
 
         Ok(())
-    };
+    }
+    .boxed_local();
 
-    let (server_result, results) = join(run_server, run_client(&options)).await;
+    let run_client = run_client(&options).boxed_local();
 
-    server_result.and_then(|_| results)
+    match future::select(run_server, run_client).await {
+        Either::Left((_, client)) => client.await,
+        Either::Right((result, _)) => result,
+    }
 }
 
 pub async fn runner_main(options: Options) -> Result<client::Summary> {

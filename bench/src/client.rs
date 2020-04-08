@@ -8,14 +8,9 @@ use futures::{
     stream::{select, SelectAll, StreamExt},
 };
 
-
 use serde::Serialize;
 use std::str::FromStr;
-use std::{
-    collections::HashMap,
-    iter::FromIterator,
-    time::{Instant},
-};
+use std::{collections::HashMap, iter::FromIterator, time::Instant};
 use structopt::StructOpt;
 
 #[derive(Clone, Copy, Debug, Serialize)]
@@ -195,9 +190,7 @@ async fn run(
                 }
             }
             Input::Transfer(transfer_cmd) => {
-                println!("Sending...");
                 client_sink.send(transfer_cmd.send_cmd).await?;
-                println!("Sent!");
                 if let Some((cumulative_tracking, cmd_tracking)) =
                     transfer_cmd.tracking.and_then(|cmd_tracking| {
                         let cumulative_tracking =
@@ -337,7 +330,13 @@ pub async fn client_main(options: Options) -> Result<Summary> {
             run(options, enet::EnetConnection::connect(address).await).await
         }
         Protocol::Kcp => {
-            run(options, kcp::KcpConnection::connect(address).await?).await
+            run(
+                options,
+                kcp::KcpConnection::connect(address)
+                    .await
+                    .expect("Connecting to kcp server"),
+            )
+            .await
         }
     }
 }

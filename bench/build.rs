@@ -1,10 +1,6 @@
-
-
 use duct::cmd;
 
-
 use std::path::PathBuf;
-
 
 fn run_in(dir: &PathBuf, invocation: &str) {
     let context =
