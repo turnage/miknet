@@ -18,11 +18,11 @@ use futures::{
     prelude::*,
     stream::{Fuse, FusedStream, LocalBoxStream, StreamExt},
 };
-use std::sync::Arc;
+
 
 use std::ffi::c_void;
 use std::os::raw::c_int;
-use std::os::unix::io::{AsRawFd, FromRawFd};
+
 
 use std::pin::Pin;
 
