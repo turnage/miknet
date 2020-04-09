@@ -22,6 +22,9 @@ itertools = "0.9.0"
 rand = "0.7.3"
 float-ord = "0.2.0"
 
+[profile.release]
+debug = true
+
 [build-dependencies]
 bindgen = "0.53"
 duct = "0.13.3"

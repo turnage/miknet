@@ -18,9 +18,11 @@ use futures::{
     prelude::*,
     stream::{Fuse, FusedStream, LocalBoxStream, StreamExt},
 };
+use std::sync::Arc;
 
 use std::ffi::c_void;
 use std::os::raw::c_int;
+use std::os::unix::io::{AsRawFd, FromRawFd};
 
 use std::pin::Pin;
 
@@ -152,33 +154,22 @@ impl KcpConnection {
     async fn driver(
         socket: UdpSocket,
         peer: SocketAddr,
-        command_stream: mpsc::Receiver<SendCmd>,
+        mut command_stream: mpsc::Receiver<SendCmd>,
         datagram_sink: mpsc::Sender<Datagram>,
     ) -> Result<()> {
         socket.connect(peer).await?;
 
-        enum Event {
-            Outgoing(SendCmd),
-        }
-
-        let mut events = command_stream.map(Event::Outgoing);
-
-        let epoch = Instant::now();
-        let current_time_ms =
-            || Instant::now().duration_since(epoch).as_millis() as u32;
-
-        let cb = {
-            let output_callback = |buf: *const i8,
-                                   len: i32,
-                                   _cb: *mut kcp::ikcpcb|
-             -> c_int {
+        let output_callback =
+            |buf: *const i8, len: i32, _cb: *mut kcp::ikcpcb| -> c_int {
                 let data: &[u8] = unsafe {
                     std::slice::from_raw_parts(buf as *const u8, len as usize)
                 };
-                eprintln!("output callback at {}", current_time_ms());
-                let _ = async_std::task::block_on(socket.send(data));
-                0
+                match async_std::task::block_on(socket.send(data)) {
+                    Err(_) => -1,
+                    Ok(v) => v as i32,
+                }
             };
+        let cb = {
             let (callback, state) =
                 unsafe { wrap_output_callback(&output_callback) };
             let cb = unsafe {
@@ -188,7 +179,16 @@ impl KcpConnection {
             Cb(cb)
         };
 
-        let _service_ticks = ticker(1000).fuse();
+        struct CbDropper(Cb);
+
+        impl Drop for CbDropper {
+            fn drop(&mut self) {
+                let CbDropper(Cb(ptr)) = *self;
+                unsafe { kcp::ikcp_release(ptr) }
+            }
+        }
+
+        let _dropper = CbDropper(cb);
 
         let mut servicer = KcpServicer {
             epoch: Instant::now(),
@@ -200,6 +200,10 @@ impl KcpConnection {
         let mut buffer = [0u8; 65535];
         let mut service_ticker = ticker(1000).fuse();
         loop {
+            if command_stream.is_terminated() {
+                return Ok(());
+            }
+
             futures::select! {
                 read_result = socket.recv(&mut buffer).fuse() => {
                     {
@@ -215,13 +219,11 @@ impl KcpConnection {
 
                     servicer.service().await;
                 }
-                event = events.select_next_some()  => {
-                    match event {
-                        Event::Outgoing(send_cmd) => unsafe {
-                            match send_cmd.delivery_mode {
+                send_cmd = command_stream.select_next_some() => unsafe {
+                /*            match send_cmd.delivery_mode {
                                 DeliveryMode::ReliableOrdered(StreamId(0)) => {},
                                 _ => panic!("KCP only supports a single reliable channel"),
-                            };
+                            };*/
 
                             {
                                 let data = send_cmd.data.as_ptr() as *const i8;
@@ -238,9 +240,7 @@ impl KcpConnection {
                             servicer.service().await;
 
                             kcp::ikcp_flush(cb.0);
-                        }
-                    }
-                }
+                },
                 _ = service_ticker.select_next_some() => servicer.service().await,
             }
         }
@@ -278,7 +278,8 @@ impl KcpServicer {
             };
             len > 0
         } {
-            self.datagram_sink
+            let _ = self
+                .datagram_sink
                 .send(Datagram {
                     data: buffer[0..(len as usize)].to_vec(),
                     stream_position: Some(StreamPosition {
@@ -286,8 +287,7 @@ impl KcpServicer {
                         index: StreamIndex::Ordinal(self.sequence_number),
                     }),
                 })
-                .await
-                .expect("Sending datagram to user");
+                .await;
             self.sequence_number += 1;
         }
     }

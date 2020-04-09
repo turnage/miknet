@@ -316,6 +316,7 @@ async fn main() {
             let report = scenario.run(port, *protocol).await;
             reports.insert(*protocol, report);
             port += 1;
+            std::thread::sleep(std::time::Duration::from_secs(1));
         }
         let comparison =
             Comparison::from_reports(scenario.clone(), reports.clone());
