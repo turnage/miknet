@@ -37,6 +37,7 @@ pub enum Protocol {
     Tcp,
     Enet,
     Kcp,
+    KcpTurbo,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -332,7 +332,16 @@ pub async fn client_main(options: Options) -> Result<Summary> {
         Protocol::Kcp => {
             run(
                 options,
-                kcp::KcpConnection::connect(address)
+                kcp::KcpConnection::connect(kcp::KcpMode::Normal, address)
+                    .await
+                    .expect("Connecting to kcp server"),
+            )
+            .await
+        }
+        Protocol::KcpTurbo => {
+            run(
+                options,
+                kcp::KcpConnection::connect(kcp::KcpMode::Turbo, address)
                     .await
                     .expect("Connecting to kcp server"),
             )

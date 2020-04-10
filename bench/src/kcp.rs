@@ -19,10 +19,8 @@ use futures::{
     stream::{Fuse, FusedStream, LocalBoxStream, StreamExt},
 };
 
-
 use std::ffi::c_void;
 use std::os::raw::c_int;
-
 
 use std::pin::Pin;
 
@@ -34,6 +32,23 @@ mod kcp {
     include!(concat!(env!("OUT_DIR"), "/kcp.rs"));
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum KcpMode {
+    Normal,
+    Turbo,
+}
+
+impl KcpMode {
+    fn apply(self, cb: *mut kcp::ikcpcb) {
+        unsafe {
+            match self {
+                KcpMode::Normal => kcp::ikcp_nodelay(cb, 0, 1, 0, 0),
+                KcpMode::Turbo => kcp::ikcp_nodelay(cb, 1, 1, 2, 1),
+            };
+        }
+    }
+}
+
 pub struct KcpServer {
     peers: Fuse<LocalBoxStream<'static, Result<KcpConnection>>>,
 }
@@ -42,6 +57,7 @@ impl Server<KcpConnection> for KcpServer {}
 
 impl KcpServer {
     pub async fn bind(
+        mode: KcpMode,
         address: impl ToSocketAddrs + Clone + 'static,
     ) -> Result<Self> {
         let tcp = tcp::TcpServer::bind(address.clone()).await?;
@@ -74,8 +90,13 @@ impl KcpServer {
                 let mut client_addr = tcp_connection.peer_addr();
                 client_addr.set_port(client_port);
 
-                Ok(KcpConnection::from_socket(tcp_connection, udp, client_addr)
-                    .await)
+                Ok(KcpConnection::from_socket(
+                    mode,
+                    tcp_connection,
+                    udp,
+                    client_addr,
+                )
+                .await)
             }
         });
 
@@ -110,7 +131,10 @@ pub struct KcpConnection {
 }
 
 impl KcpConnection {
-    pub async fn connect(mut server: SocketAddr) -> Result<Self> {
+    pub async fn connect(
+        mode: KcpMode,
+        mut server: SocketAddr,
+    ) -> Result<Self> {
         let mut tcp_connection = tcp::TcpConnection::connect(server).await?;
 
         let port =
@@ -129,10 +153,11 @@ impl KcpConnection {
             })
             .await?;
 
-        Ok(Self::from_socket(tcp_connection, udp, server).await)
+        Ok(Self::from_socket(mode, tcp_connection, udp, server).await)
     }
 
     async fn from_socket(
+        mode: KcpMode,
         tcp_connection: tcp::TcpConnection,
         socket: UdpSocket,
         peer: SocketAddr,
@@ -141,7 +166,8 @@ impl KcpConnection {
         let (datagram_sink, datagram_stream) = mpsc::channel(100);
 
         async_std::task::spawn(
-            Self::driver(socket, peer, command_stream, datagram_sink).map(drop),
+            Self::driver(mode, socket, peer, command_stream, datagram_sink)
+                .map(drop),
         );
 
         Self {
@@ -152,6 +178,7 @@ impl KcpConnection {
     }
 
     async fn driver(
+        mode: KcpMode,
         socket: UdpSocket,
         peer: SocketAddr,
         mut command_stream: mpsc::Receiver<SendCmd>,
@@ -176,6 +203,7 @@ impl KcpConnection {
                 kcp::ikcp_create(/*conv=*/ 0, state)
             };
             unsafe { kcp::ikcp_setoutput(cb, Some(callback)) }
+            mode.apply(cb);
             Cb(cb)
         };
 
@@ -220,10 +248,10 @@ impl KcpConnection {
                     servicer.service().await;
                 }
                 send_cmd = command_stream.select_next_some() => unsafe {
-                /*            match send_cmd.delivery_mode {
+                            match send_cmd.delivery_mode {
                                 DeliveryMode::ReliableOrdered(StreamId(0)) => {},
                                 _ => panic!("KCP only supports a single reliable channel"),
-                            };*/
+                            };
 
                             {
                                 let data = send_cmd.data.as_ptr() as *const i8;
@@ -238,8 +266,6 @@ impl KcpConnection {
                             }
 
                             servicer.service().await;
-
-                            kcp::ikcp_flush(cb.0);
                 },
                 _ = service_ticker.select_next_some() => servicer.service().await,
             }

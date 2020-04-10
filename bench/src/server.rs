@@ -52,7 +52,14 @@ pub async fn server_main(options: Options) -> Result<()> {
             run(enet::EnetServer::bind(options.address).await).await
         }
         Protocol::Kcp => {
-            run(kcp::KcpServer::bind(options.address).await?).await
+            run(kcp::KcpServer::bind(kcp::KcpMode::Normal, options.address)
+                .await?)
+            .await
+        }
+        Protocol::KcpTurbo => {
+            run(kcp::KcpServer::bind(kcp::KcpMode::Turbo, options.address)
+                .await?)
+            .await
         }
     }
 }
